@@ -56,6 +56,7 @@ pub fn get_runtime_class_proto(name: &str) -> Option<RuntimeClassProto> {
         crate::classes::java::lang::NoSuchFieldError::as_proto(),
         crate::classes::java::lang::NoSuchMethodError::as_proto(),
         crate::classes::java::lang::NullPointerException::as_proto(),
+        crate::classes::java::lang::NumberFormatException::as_proto(),
         crate::classes::java::lang::Object::as_proto(),
         crate::classes::java::lang::Runnable::as_proto(),
         crate::classes::java::lang::Runtime::as_proto(),

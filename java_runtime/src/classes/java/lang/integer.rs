@@ -20,6 +20,9 @@ impl Integer {
                 JavaMethodProto::new("parseInt", "(Ljava/lang/String;)I", Self::parse_int, MethodAccessFlags::STATIC),
                 JavaMethodProto::new("valueOf", "(I)Ljava/lang/Integer;", Self::value_of, MethodAccessFlags::STATIC),
                 JavaMethodProto::new("intValue", "()I", Self::int_value, Default::default()),
+                JavaMethodProto::new("byteValue", "()B", Self::byte_value, Default::default()),
+                JavaMethodProto::new("shortValue", "()S", Self::short_value, Default::default()),
+                JavaMethodProto::new("longValue", "()J", Self::long_value, Default::default()),
                 JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, Default::default()),
                 JavaMethodProto::new("toString", "(I)Ljava/lang/String;", Self::to_string_static, MethodAccessFlags::STATIC),
                 JavaMethodProto::new("toHexString", "(I)Ljava/lang/String;", Self::to_hex_string, MethodAccessFlags::STATIC),
@@ -43,6 +46,30 @@ impl Integer {
         let value = jvm.get_field(&this, "value", "I").await?;
 
         Ok(value)
+    }
+
+    async fn byte_value(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i8> {
+        tracing::debug!("java.lang.Integer::byteValue({:?})", &this);
+
+        let value: i32 = jvm.get_field(&this, "value", "I").await?;
+
+        Ok(value as i8)
+    }
+
+    async fn short_value(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i16> {
+        tracing::debug!("java.lang.Integer::shortValue({:?})", &this);
+
+        let value: i32 = jvm.get_field(&this, "value", "I").await?;
+
+        Ok(value as i16)
+    }
+
+    async fn long_value(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i64> {
+        tracing::debug!("java.lang.Integer::longValue({:?})", &this);
+
+        let value: i32 = jvm.get_field(&this, "value", "I").await?;
+
+        Ok(value as i64)
     }
 
     async fn value_of(jvm: &Jvm, _: &mut RuntimeContext, value: i32) -> Result<ClassInstanceRef<Self>> {
@@ -76,7 +103,14 @@ impl Integer {
 
         let s = JavaLangString::to_rust_string(jvm, &s).await?;
 
-        Ok(s.parse().unwrap())
+        match s.parse() {
+            Ok(value) => Ok(value),
+            // Java throws NumberFormatException (not a VM abort) for unparseable
+            // input such as "" or non-digits; let the guest's try/catch handle it.
+            Err(_) => Err(jvm
+                .exception("java/lang/NumberFormatException", &format!("For input string: \"{s}\""))
+                .await),
+        }
     }
 
     async fn to_hex_string(jvm: &Jvm, _: &mut RuntimeContext, value: i32) -> Result<ClassInstanceRef<String>> {

@@ -104,6 +104,10 @@ impl String {
     async fn init_with_byte_array(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, value: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.lang.String::<init>({:?}, {:?})", &this, &value);
 
+        if value.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "byte array is null").await);
+        }
+
         let count = jvm.array_length(&value).await? as i32;
 
         let _: () = jvm
@@ -120,6 +124,10 @@ impl String {
         value: ClassInstanceRef<Array<u16>>,
     ) -> Result<()> {
         tracing::debug!("java.lang.String::<init>({:?}, {:?})", &this, &value);
+
+        if value.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "char array is null").await);
+        }
 
         let count = jvm.array_length(&value).await? as i32;
 

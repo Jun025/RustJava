@@ -38,6 +38,10 @@ impl ByteArrayInputStream {
     async fn init(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, data: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.io.ByteArrayInputStream::<init>({this:?}, {data:?})");
 
+        if data.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "byte array is null").await);
+        }
+
         let count = jvm.array_length(&data).await?;
 
         let _: () = jvm
