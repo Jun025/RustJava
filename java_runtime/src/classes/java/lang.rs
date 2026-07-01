@@ -3,6 +3,7 @@ mod arithmetic_exception;
 mod array_index_out_of_bounds_exception;
 mod class;
 mod class_cast_exception;
+mod class_not_found_exception;
 mod class_loader;
 mod clone_not_supported_exception;
 mod cloneable;
@@ -37,7 +38,7 @@ mod unsupported_operation_exception;
 
 pub use self::{
     abstract_method_error::AbstractMethodError, arithmetic_exception::ArithmeticException,
-    array_index_out_of_bounds_exception::ArrayIndexOutOfBoundsException, class::Class, class_cast_exception::ClassCastException,
+    array_index_out_of_bounds_exception::ArrayIndexOutOfBoundsException, class::Class, class_cast_exception::ClassCastException, class_not_found_exception::ClassNotFoundException,
     class_loader::ClassLoader, clone_not_supported_exception::CloneNotSupportedException, cloneable::Cloneable, comparable::Comparable, error::Error,
     exception::Exception, illegal_argument_exception::IllegalArgumentException, incompatible_class_change_error::IncompatibleClassChangeError,
     index_out_of_bounds_exception::IndexOutOfBoundsException, instantiation_error::InstantiationError, integer::Integer,

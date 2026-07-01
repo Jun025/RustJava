@@ -101,9 +101,17 @@ impl Class {
     async fn for_name(jvm: &Jvm, _context: &mut RuntimeContext, name: ClassInstanceRef<String>) -> Result<ClassInstanceRef<Class>> {
         tracing::debug!("java.lang.Class::forName({:?})", &name);
 
+        if name.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "class name is null").await);
+        }
+
         let rust_name = JavaLangString::to_rust_string(jvm, &name).await?;
         let qualified_name = rust_name.replace('.', "/");
-        let class = jvm.get_class(&qualified_name).unwrap().java_class();
+        // Spec: forName throws ClassNotFoundException for an unknown class — not a host panic.
+        let class = match jvm.get_class(&qualified_name) {
+            Some(class) => class.java_class(),
+            None => return Err(jvm.exception("java/lang/ClassNotFoundException", &rust_name).await),
+        };
 
         Ok(class.into())
     }
