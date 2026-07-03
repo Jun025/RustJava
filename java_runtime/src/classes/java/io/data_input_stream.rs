@@ -29,6 +29,7 @@ impl DataInputStream {
                 JavaMethodProto::new("readInt", "()I", Self::read_int, Default::default()),
                 JavaMethodProto::new("readLong", "()J", Self::read_long, Default::default()),
                 JavaMethodProto::new("readShort", "()S", Self::read_short, Default::default()),
+                JavaMethodProto::new("readUnsignedByte", "()I", Self::read_unsigned_byte, Default::default()),
                 JavaMethodProto::new("readUnsignedShort", "()I", Self::read_unsigned_short, Default::default()),
                 JavaMethodProto::new("readUTF", "()Ljava/lang/String;", Self::read_utf, Default::default()),
                 JavaMethodProto::new("skipBytes", "(I)I", Self::skip_bytes, Default::default()),
@@ -86,6 +87,19 @@ impl DataInputStream {
         let byte2: i32 = jvm.invoke_virtual(&r#in, "read", "()I", ()).await?;
 
         Ok(((byte1 as i16) << 8) | (byte2 as i16))
+    }
+
+    async fn read_unsigned_byte(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
+        tracing::debug!("java.io.DataInputStream::readUnsignedByte({:?})", &this);
+
+        let r#in = jvm.get_field(&this, "in", "Ljava/io/InputStream;").await?;
+        let byte: i32 = jvm.invoke_virtual(&r#in, "read", "()I", ()).await?;
+
+        if byte < 0 {
+            return Err(jvm.exception("java/io/EOFException", "unexpected end of stream").await);
+        }
+
+        Ok(byte & 0xff)
     }
 
     async fn read_unsigned_short(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {

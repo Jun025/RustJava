@@ -109,3 +109,35 @@ async fn test_data_input_stream_high_bit() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_data_input_stream_read_unsigned_byte() -> Result<()> {
+    let jvm = test_jvm().await?;
+
+    let data = cast_vec(vec![0x81u8, 0x00, 0x7f]);
+    let data_len = data.len();
+
+    let mut data_array = jvm.instantiate_array("B", data_len).await?;
+    jvm.array_raw_buffer_mut(&mut data_array).await?.write(0, &data)?;
+
+    let input_stream = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (data_array,)).await?;
+    let data_input_stream = jvm
+        .new_class("java/io/DataInputStream", "(Ljava/io/InputStream;)V", (input_stream,))
+        .await?;
+
+    // high-bit byte must come back unsigned, not sign-extended
+    let byte: i32 = jvm.invoke_virtual(&data_input_stream, "readUnsignedByte", "()I", ()).await?;
+    assert_eq!(byte, 0x81);
+
+    let byte: i32 = jvm.invoke_virtual(&data_input_stream, "readUnsignedByte", "()I", ()).await?;
+    assert_eq!(byte, 0x00);
+
+    let byte: i32 = jvm.invoke_virtual(&data_input_stream, "readUnsignedByte", "()I", ()).await?;
+    assert_eq!(byte, 0x7f);
+
+    // past the end: EOFException
+    let result: Result<i32> = jvm.invoke_virtual(&data_input_stream, "readUnsignedByte", "()I", ()).await;
+    assert!(result.is_err());
+
+    Ok(())
+}
