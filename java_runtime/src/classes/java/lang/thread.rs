@@ -92,6 +92,7 @@ impl Thread {
                 tracing::trace!("Thread start");
 
                 self.jvm.attach_thread()?;
+                self.jvm.set_current_java_thread(self.this.instance.clone().unwrap());
 
                 let result: Result<()> = self.jvm.invoke_virtual(&self.this, "run", "()V", []).await;
 
@@ -202,9 +203,16 @@ impl Thread {
     }
 
     async fn current_thread(jvm: &Jvm, _: &mut RuntimeContext) -> Result<ClassInstanceRef<Self>> {
-        tracing::warn!("stub java.lang.Thread::currentThread()");
+        tracing::debug!("java.lang.Thread::currentThread()");
 
+        if let Some(x) = jvm.current_java_thread() {
+            return Ok(x.into());
+        }
+
+        // No Thread instance is registered for this task (e.g. the main task); create an
+        // internal one and register it so repeated calls return the same instance.
         let thread = jvm.new_class("java/lang/Thread", "(Z)V", (true,)).await?;
+        jvm.set_current_java_thread(thread.clone());
 
         Ok(thread.into())
     }

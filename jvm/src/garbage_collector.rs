@@ -25,6 +25,12 @@ pub fn determine_garbage(
             find_reachable_objects(jvm, x, &mut reachable_objects);
         });
 
+    // java/lang/Thread instances registered for Thread.currentThread() are roots too;
+    // collecting one would leave the registry handing out a destroyed instance.
+    threads.values().filter_map(|thread| thread.java_thread.as_ref()).for_each(|x| {
+        find_reachable_objects(jvm, x, &mut reachable_objects);
+    });
+
     all_class_instances.difference(&reachable_objects).cloned().collect()
 }
 

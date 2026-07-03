@@ -672,6 +672,21 @@ impl Jvm {
         Ok(())
     }
 
+    /// Associates a java/lang/Thread instance with the current thread, so
+    /// Thread.currentThread() can return the same instance every call
+    /// (reference identity, e.g. `while (Thread.currentThread() == this)`).
+    pub fn set_current_java_thread(&self, instance: Box<dyn ClassInstance>) {
+        let thread_id = (self.inner.get_current_thread_id)();
+        if let Some(thread) = self.inner.threads.write().get_mut(&thread_id) {
+            thread.java_thread = Some(instance);
+        }
+    }
+
+    pub fn current_java_thread(&self) -> Option<Box<dyn ClassInstance>> {
+        let thread_id = (self.inner.get_current_thread_id)();
+        self.inner.threads.read().get(&thread_id).and_then(|x| x.java_thread.clone())
+    }
+
     // TODO we need safe, ergonomic api..
     pub fn push_native_frame(&self) {
         let thread_id = (self.inner.get_current_thread_id)();

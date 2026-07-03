@@ -29,11 +29,16 @@ impl StackFrame {
 
 pub struct JvmThread {
     stack: Vec<StackFrame>,
+    // java/lang/Thread instance for this thread, returned by Thread.currentThread()
+    pub(crate) java_thread: Option<Box<dyn ClassInstance>>,
 }
 
 impl JvmThread {
     pub fn new() -> Self {
-        Self { stack: Vec::new() }
+        Self {
+            stack: Vec::new(),
+            java_thread: None,
+        }
     }
 
     pub fn push_java_frame(&mut self, class: &Class, class_instance: Option<Box<dyn ClassInstance>>, method: &str) {
