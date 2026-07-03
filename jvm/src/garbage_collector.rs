@@ -8,6 +8,7 @@ use crate::{ClassDefinition, ClassInstance, Field, JavaValue, Jvm, class_loader:
 pub fn determine_garbage(
     jvm: &Jvm,
     threads: &BTreeMap<u64, JvmThread>,
+    pending_java_threads: &[Box<dyn ClassInstance>],
     all_class_instances: &HashSet<Box<dyn ClassInstance>>,
     classes: &BTreeMap<String, Class>,
 ) -> Vec<Box<dyn ClassInstance>> {
@@ -28,6 +29,12 @@ pub fn determine_garbage(
     // java/lang/Thread instances registered for Thread.currentThread() are roots too;
     // collecting one would leave the registry handing out a destroyed instance.
     threads.values().filter_map(|thread| thread.java_thread.as_ref()).for_each(|x| {
+        find_reachable_objects(jvm, x, &mut reachable_objects);
+    });
+
+    // threads that were start()ed but whose task has not attached yet — only the Rust
+    // spawn callback references them, which the collector cannot see
+    pending_java_threads.iter().for_each(|x| {
         find_reachable_objects(jvm, x, &mut reachable_objects);
     });
 

@@ -131,6 +131,9 @@ impl Thread {
                 self.jvm.put_field(&mut this, "alive", "Z", false).await.unwrap();
                 self.jvm.object_notify(&self.this, usize::MAX);
 
+                // this thread no longer references the instance; drop the start() root
+                self.jvm.remove_pending_java_thread(&**self.this);
+
                 Ok(())
             }
         }
@@ -138,6 +141,12 @@ impl Thread {
         jvm.put_field(&mut this, "alive", "Z", true).await?;
 
         let id: i32 = jvm.invoke_virtual(&this, "hashCode", "()I", ()).await?;
+
+        // Root the instance until the spawned task finishes: the spawn callback holds
+        // it only on the Rust side, which the garbage collector cannot see. Collecting
+        // it before the task attaches (or right after detach) would destroy the
+        // instance the task is about to use.
+        jvm.add_pending_java_thread(this.instance.clone().unwrap());
 
         context.spawn(
             jvm,

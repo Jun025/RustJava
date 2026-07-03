@@ -35,6 +35,9 @@ use crate::{
 struct JvmInner {
     classes: RwLock<BTreeMap<String, Class>>,
     threads: RwLock<BTreeMap<u64, JvmThread>>,
+    // java/lang/Thread instances between Thread.start() and the spawned task attaching;
+    // the spawn callback holds them only on the Rust side, invisible to the collector
+    pending_java_threads: RwLock<Vec<Box<dyn ClassInstance>>>,
     all_objects: RwLock<HashSet<Box<dyn ClassInstance>>>,
     monitors: RwLock<BTreeMap<u64, Arc<Event>>>,
     monitor_hasher: DefaultHashBuilder,
@@ -58,6 +61,7 @@ impl Jvm {
             inner: Arc::new(JvmInner {
                 classes: RwLock::new(BTreeMap::new()),
                 threads: RwLock::new(BTreeMap::new()),
+                pending_java_threads: RwLock::new(Vec::new()),
                 all_objects: RwLock::new(HashSet::new()),
                 monitors: RwLock::new(BTreeMap::new()),
                 monitor_hasher: DefaultHashBuilder::default(),
@@ -615,10 +619,11 @@ impl Jvm {
 
         let garbage = {
             let threads = self.inner.threads.read();
+            let pending_java_threads = self.inner.pending_java_threads.read();
             let all_objects = self.inner.all_objects.read();
             let classes = self.inner.classes.read();
 
-            determine_garbage(self, &threads, &all_objects, &classes)
+            determine_garbage(self, &threads, &pending_java_threads, &all_objects, &classes)
         };
 
         let garbage_count = garbage.len();
@@ -685,6 +690,18 @@ impl Jvm {
     pub fn current_java_thread(&self) -> Option<Box<dyn ClassInstance>> {
         let thread_id = (self.inner.get_current_thread_id)();
         self.inner.threads.read().get(&thread_id).and_then(|x| x.java_thread.clone())
+    }
+
+    /// Roots a java/lang/Thread instance between Thread.start() and the spawned task
+    /// attaching. The spawn callback holds the instance only on the Rust side, which
+    /// the garbage collector cannot see; without this root the instance can be
+    /// collected (and its backing storage destroyed) before the thread ever runs.
+    pub fn add_pending_java_thread(&self, instance: Box<dyn ClassInstance>) {
+        self.inner.pending_java_threads.write().push(instance);
+    }
+
+    pub fn remove_pending_java_thread(&self, instance: &dyn ClassInstance) {
+        self.inner.pending_java_threads.write().retain(|x| !x.equals(instance).unwrap_or(false));
     }
 
     // TODO we need safe, ergonomic api..
