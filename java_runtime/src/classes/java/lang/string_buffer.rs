@@ -179,6 +179,10 @@ impl StringBuffer {
     ) -> Result<ClassInstanceRef<Self>> {
         tracing::debug!("java.lang.StringBuffer::append({:?}, {:?}, {:?}, {:?})", &this, &array, offset, length);
 
+        if array.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "str is null").await);
+        }
+
         let value: Vec<JavaChar> = jvm.load_array(&array, offset as _, length as _).await?;
         let string = RustString::from_utf16(&value).unwrap();
 
