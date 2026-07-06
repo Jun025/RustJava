@@ -1,3 +1,4 @@
+mod test_byte;
 mod test_class;
 mod test_integer;
 mod test_math;
