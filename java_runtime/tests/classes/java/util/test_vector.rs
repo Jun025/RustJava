@@ -182,3 +182,30 @@ async fn test_vector_trim_to_size() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_vector_copy_into_and_capacity() -> Result<()> {
+    let jvm = test_jvm().await?;
+
+    let vector = jvm.new_class("java/util/Vector", "(I)V", (10,)).await?;
+
+    // capacity reflects the backing array length, independent of size
+    let capacity: i32 = jvm.invoke_virtual(&vector, "capacity", "()I", ()).await?;
+    assert_eq!(capacity, 10);
+
+    let element1 = JavaLangString::from_rust_string(&jvm, "testValue1").await?;
+    let element2 = JavaLangString::from_rust_string(&jvm, "testValue2").await?;
+    let _: bool = jvm.invoke_virtual(&vector, "add", "(Ljava/lang/Object;)Z", (element1,)).await?;
+    let _: bool = jvm.invoke_virtual(&vector, "add", "(Ljava/lang/Object;)Z", (element2,)).await?;
+
+    let capacity: i32 = jvm.invoke_virtual(&vector, "capacity", "()I", ()).await?;
+    assert_eq!(capacity, 10);
+
+    let dst = jvm.instantiate_array("Ljava/lang/Object;", 2).await?;
+    let _: () = jvm.invoke_virtual(&vector, "copyInto", "([Ljava/lang/Object;)V", (dst.clone(),)).await?;
+
+    let copied: ClassInstanceRef<Object> = jvm.load_array(&dst, 1, 1).await?.into_iter().next().unwrap();
+    assert_eq!(JavaLangString::to_rust_string(&jvm, &copied).await?, "testValue2");
+
+    Ok(())
+}

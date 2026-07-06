@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, format, vec, vec::Vec};
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use jvm::{ClassInstance, ClassInstanceRef, Jvm, Result};
+use jvm::{Array, ClassInstance, ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
 
@@ -34,6 +34,8 @@ impl Vector {
                 JavaMethodProto::new("firstElement", "()Ljava/lang/Object;", Self::first_element, Default::default()),
                 JavaMethodProto::new("removeElement", "(Ljava/lang/Object;)Z", Self::remove_element, Default::default()),
                 JavaMethodProto::new("trimToSize", "()V", Self::trim_to_size, Default::default()),
+                JavaMethodProto::new("copyInto", "([Ljava/lang/Object;)V", Self::copy_into, Default::default()),
+                JavaMethodProto::new("capacity", "()I", Self::capacity, Default::default()),
             ],
             fields: vec![
                 JavaFieldProto::new("elementData", "[Ljava/lang/Object;", Default::default()),
@@ -174,6 +176,29 @@ impl Vector {
         tracing::debug!("java.util.Vector::size({this:?})");
 
         jvm.get_field(&this, "elementCount", "I").await
+    }
+
+    async fn copy_into(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, mut dst: ClassInstanceRef<Array<Object>>) -> Result<()> {
+        tracing::debug!("java.util.Vector::copyInto({this:?}, {dst:?})");
+
+        let element_count: i32 = jvm.get_field(&this, "elementCount", "I").await?;
+        let element_data = jvm.get_field(&this, "elementData", "[Ljava/lang/Object;").await?;
+
+        // Spec: copies this vector's components into `dst`; throws
+        // IndexOutOfBoundsException if `dst` is too small (via the array store).
+        let elements: Vec<ClassInstanceRef<Object>> = jvm.load_array(&element_data, 0, element_count as _).await?;
+        jvm.store_array(&mut dst, 0, elements).await?;
+
+        Ok(())
+    }
+
+    async fn capacity(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
+        tracing::debug!("java.util.Vector::capacity({this:?})");
+
+        // Spec: the current capacity is the length of the backing array.
+        let element_data = jvm.get_field(&this, "elementData", "[Ljava/lang/Object;").await?;
+
+        Ok(jvm.array_length(&element_data).await? as i32)
     }
 
     async fn is_empty(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<bool> {
