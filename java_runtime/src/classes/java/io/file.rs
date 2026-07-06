@@ -96,8 +96,13 @@ impl File {
         let path = jvm.invoke_virtual(&this, "getPath", "()Ljava/lang/String;", ()).await?;
         let path = JavaLangString::to_rust_string(jvm, &path).await?;
 
-        let stat = context.metadata(&path).await.unwrap();
+        // Spec (java.io.File#length): returns 0L if the file does not exist, rather
+        // than raising — so a metadata miss maps to 0, not a panic.
+        let size = match context.metadata(&path).await {
+            Ok(stat) => stat.size as i64,
+            Err(_) => 0,
+        };
 
-        Ok(stat.size as _)
+        Ok(size)
     }
 }
