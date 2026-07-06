@@ -19,6 +19,7 @@ impl Timer {
             interfaces: vec![],
             methods: vec![
                 JavaMethodProto::new("<init>", "()V", Self::init, Default::default()),
+                JavaMethodProto::new("schedule", "(Ljava/util/TimerTask;J)V", Self::schedule_once, Default::default()),
                 JavaMethodProto::new("schedule", "(Ljava/util/TimerTask;JJ)V", Self::schedule, Default::default()),
                 JavaMethodProto::new(
                     "scheduleAtFixedRate",
@@ -51,6 +52,22 @@ impl Timer {
         let _: () = jvm.invoke_virtual(&timer_thread, "start", "()V", ()).await?;
 
         Ok(())
+    }
+
+    async fn schedule_once(
+        jvm: &Jvm,
+        context: &mut RuntimeContext,
+        this: ClassInstanceRef<Self>,
+        task: ClassInstanceRef<TimerTask>,
+        delay: i64,
+    ) -> Result<()> {
+        tracing::debug!("java.util.Timer::schedule({:?}, {:?}, {:?})", &this, &task, delay);
+
+        // Spec: one-shot execution after `delay` ms — a zero period never repeats.
+        let now: i64 = context.now() as i64;
+        let next_execution_time = now + delay;
+
+        Self::do_schedule(jvm, this, task, next_execution_time, 0).await
     }
 
     async fn schedule(
