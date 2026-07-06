@@ -44,3 +44,39 @@ async fn test_string_buffer() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_string_buffer_insert() -> Result<()> {
+    let jvm = test_jvm().await?;
+
+    let string_buffer = jvm.new_class("java/lang/StringBuffer", "()V", ()).await?;
+    let hello = JavaLangString::from_rust_string(&jvm, "Hello!").await?;
+    let _: ClassInstanceRef<StringBuffer> = jvm
+        .invoke_virtual(&string_buffer, "append", "(Ljava/lang/String;)Ljava/lang/StringBuffer;", (hello,))
+        .await?;
+
+    // insert in the middle
+    let mid = JavaLangString::from_rust_string(&jvm, ", world").await?;
+    let _: ClassInstanceRef<StringBuffer> = jvm
+        .invoke_virtual(&string_buffer, "insert", "(ILjava/lang/String;)Ljava/lang/StringBuffer;", (5, mid))
+        .await?;
+    let result = jvm.invoke_virtual(&string_buffer, "toString", "()Ljava/lang/String;", ()).await?;
+    assert_eq!(JavaLangString::to_rust_string(&jvm, &result).await?, "Hello, world!");
+
+    // insert at the front (offset 0)
+    let front = JavaLangString::from_rust_string(&jvm, ">> ").await?;
+    let _: ClassInstanceRef<StringBuffer> = jvm
+        .invoke_virtual(&string_buffer, "insert", "(ILjava/lang/String;)Ljava/lang/StringBuffer;", (0, front))
+        .await?;
+    let result = jvm.invoke_virtual(&string_buffer, "toString", "()Ljava/lang/String;", ()).await?;
+    assert_eq!(JavaLangString::to_rust_string(&jvm, &result).await?, ">> Hello, world!");
+
+    // out-of-range offset throws
+    let x = JavaLangString::from_rust_string(&jvm, "x").await?;
+    let bad: Result<ClassInstanceRef<StringBuffer>> = jvm
+        .invoke_virtual(&string_buffer, "insert", "(ILjava/lang/String;)Ljava/lang/StringBuffer;", (999, x))
+        .await;
+    assert!(bad.is_err());
+
+    Ok(())
+}

@@ -1,4 +1,5 @@
 use alloc::{
+    format,
     string::{String as RustString, ToString},
     vec,
     vec::Vec,
@@ -43,6 +44,12 @@ impl StringBuffer {
                 JavaMethodProto::new("append", "(C)Ljava/lang/StringBuffer;", Self::append_character, Default::default()),
                 JavaMethodProto::new("append", "([CII)Ljava/lang/StringBuffer;", Self::append_char_array, Default::default()),
                 JavaMethodProto::new("delete", "(II)Ljava/lang/StringBuffer;", Self::delete, Default::default()),
+                JavaMethodProto::new(
+                    "insert",
+                    "(ILjava/lang/String;)Ljava/lang/StringBuffer;",
+                    Self::insert_string,
+                    Default::default(),
+                ),
                 JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, Default::default()),
                 JavaMethodProto::new("setLength", "(I)V", Self::set_length, Default::default()),
                 JavaMethodProto::new("length", "()I", Self::length, Default::default()),
@@ -207,6 +214,52 @@ impl StringBuffer {
             .collect::<Vec<_>>();
         let new_count = new_chars.len() as i32;
 
+        jvm.store_array(&mut java_value, 0, new_chars).await?;
+        jvm.put_field(&mut this, "count", "I", new_count).await?;
+
+        Ok(this)
+    }
+
+    async fn insert_string(
+        jvm: &Jvm,
+        _: &mut RuntimeContext,
+        mut this: ClassInstanceRef<Self>,
+        offset: i32,
+        string: ClassInstanceRef<String>,
+    ) -> Result<ClassInstanceRef<Self>> {
+        tracing::debug!("java.lang.StringBuffer::insert({this:?}, {offset}, {string:?})");
+
+        let count: i32 = jvm.get_field(&this, "count", "I").await?;
+        if offset < 0 || offset > count {
+            // spec throws StringIndexOutOfBoundsException; that class is not in the
+            // runtime, so throw its registered superclass IndexOutOfBoundsException.
+            return Err(jvm
+                .exception("java/lang/IndexOutOfBoundsException", &format!("offset {offset}, length {count}"))
+                .await);
+        }
+
+        // Spec: a null String inserts the four characters "null".
+        let insert = if string.is_null() {
+            "null".encode_utf16().collect::<Vec<JavaChar>>()
+        } else {
+            let s = JavaLangString::to_rust_string(jvm, &string).await?;
+            s.encode_utf16().collect::<Vec<JavaChar>>()
+        };
+
+        let java_value: ClassInstanceRef<Array<JavaChar>> = jvm.get_field(&this, "value", "[C").await?;
+        let chars: Vec<JavaChar> = jvm.load_array(&java_value, 0, count as _).await?;
+
+        let new_chars = chars
+            .iter()
+            .take(offset as _)
+            .cloned()
+            .chain(insert.iter().cloned())
+            .chain(chars.iter().skip(offset as _).cloned())
+            .collect::<Vec<_>>();
+        let new_count = new_chars.len() as i32;
+
+        Self::ensure_capacity(jvm, &mut this, new_count as _).await?;
+        let mut java_value = jvm.get_field(&this, "value", "[C").await?;
         jvm.store_array(&mut java_value, 0, new_chars).await?;
         jvm.put_field(&mut this, "count", "I", new_count).await?;
 
