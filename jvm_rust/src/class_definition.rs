@@ -12,7 +12,7 @@ use core::{
 
 use parking_lot::RwLock;
 
-use classfile::{AttributeInfo, ClassInfo, ConstantPoolReference};
+use classfile::{AttributeInfo, ClassInfo, ConstantPoolReference, ParseError};
 use java_class_proto::JavaClassProto;
 use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassDefinition, ClassInstance, Field, JavaType, JavaValue, Jvm, Method, Result};
@@ -96,9 +96,8 @@ impl ClassDefinitionImpl {
         )
     }
 
-    pub fn from_classfile(data: &[u8]) -> Result<Self> {
-        let class = ClassInfo::parse(data).unwrap(); // TODO ClassFormatError
-        assert_eq!(class.magic, 0xCAFEBABE);
+    pub fn from_classfile(data: &[u8]) -> core::result::Result<Self, ParseError> {
+        let class = ClassInfo::parse(data)?;
 
         let mut constant_values = Vec::new();
         let fields = class

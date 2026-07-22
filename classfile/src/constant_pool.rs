@@ -7,11 +7,15 @@ use nom::{
     number::complete::{be_f32, be_f64, be_i32, be_i64, be_u16, u8},
 };
 
+use crate::error::ParseError;
+
 fn parse_utf8(data: &[u8]) -> IResult<&[u8], Arc<String>> {
     let (data, length) = be_u16(data)?;
     let (data, utf8) = take(length as usize).parse(data)?;
 
-    Ok((data, Arc::new(String::from_utf8(utf8.to_vec()).unwrap())))
+    let utf8 = String::from_utf8(utf8.to_vec()).map_err(|_| nom::Err::Error(Error::new(data, ErrorKind::Verify)))?;
+
+    Ok((data, Arc::new(utf8)))
 }
 
 #[derive(Debug)]
@@ -108,14 +112,19 @@ impl ConstantPoolItem {
         }
     }
 
-    pub fn parse_all(data: &[u8]) -> IResult<&[u8], BTreeMap<u16, Self>> {
-        let (remaining, count) = be_u16(data)?;
+    pub fn parse_all(data: &[u8]) -> Result<(&[u8], BTreeMap<u16, Self>), ParseError> {
+        let (remaining, count) = be_u16::<_, Error<&[u8]>>(data).map_err(ParseError::from_nom)?;
 
         let mut data = remaining;
         let mut result = BTreeMap::new();
         let mut i = 1;
         loop {
-            let (remaining, item) = Self::parse_with_tag(data)?;
+            let (remaining, tag) = u8::<_, Error<&[u8]>>(data).map_err(ParseError::from_nom)?;
+            let (remaining, item) = Self::parse_tagged(remaining, tag).map_err(|err| match err {
+                // parse_tagged signals an unrecognized tag with ErrorKind::Switch
+                nom::Err::Error(e) if e.code == ErrorKind::Switch => ParseError::UnsupportedConstantPoolTag { index: i, tag },
+                other => ParseError::from_nom(other),
+            })?;
             let is_double_entry = match &item {
                 Self::Long(_) | Self::Double(_) => {
                     // long or double constant takes two constant pool entries....
