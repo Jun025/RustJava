@@ -12,20 +12,20 @@
   ★게이트③ 완료: PR #3 스쿼시 머지 → main `549b9eb`(2026-07-23), 브랜치 정리 완료.
 - [rustjava-tracing-attributes-pin-removal] `#[tracing::instrument]` 1건을 수동 span 으로 대체,
   `tracing-attributes` 상한 핀 제거(tracing 0.1.41→0.1.44 언프리즈), wasm32 clippy CI 커버리지
-  교정. 브랜치 `tracing-attributes-pin-removal`, PR 게이트② 대기.
+  교정. ★게이트③ 완료: PR #4 approve 핀 `0a19f38` 확인 → main 충돌 해소(docs-only) 후
+  스쿼시 머지(2026-07-23), 브랜치 정리 완료.
 - [rustjava-unsupported-charset-exception] 미지원 charset `unimplemented!()` 패닉 3지점을
   `java.io.UnsupportedEncodingException`(신설) throw 로 전환, String↔InputStreamReader 지원
   charset 을 공용 `charset::Charset` 으로 일치(ISO-8859-1/US-ASCII 가 Reader 에서도 동작).
   부수: `System.setProperty` 반환 시그니처 JDK 규격화(Object→String, jvm 부트스트랩 포함),
   `Throwable.getMessage()` 신설, 픽스처 `test_data/UnsupportedCharset`. 브랜치
-  `unsupported-charset-exception`, PR #5 게이트② 대기(main 13ab950 까지 머지 반영,
+  `unsupported-charset-exception`, PR #5 게이트② 대기(main fa92ef9 까지 머지 반영,
   STATE/REPORT 충돌 superset 해소 완료).
 
 ## 다음
-- 잔여 PR 게이트② approve 후 머지: tracing-attributes-pin-removal, #5(unsupported-charset).
-  브랜치 정리(`gh pr merge --delete-branch` → `git branch -D` → `git fetch --prune`)
-- ★잔여 PR 도 STATE.md/REPORT.md 충돌 예상 — 선행 머지 후 후행 브랜치에 `git merge main`
-  하고 최신(superset) 내용 채택으로 해소(#5 는 13ab950 기준 해소 완료).
+- 잔여 PR: #5(unsupported-charset) 게이트② approve 후 머지, 브랜치 정리
+  (`gh pr merge --delete-branch` → `git branch -D` → `git fetch --prune`)
+- ★#5 는 main `fa92ef9`(PR #4 착지) 기준 STATE/REPORT superset 해소 완료 — 충돌 없음.
 - ★PR 발권 시 `--repo Jun025/RustJava` 명시(2026-07-22 upstream 오발행 사고 재발 방지).
 - (범위 밖 잔여) `jvm_rust/src/interpreter.rs:629` `todo!()` (invokedynamic) — 별건 티켓 필요
 - (신규 발견) javac 21 산출 익명 내부 클래스(.class)가 "Malformed class file" 로 파싱 실패 —

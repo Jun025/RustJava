@@ -4,6 +4,7 @@ use core::time::Duration;
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
 use java_constants::MethodAccessFlags;
 use jvm::{ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+use tracing::Instrument;
 
 use crate::{RuntimeClassProto, RuntimeContext, SpawnCallback, classes::java::lang::Runnable};
 
@@ -87,50 +88,57 @@ impl Thread {
 
         #[async_trait::async_trait]
         impl SpawnCallback for ThreadStartProxy {
-            #[tracing::instrument(name = "java thread", fields(id = self.thread_id), skip_all)]
             async fn call(&self) -> Result<()> {
-                tracing::trace!("Thread start");
+                // manual span instead of #[tracing::instrument]: tracing-attributes breaks no_std
+                // builds (tokio-rs/tracing#3388), and this was the only use in the workspace
+                let span = tracing::info_span!("java thread", id = self.thread_id);
 
-                self.jvm.attach_thread()?;
+                async {
+                    tracing::trace!("Thread start");
 
-                let result: Result<()> = self.jvm.invoke_virtual(&self.this, "run", "()V", []).await;
+                    self.jvm.attach_thread()?;
 
-                if let Err(jvm::JavaError::JavaException(x)) = result {
-                    let string_writer = self.jvm.new_class("java/io/StringWriter", "()V", ()).await.unwrap();
-                    let print_writer = self
-                        .jvm
-                        .new_class("java/io/PrintWriter", "(Ljava/io/Writer;)V", (string_writer.clone(),))
-                        .await
-                        .unwrap();
+                    let result: Result<()> = self.jvm.invoke_virtual(&self.this, "run", "()V", []).await;
 
-                    let _: () = self
-                        .jvm
-                        .invoke_virtual(&x, "printStackTrace", "(Ljava/io/PrintWriter;)V", (print_writer,))
-                        .await
-                        .unwrap();
+                    if let Err(jvm::JavaError::JavaException(x)) = result {
+                        let string_writer = self.jvm.new_class("java/io/StringWriter", "()V", ()).await.unwrap();
+                        let print_writer = self
+                            .jvm
+                            .new_class("java/io/PrintWriter", "(Ljava/io/Writer;)V", (string_writer.clone(),))
+                            .await
+                            .unwrap();
 
-                    let trace = self
-                        .jvm
-                        .invoke_virtual(&string_writer, "toString", "()Ljava/lang/String;", [])
-                        .await
-                        .unwrap();
+                        let _: () = self
+                            .jvm
+                            .invoke_virtual(&x, "printStackTrace", "(Ljava/io/PrintWriter;)V", (print_writer,))
+                            .await
+                            .unwrap();
 
-                    tracing::error!(
-                        "Uncaught exception in thread {}:\n{}",
-                        self.thread_id,
-                        JavaLangString::to_rust_string(&self.jvm, &trace).await.unwrap()
-                    );
-                } else {
-                    result?;
+                        let trace = self
+                            .jvm
+                            .invoke_virtual(&string_writer, "toString", "()Ljava/lang/String;", [])
+                            .await
+                            .unwrap();
+
+                        tracing::error!(
+                            "Uncaught exception in thread {}:\n{}",
+                            self.thread_id,
+                            JavaLangString::to_rust_string(&self.jvm, &trace).await.unwrap()
+                        );
+                    } else {
+                        result?;
+                    }
+
+                    self.jvm.detach_thread()?;
+
+                    let mut this = self.this.clone();
+                    self.jvm.put_field(&mut this, "alive", "Z", false).await.unwrap();
+                    self.jvm.object_notify(&self.this, usize::MAX);
+
+                    Ok(())
                 }
-
-                self.jvm.detach_thread()?;
-
-                let mut this = self.this.clone();
-                self.jvm.put_field(&mut this, "alive", "Z", false).await.unwrap();
-                self.jvm.object_notify(&self.this, usize::MAX);
-
-                Ok(())
+                .instrument(span)
+                .await
             }
         }
 
