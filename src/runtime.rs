@@ -175,8 +175,11 @@ where
         Ok(None)
     }
 
-    async fn define_class(&self, _jvm: &Jvm, data: &[u8]) -> jvm::Result<Box<dyn ClassDefinition>> {
-        ClassDefinitionImpl::from_classfile(data).map(|x| Box::new(x) as Box<_>)
+    async fn define_class(&self, jvm: &Jvm, data: &[u8]) -> jvm::Result<Box<dyn ClassDefinition>> {
+        match ClassDefinitionImpl::from_classfile(data) {
+            Ok(class) => Ok(Box::new(class) as Box<_>),
+            Err(err) => Err(jvm.exception("java/lang/ClassFormatError", &err.to_string()).await),
+        }
     }
 
     async fn define_array_class(&self, _jvm: &Jvm, element_type_name: &str) -> jvm::Result<Box<dyn ClassDefinition>> {
