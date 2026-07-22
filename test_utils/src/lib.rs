@@ -64,7 +64,7 @@ impl Runtime for TestRuntime {
     }
 
     async fn r#yield(&self) {
-        todo!()
+        tokio::task::yield_now().await;
     }
 
     fn spawn(&self, _jvm: &Jvm, callback: Box<dyn SpawnCallback>) {
