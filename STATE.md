@@ -29,25 +29,47 @@
 
 ## 다음
 
-### ①(최우선) upstream 동기화 — 2026-08-15 실측
-`git rev-list --left-right --count origin/main...upstream/main` → **`9  32`**
-(origin 이 9 앞섬 · **32 뒤처짐**. 2026-07-25 의 「20 뒤처짐」은 낡았다.)
-- 공통조상 `62cf0c6` · upstream tip `95ebc5c` · origin tip `2e61e93`.
-- ★**충돌 예상 17파일**(`git merge-tree --write-tree --name-only origin/main upstream/main` 실측):
-  `Cargo.lock` · `classfile/src/{class,constant_pool,error,lib}.rs` ·
-  `java_runtime/src/classes/java/io.rs` · `java_runtime/src/classes/java/io/input_stream_reader.rs` ·
-  `java_runtime/src/classes/java/io/unsupported_encoding_exception.rs`(add/add) ·
-  `java_runtime/src/classes/java/lang.rs` · `.../java/lang/string.rs` · `.../java/lang/thread.rs` ·
-  `java_runtime/src/loader.rs` · 테스트 2건 · `jvm_rust/src/class_definition.rs` ·
-  `src/runtime.rs` · `test_utils/src/lib.rs`.
-- ★**충돌의 성격 = «우리 PR #3·#5 와 upstream 의 독립 구현이 정면 충돌»**. upstream 에도
-  `class_format_error.rs` · `unsupported_encoding_exception.rs` 가 **독자적으로 존재**한다
-  (`423d1bd Hide classfile errors behind class definition errors`, `fe5d116` 등).
-  ⇒ 단순 «우리 것 채택»이 아니라 **의미 대조 후 선택**이 필요하다.
-- ★**주의 — 이 축에서 우리가 upstream 보다 앞선 지점이 있다.** upstream
-  `input_stream_reader.rs` 는 charset 을 **UTF-8/EUC-KR 만 하드코딩**하고 그 외는
-  `UnsupportedEncodingException` 을 던진다. 우리 PR #5 는 공용 `charset::Charset` 으로
-  일반화해 **ISO-8859-1/US-ASCII 도 동작**한다. 머지 시 upstream 판본을 그대로 취하면 **퇴행**이다.
+### ①(최우선) upstream 동기화 — ★**접근안 확정(2026-08-16)**. 정본 = `docs/upstream-sync-approach.md`
+
+★**설계는 끝났다. 다음은 실행이다** — 아래는 그 문서의 요약이고, 착수 전 **문서를 읽어라**.
+
+**재실측(2026-08-16)**: `rev-list --left-right --count origin/main...upstream/main` → **`10  33`**
+(선행 08-15 의 `9 32` 는 낡았다) · 공통조상 `62cf0c6` · origin tip `85f294a` · upstream tip `ba5797b`.
+★**충돌 17 → 19파일**. 증분 2건의 원인은 upstream 신규 커밋 `ba5797b`(#201, **319파일 +20,118/−5,729**)
+하나다 ⇒ ★**충돌 목록은 반감기가 짧다. 회차 착수 시 반드시 다시 재라.**
+baseline green: `fmt --check` rc=0 · `cargo test --all` **149 passed / 0 failed**.
+
+**처분 요약**: `upstream 채택` **13** · `양쪽 병합` **5** · `재생성` **1**(`Cargo.lock`) · `우리 유지` **0**.
+
+★**선행 전제 2건을 실측으로 정정했다**:
+1. 「PR #3·#5 와 upstream 이 **정면 충돌**」은 **과대평가**다. add/add 두 파일
+   (`unsupported_encoding_exception.rs`·`class_format_error.rs`)은 **의미 차이 0** —
+   차이는 `ba5797b` 접근플래그 스윕과 `Ok(())` 문체뿐이다. **진짜 설계 결정은
+   `classfile/src/error.rs` 단 하나**이고, 거기서도 **upstream 이 이긴다**(Java 예외 4종 대 1종).
+2. 「charset 퇴행」의 범위는 **`string.rs` 가 아니라 `input_stream_reader.rs` 하나**다.
+   upstream 이 `String::decode_str`/`encode_str` 에서 **동일한 charset 집합·동일 별칭 정규화**를
+   독립 구현했다. ★게다가 **기본 charset 경로에서 폴백**해 JDK 규격상 upstream 이 더 옳다.
+
+★★**충돌 목록에 «없는» 파일이 더 위험하다**(문서 §4):
+- `tests/test_class_format.rs` — 우리 전용이라 **충돌 0으로 머지된 뒤 4건 중 3건이 실패**한다
+  (`"Truncated"`/`"tag 18"`/`"magic"` 문구 단정 ↔ upstream 의 평문 `"Invalid class file"`).
+- ★**tracing 함정** — `Cargo.toml` 2개는 **조용히 우리 쪽(PR #4, `attributes` 피처 없음)으로 머지**되는데
+  `thread.rs` upstream 쪽에는 `#[tracing::instrument]` 가 있다 ⇒ **그대로 취하면 컴파일 파괴**,
+  피처를 되살려 고치면 **PR #4 통째 되돌림**. 답은 «upstream 뼈대 + 수동 span 재적용».
+- `java_runtime/src/charset.rs` — 충돌 없이 살아남지만 호출자를 잃으면 **dead code → clippy `-D warnings` red**.
+
+**회귀 잠금**: ★`test_data/UnsupportedCharset.class`+`.txt` 는 **이미 실재하고 이미 돈다** —
+`tests/test_class.rs` 가 `test_data/*.class` 를 **디렉터리 스캔으로 자동 발견**하고 기대 출력에
+**`3` / `aéb`** 가 박혀 있어 ISO-8859-1 의 Reader 통과를 종단 잠금한다(드라이버는 양쪽 동일 = 충돌 없음).
+추가로 이식 3건(`test_isr_iso_8859_1` · `test_{get_bytes,new_string}_unsupported_charset_throws`) +
+**US-ASCII Reader 잠금 신규 1건**.
+
+**단계 분할 — ★커밋 수로 자르지 마라**: 컷별 `merge-tree` 실측 결과
+**19충돌 중 16이 앞쪽 7커밋(#173~#180)에서 발생하고 뒤 26커밋이 더하는 것은 3뿐**이다.
+⇒ **축으로 7회차**: S1 `1f356ae`(tracing/PR #4 · 새충돌 2) → S2 `af4f6f8`(charset/PR #5 · +5) →
+S3 `822504b`(오류분류/PR #3 · +9) → S4 `3296139`(0) → S5 `c4665b0`(0) → S6 `95ebc5c`(0) →
+S7 `ba5797b`(+3). ★**S1~S3 이 판단의 전부**이고 S4~S7 은 물량이라 **우리 해소분 0 증명 + green** 으로 검수한다.
+green 기준은 전 회차 CI `rust.yml` 4종 동일(문서 §5 에 회차별 추가 조건).
 
 ### ②`wie-ktf-hardening` 잔존분 — 2026-08-15 재판정으로 **4건 → 2건**
 ★**선행 확인 종결**: upstream `agent/runtime-api-gaps`(`6309d47`)는 **미머지가 아니다** —
@@ -103,9 +125,11 @@
      ★현 `main` 의 `CLAUDE.md` 에는 그 변경이 **없다** — 즉 #8 이 닫히지 않는 한 레인 헌장이 두 판본으로 갈린다.
    - ★**충돌 전망**: `CLAUDE.md` 는 위 「충돌 17파일」에 **없다** ⇒ ①머지와 독립적으로 처분 가능하다.
    ★**처분(게이트② 재발권 / 닫기 / 재작성)은 이 항목이 «판정할 몫»이다 — 여기서 정하지 않았다.**
-1. **`rustjava-upstream-sync-32-commits`**(P1·L·high) — ①의 머지. 완료 정의 = 충돌 17파일 해소 +
-   `cargo fmt --check`/`clippy`/`test` green + **PR #5 의 charset 일반화 퇴행 0**(회귀 픽스처
-   `test_data/UnsupportedCharset` 통과로 잠근다).
+1. ★**`rustjava-upstream-sync-s1` … `-s7`**(구판 `-32-commits` **폐기**) — ①의 머지를
+   `docs/upstream-sync-approach.md` §5 의 **7회차**로 쪼갠다. **한 티켓 = 한 컷**이고,
+   ★**S1(`1f356ae`) 부터 순서대로**다. 각 회차 완료 정의 = 그 컷의 충돌 해소 + CI `rust.yml` 4종 green
+   + 문서 §5 의 회차별 추가 조건(S1 tracing 0건 / S2 charset 잠금 / S3 `test_class_format.rs` /
+   S4~S7 해소분 0 증명). ★**착수 시 충돌을 재측정하라** — 앞 회차 착지로 기준선이 바뀐다.
 2. **`rustjava-null-guard-string-init-and-arraycopy`**(P2·S·low) — ②의 유효 잔존 2건 + 형제 전수.
    ★**①의 뒤**여야 한다 — ★**근거 정정(2026-08-16)**: 선행 이유는 **`string.rs` 가 충돌 목록에 있기 때문**이다.
    ★**`system.rs` 는 충돌 목록에 «없다»**(`merge-tree` 출력에서 `Auto-merging` 만 있고 `CONFLICT` 줄이 없다) —
@@ -163,17 +187,21 @@
 | PR | 브랜치 | 생성 | 마지막 갱신 | 상태 | 원장 |
 |---|---|---|---|---|---|
 | **#8** `[rustjava-claude-md-prune]` | `feat/rustjava-claude-md-prune` | `2026-08-05T07:56:55Z` | **같은 시각** | `OPEN`/`MERGEABLE` | `.done.md` 有 · ★**`.review.md` 無** |
-| **#9** `[rustjava-lane-restart-upstream-sync-precondition]` | `feat/rustjava-lane-restart-upstream-sync-precondition` | `2026-08-15T14:49:33Z` | — | `OPEN`/`MERGEABLE` | 게이트② 진행 중 |
+| ~~#9~~ `[rustjava-lane-restart-upstream-sync-precondition]` | — | `2026-08-15T14:49:33Z` | `2026-08-15T14:49:33Z` | ★**MERGED**(→ main `85f294a`) | 3게이트 완주 |
 
-★**#8 은 11일째 좌초 중이고 게이트②가 아예 돌지 않았다** ⇒ 처분은 **브리프 ③-0** 으로 넘겼다.
+★**#8 은 12일째 좌초 중이고 게이트②가 아예 돌지 않았다** ⇒ 처분은 **브리프 ③-0** 으로 넘겼다.
+★#9 는 착지했으므로 **열린 PR 은 #8 하나**다(2026-08-16 실측 `gh pr list -R Jun025/RustJava`).
 
-★**원격 브랜치 = 4건**(`git ls-remote --heads origin`): `main` + 아래 3건.
+★**원격 브랜치**(`git ls-remote --heads origin`): `main` + 아래.
 
 | 브랜치 | 성격 | 처분 |
 |---|---|---|
 | `wie-ktf-hardening` | 보존 판정(2026-07-25) | 위 ②로 **잔존 가치가 2건까지 줄었다** — 브리프 ③-2 가 그 2건을 새 브랜치로 옮겨 심으면 ★**보존 근거가 소멸**한다 |
 | `feat/rustjava-claude-md-prune` | ★**PR #8 의 head — 좌초 중** | 브리프 ③-0 이 판정 |
-| `feat/rustjava-lane-restart-upstream-sync-precondition` | PR #9 의 head(진행 중) | 게이트③에서 정리 |
+
+★**2026-08-16 재실측(`git ls-remote --heads origin`) = 3건**: `main` · `wie-ktf-hardening` ·
+`feat/rustjava-claude-md-prune`. PR #9 의 head `feat/rustjava-lane-restart-upstream-sync-precondition`
+은 **머지와 함께 삭제됐다**(잔존 0).
 
 ⇒ ★**「발권 대기 태스크 없음」이 아니다** — 처분 대기 1건(#8) + 브리프 3건이 서 있다.
 - ★PR 발권 시 `--repo Jun025/RustJava` 명시(2026-07-22 upstream 오발행 사고 재발 방지).
