@@ -6,6 +6,7 @@ use bytemuck::{cast_slice, cast_vec};
 use encoding_rs::{EUC_KR, UTF_8};
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, Jvm, Result, runtime::JavaLangString};
 
 use crate::{
@@ -25,27 +26,27 @@ impl InputStreamReader {
             parent_class: Some("java/io/Reader"),
             interfaces: vec![],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/io/InputStream;)V", Self::init, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/io/InputStream;)V", Self::init, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "<init>",
                     "(Ljava/io/InputStream;Ljava/lang/String;)V",
                     Self::init_with_charset,
-                    Default::default(),
+                    MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("read", "([CII)I", Self::read, Default::default()),
-                JavaMethodProto::new("ready", "()Z", Self::ready, Default::default()),
-                JavaMethodProto::new("close", "()V", Self::close, Default::default()),
+                JavaMethodProto::new("read", "([CII)I", Self::read, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("ready", "()Z", Self::ready, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("close", "()V", Self::close, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![
-                JavaFieldProto::new("in", "Ljava/io/InputStream;", Default::default()),
-                JavaFieldProto::new("readBuf", "[B", Default::default()),
-                JavaFieldProto::new("readBufSize", "I", Default::default()),
-                JavaFieldProto::new("writeBuf", "[C", Default::default()),
-                JavaFieldProto::new("writeBufSize", "I", Default::default()),
-                JavaFieldProto::new("charset", "Ljava/lang/String;", Default::default()),
-                JavaFieldProto::new("endOfInput", "Z", Default::default()),
+                JavaFieldProto::new("in", "Ljava/io/InputStream;", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("readBuf", "[B", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("readBufSize", "I", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("writeBuf", "[C", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("writeBufSize", "I", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("charset", "Ljava/lang/String;", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("endOfInput", "Z", FieldAccessFlags::PRIVATE),
             ],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::PUBLIC,
         }
     }
 
@@ -132,7 +133,9 @@ impl InputStreamReader {
                 let r#in = jvm.get_field(&this, "in", "Ljava/io/InputStream;").await?;
 
                 let temp = jvm.instantiate_array("B", bytes_to_read as _).await?;
-                let read: i32 = jvm.invoke_virtual(&r#in, "read", "([BII)I", (temp.clone(), 0, bytes_to_read)).await?;
+                let read: i32 = jvm
+                    .invoke_virtual(&r#in, "java/io/InputStream", "read", "([BII)I", (temp.clone(), 0, bytes_to_read))
+                    .await?;
                 if read != -1 {
                     let _: () = jvm
                         .invoke_static(
@@ -248,7 +251,7 @@ impl InputStreamReader {
         tracing::debug!("java.io.InputStreamReader::close({this:?})");
 
         let r#in = jvm.get_field(&this, "in", "Ljava/io/InputStream;").await?;
-        let _: () = jvm.invoke_virtual(&r#in, "close", "()V", ()).await?;
+        let _: () = jvm.invoke_virtual(&r#in, "java/io/InputStream", "close", "()V", ()).await?;
 
         Ok(())
     }
@@ -262,7 +265,7 @@ impl InputStreamReader {
         }
 
         let r#in = jvm.get_field(&this, "in", "Ljava/io/InputStream;").await?;
-        let available: i32 = jvm.invoke_virtual(&r#in, "available", "()I", ()).await?;
+        let available: i32 = jvm.invoke_virtual(&r#in, "java/io/InputStream", "available", "()I", ()).await?;
         Ok(available > 0)
     }
 }

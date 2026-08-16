@@ -34,28 +34,38 @@ impl String {
             parent_class: Some("java/lang/Object"),
             interfaces: vec!["java/io/Serializable", "java/lang/Comparable", "java/lang/CharSequence"],
             methods: vec![
-                JavaMethodProto::new("<init>", "()V", Self::init_empty, Default::default()),
-                JavaMethodProto::new("<init>", "([B)V", Self::init_with_byte_array, Default::default()),
-                JavaMethodProto::new("<init>", "([C)V", Self::init_with_char_array, Default::default()),
-                JavaMethodProto::new("<init>", "([CII)V", Self::init_with_partial_char_array, Default::default()),
-                JavaMethodProto::new("<init>", "(II[C)V", Self::init_with_shared_char_array, Default::default()),
-                JavaMethodProto::new("<init>", "([BII)V", Self::init_with_partial_byte_array, Default::default()),
+                JavaMethodProto::new("<init>", "()V", Self::init_empty, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("<init>", "([B)V", Self::init_with_byte_array, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("<init>", "([C)V", Self::init_with_char_array, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("<init>", "([CII)V", Self::init_with_partial_char_array, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("<init>", "(II[C)V", Self::init_with_shared_char_array, MethodAccessFlags::empty()),
+                JavaMethodProto::new("<init>", "([BII)V", Self::init_with_partial_byte_array, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "<init>",
                     "([BLjava/lang/String;)V",
                     Self::init_with_byte_array_charset,
-                    Default::default(),
+                    MethodAccessFlags::PUBLIC,
                 ),
                 JavaMethodProto::new(
                     "<init>",
                     "([BIILjava/lang/String;)V",
                     Self::init_with_partial_byte_array_charset,
-                    Default::default(),
+                    MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("<init>", "(Ljava/lang/String;)V", Self::init_with_string, Default::default()),
-                JavaMethodProto::new("<init>", "(Ljava/lang/StringBuffer;)V", Self::init_with_string_buffer, Default::default()),
-                JavaMethodProto::new("equals", "(Ljava/lang/Object;)Z", Self::equals, Default::default()),
-                JavaMethodProto::new("equalsIgnoreCase", "(Ljava/lang/String;)Z", Self::equals_ignore_case, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/lang/String;)V", Self::init_with_string, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "<init>",
+                    "(Ljava/lang/StringBuffer;)V",
+                    Self::init_with_string_buffer,
+                    MethodAccessFlags::PUBLIC,
+                ),
+                JavaMethodProto::new("equals", "(Ljava/lang/Object;)Z", Self::equals, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "equalsIgnoreCase",
+                    "(Ljava/lang/String;)Z",
+                    Self::equals_ignore_case,
+                    MethodAccessFlags::PUBLIC,
+                ),
                 JavaMethodProto::new("compareTo", "(Ljava/lang/String;)I", Self::compare_to, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("compareTo", "(Ljava/lang/Object;)I", Self::compare_to, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
@@ -64,38 +74,43 @@ impl String {
                     Self::compare_to_ignore_case,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("hashCode", "()I", Self::hash_code, Default::default()),
-                JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, Default::default()),
-                JavaMethodProto::new("charAt", "(I)C", Self::char_at, Default::default()),
-                JavaMethodProto::new("getBytes", "()[B", Self::get_bytes, Default::default()),
-                JavaMethodProto::new("getBytes", "(Ljava/lang/String;)[B", Self::get_bytes_charset, Default::default()),
-                JavaMethodProto::new("getChars", "(II[CI)V", Self::get_chars, Default::default()),
-                JavaMethodProto::new("toCharArray", "()[C", Self::to_char_array, Default::default()),
-                JavaMethodProto::new("toUpperCase", "()Ljava/lang/String;", Self::to_upper_case, Default::default()),
+                JavaMethodProto::new("hashCode", "()I", Self::hash_code, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("charAt", "(I)C", Self::char_at, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("getBytes", "()[B", Self::get_bytes, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("getBytes", "(Ljava/lang/String;)[B", Self::get_bytes_charset, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("getChars", "(II[CI)V", Self::get_chars, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("toCharArray", "()[C", Self::to_char_array, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("toUpperCase", "()Ljava/lang/String;", Self::to_upper_case, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "toUpperCase",
                     "(Ljava/util/Locale;)Ljava/lang/String;",
                     Self::to_upper_case_locale,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("toLowerCase", "()Ljava/lang/String;", Self::to_lower_case, Default::default()),
+                JavaMethodProto::new("toLowerCase", "()Ljava/lang/String;", Self::to_lower_case, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "toLowerCase",
                     "(Ljava/util/Locale;)Ljava/lang/String;",
                     Self::to_lower_case_locale,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("length", "()I", Self::length, Default::default()),
-                JavaMethodProto::new("concat", "(Ljava/lang/String;)Ljava/lang/String;", Self::concat, Default::default()),
-                JavaMethodProto::new("substring", "(I)Ljava/lang/String;", Self::substring, Default::default()),
-                JavaMethodProto::new("substring", "(II)Ljava/lang/String;", Self::substring_with_end, Default::default()),
+                JavaMethodProto::new("length", "()I", Self::length, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "concat",
+                    "(Ljava/lang/String;)Ljava/lang/String;",
+                    Self::concat,
+                    MethodAccessFlags::PUBLIC,
+                ),
+                JavaMethodProto::new("substring", "(I)Ljava/lang/String;", Self::substring, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("substring", "(II)Ljava/lang/String;", Self::substring_with_end, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "subSequence",
                     "(II)Ljava/lang/CharSequence;",
                     Self::sub_sequence,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("replace", "(CC)Ljava/lang/String;", Self::replace, Default::default()),
+                JavaMethodProto::new("replace", "(CC)Ljava/lang/String;", Self::replace, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("matches", "(Ljava/lang/String;)Z", Self::matches, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "replaceFirst",
@@ -134,7 +149,12 @@ impl String {
                     Self::region_matches_case_sensitive,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("regionMatches", "(ZILjava/lang/String;II)Z", Self::region_matches, Default::default()),
+                JavaMethodProto::new(
+                    "regionMatches",
+                    "(ZILjava/lang/String;II)Z",
+                    Self::region_matches,
+                    MethodAccessFlags::PUBLIC,
+                ),
                 JavaMethodProto::new("valueOf", "(Z)Ljava/lang/String;", Self::value_of_boolean, MethodAccessFlags::STATIC),
                 JavaMethodProto::new("valueOf", "(C)Ljava/lang/String;", Self::value_of_char, MethodAccessFlags::STATIC),
                 JavaMethodProto::new("valueOf", "(I)Ljava/lang/String;", Self::value_of_integer, MethodAccessFlags::STATIC),
@@ -164,12 +184,12 @@ impl String {
                     Self::value_of_object,
                     MethodAccessFlags::STATIC,
                 ),
-                JavaMethodProto::new("indexOf", "(I)I", Self::index_of, Default::default()),
-                JavaMethodProto::new("indexOf", "(II)I", Self::index_of_from, Default::default()),
-                JavaMethodProto::new("indexOf", "(Ljava/lang/String;)I", Self::index_of_string, Default::default()),
-                JavaMethodProto::new("indexOf", "(Ljava/lang/String;I)I", Self::index_of_string_from, Default::default()),
-                JavaMethodProto::new("lastIndexOf", "(I)I", Self::last_index_of, Default::default()),
-                JavaMethodProto::new("lastIndexOf", "(II)I", Self::last_index_of_from, Default::default()),
+                JavaMethodProto::new("indexOf", "(I)I", Self::index_of, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("indexOf", "(II)I", Self::index_of_from, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("indexOf", "(Ljava/lang/String;)I", Self::index_of_string, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("indexOf", "(Ljava/lang/String;I)I", Self::index_of_string_from, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("lastIndexOf", "(I)I", Self::last_index_of, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("lastIndexOf", "(II)I", Self::last_index_of_from, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "lastIndexOf",
                     "(Ljava/lang/String;)I",
@@ -194,11 +214,21 @@ impl String {
                     Self::copy_value_of_range,
                     MethodAccessFlags::PUBLIC | MethodAccessFlags::STATIC,
                 ),
-                JavaMethodProto::new("trim", "()Ljava/lang/String;", Self::trim, Default::default()),
-                JavaMethodProto::new("startsWith", "(Ljava/lang/String;)Z", Self::starts_with, Default::default()),
-                JavaMethodProto::new("startsWith", "(Ljava/lang/String;I)Z", Self::starts_with_offset, Default::default()),
-                JavaMethodProto::new("endsWith", "(Ljava/lang/String;)Z", Self::ends_with, Default::default()),
-                JavaMethodProto::new("intern", "()Ljava/lang/String;", Self::intern, Default::default()),
+                JavaMethodProto::new("trim", "()Ljava/lang/String;", Self::trim, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("startsWith", "(Ljava/lang/String;)Z", Self::starts_with, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "startsWith",
+                    "(Ljava/lang/String;I)Z",
+                    Self::starts_with_offset,
+                    MethodAccessFlags::PUBLIC,
+                ),
+                JavaMethodProto::new("endsWith", "(Ljava/lang/String;)Z", Self::ends_with, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "intern",
+                    "()Ljava/lang/String;",
+                    Self::intern,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::NATIVE,
+                ),
             ],
             fields: vec![
                 JavaFieldProto::new("value", "[C", FieldAccessFlags::PRIVATE | FieldAccessFlags::FINAL),
@@ -383,7 +413,9 @@ impl String {
     ) -> Result<()> {
         tracing::debug!("java.lang.String::<init>({this:?}, {value:?})");
 
-        let string: ClassInstanceRef<Self> = jvm.invoke_virtual(&value, "toString", "()Ljava/lang/String;", ()).await?;
+        let string: ClassInstanceRef<Self> = jvm
+            .invoke_virtual(&value, "java/lang/Object", "toString", "()Ljava/lang/String;", ())
+            .await?;
 
         let _: () = jvm
             .invoke_special(&this, "java/lang/String", "<init>", "(Ljava/lang/String;)V", (string,))
@@ -653,7 +685,7 @@ impl String {
     ) -> Result<ClassInstanceRef<CharSequence>> {
         tracing::debug!("java.lang.String::subSequence({this:?}, {begin_index}, {end_index})");
 
-        jvm.invoke_virtual(&this, "substring", "(II)Ljava/lang/String;", (begin_index, end_index))
+        jvm.invoke_virtual(&this, "java/lang/String", "substring", "(II)Ljava/lang/String;", (begin_index, end_index))
             .await
     }
 
@@ -681,14 +713,15 @@ impl String {
         Ok(if value.is_null() {
             JavaLangString::from_rust_string(jvm, "null").await?.into()
         } else {
-            jvm.invoke_virtual(&value, "toString", "()Ljava/lang/String;", ()).await?
+            jvm.invoke_virtual(&value, "java/lang/Object", "toString", "()Ljava/lang/String;", ())
+                .await?
         })
     }
 
     async fn index_of(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, ch: i32) -> Result<i32> {
         tracing::debug!("java.lang.String::indexOf({this:?}, {ch:?})");
 
-        jvm.invoke_virtual(&this, "indexOf", "(II)I", (ch, 0)).await
+        jvm.invoke_virtual(&this, "java/lang/String", "indexOf", "(II)I", (ch, 0)).await
     }
 
     async fn index_of_from(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, ch: i32, from_index: i32) -> Result<i32> {
@@ -711,7 +744,8 @@ impl String {
     async fn index_of_string(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, str: ClassInstanceRef<Self>) -> Result<i32> {
         tracing::debug!("java.lang.String::indexOf({this:?}, {str:?})");
 
-        jvm.invoke_virtual(&this, "indexOf", "(Ljava/lang/String;I)I", (str, 0)).await
+        jvm.invoke_virtual(&this, "java/lang/String", "indexOf", "(Ljava/lang/String;I)I", (str, 0))
+            .await
     }
 
     async fn index_of_string_from(
@@ -795,13 +829,15 @@ impl String {
             return Err(jvm.exception("java/lang/NullPointerException", "locale is null").await);
         }
 
-        jvm.invoke_virtual(&this, "toUpperCase", "()Ljava/lang/String;", ()).await
+        jvm.invoke_virtual(&this, "java/lang/String", "toUpperCase", "()Ljava/lang/String;", ())
+            .await
     }
 
     async fn starts_with(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, prefix: ClassInstanceRef<Self>) -> Result<bool> {
         tracing::debug!("java.lang.String::startsWith({this:?}, {prefix:?})");
 
-        jvm.invoke_virtual(&this, "startsWith", "(Ljava/lang/String;I)Z", (prefix, 0)).await
+        jvm.invoke_virtual(&this, "java/lang/String", "startsWith", "(Ljava/lang/String;I)Z", (prefix, 0))
+            .await
     }
 
     async fn starts_with_offset(
@@ -958,7 +994,8 @@ impl String {
             return Err(jvm.exception("java/lang/NullPointerException", "locale is null").await);
         }
 
-        jvm.invoke_virtual(&this, "toLowerCase", "()Ljava/lang/String;", ()).await
+        jvm.invoke_virtual(&this, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", ())
+            .await
     }
 
     async fn replace(
@@ -1015,10 +1052,22 @@ impl String {
             .await?;
         let input: ClassInstanceRef<CharSequence> = ClassInstanceRef::new(this.instance);
         let matcher: ClassInstanceRef<Matcher> = jvm
-            .invoke_virtual(&pattern, "matcher", "(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;", (input,))
+            .invoke_virtual(
+                &pattern,
+                "java/util/regex/Pattern",
+                "matcher",
+                "(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;",
+                (input,),
+            )
             .await?;
-        jvm.invoke_virtual(&matcher, "replaceFirst", "(Ljava/lang/String;)Ljava/lang/String;", (replacement,))
-            .await
+        jvm.invoke_virtual(
+            &matcher,
+            "java/util/regex/Matcher",
+            "replaceFirst",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            (replacement,),
+        )
+        .await
     }
 
     async fn replace_all(
@@ -1040,10 +1089,22 @@ impl String {
             .await?;
         let input: ClassInstanceRef<CharSequence> = ClassInstanceRef::new(this.instance);
         let matcher: ClassInstanceRef<Matcher> = jvm
-            .invoke_virtual(&pattern, "matcher", "(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;", (input,))
+            .invoke_virtual(
+                &pattern,
+                "java/util/regex/Pattern",
+                "matcher",
+                "(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;",
+                (input,),
+            )
             .await?;
-        jvm.invoke_virtual(&matcher, "replaceAll", "(Ljava/lang/String;)Ljava/lang/String;", (replacement,))
-            .await
+        jvm.invoke_virtual(
+            &matcher,
+            "java/util/regex/Matcher",
+            "replaceAll",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            (replacement,),
+        )
+        .await
     }
 
     async fn split(
@@ -1063,8 +1124,14 @@ impl String {
             )
             .await?;
         let input: ClassInstanceRef<CharSequence> = ClassInstanceRef::new(this.instance);
-        jvm.invoke_virtual(&pattern, "split", "(Ljava/lang/CharSequence;)[Ljava/lang/String;", (input,))
-            .await
+        jvm.invoke_virtual(
+            &pattern,
+            "java/util/regex/Pattern",
+            "split",
+            "(Ljava/lang/CharSequence;)[Ljava/lang/String;",
+            (input,),
+        )
+        .await
     }
 
     async fn split_with_limit(
@@ -1085,8 +1152,14 @@ impl String {
             )
             .await?;
         let input: ClassInstanceRef<CharSequence> = ClassInstanceRef::new(this.instance);
-        jvm.invoke_virtual(&pattern, "split", "(Ljava/lang/CharSequence;I)[Ljava/lang/String;", (input, limit))
-            .await
+        jvm.invoke_virtual(
+            &pattern,
+            "java/util/regex/Pattern",
+            "split",
+            "(Ljava/lang/CharSequence;I)[Ljava/lang/String;",
+            (input, limit),
+        )
+        .await
     }
 
     async fn format(
@@ -1099,12 +1172,14 @@ impl String {
         let _: ClassInstanceRef<Formatter> = jvm
             .invoke_virtual(
                 &formatter,
+                "java/util/Formatter",
                 "format",
                 "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/util/Formatter;",
                 (format, arguments),
             )
             .await?;
-        jvm.invoke_virtual(&formatter, "toString", "()Ljava/lang/String;", ()).await
+        jvm.invoke_virtual(&formatter, "java/util/Formatter", "toString", "()Ljava/lang/String;", ())
+            .await
     }
 
     async fn format_with_locale(
@@ -1118,12 +1193,14 @@ impl String {
         let _: ClassInstanceRef<Formatter> = jvm
             .invoke_virtual(
                 &formatter,
+                "java/util/Formatter",
                 "format",
                 "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/util/Formatter;",
                 (format, arguments),
             )
             .await?;
-        jvm.invoke_virtual(&formatter, "toString", "()Ljava/lang/String;", ()).await
+        jvm.invoke_virtual(&formatter, "java/util/Formatter", "toString", "()Ljava/lang/String;", ())
+            .await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1184,8 +1261,14 @@ impl String {
     ) -> Result<bool> {
         tracing::debug!("java.lang.String::regionMatches({this:?}, {toffset}, {other:?}, {ooffset}, {len})");
 
-        jvm.invoke_virtual(&this, "regionMatches", "(ZILjava/lang/String;II)Z", (false, toffset, other, ooffset, len))
-            .await
+        jvm.invoke_virtual(
+            &this,
+            "java/lang/String",
+            "regionMatches",
+            "(ZILjava/lang/String;II)Z",
+            (false, toffset, other, ooffset, len),
+        )
+        .await
     }
 
     async fn last_index_of_from(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, ch: i32, from_index: i32) -> Result<i32> {
@@ -1211,7 +1294,8 @@ impl String {
         tracing::debug!("java.lang.String::lastIndexOf({this:?}, {str:?})");
 
         let length: i32 = jvm.get_field(&this, "count", "I").await?;
-        jvm.invoke_virtual(&this, "lastIndexOf", "(Ljava/lang/String;I)I", (str, length)).await
+        jvm.invoke_virtual(&this, "java/lang/String", "lastIndexOf", "(Ljava/lang/String;I)I", (str, length))
+            .await
     }
 
     async fn last_index_of_string_from(

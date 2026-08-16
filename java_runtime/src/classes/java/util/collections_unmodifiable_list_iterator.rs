@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{FieldAccessFlags, MethodAccessFlags};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
@@ -16,7 +16,7 @@ impl CollectionsUnmodifiableListIterator {
             parent_class: Some("java/lang/Object"),
             interfaces: vec!["java/util/ListIterator"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/util/ListIterator;)V", Self::init, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/util/ListIterator;)V", Self::init, MethodAccessFlags::empty()),
                 JavaMethodProto::new("hasNext", "()Z", Self::has_next, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("next", "()Ljava/lang/Object;", Self::next, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("hasPrevious", "()Z", Self::has_previous, MethodAccessFlags::PUBLIC),
@@ -32,7 +32,7 @@ impl CollectionsUnmodifiableListIterator {
                 "Ljava/util/ListIterator;",
                 FieldAccessFlags::PRIVATE | FieldAccessFlags::FINAL,
             )],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -46,32 +46,38 @@ impl CollectionsUnmodifiableListIterator {
 
     async fn has_next(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<bool> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "hasNext", "()Z", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "hasNext", "()Z", ())
+            .await
     }
 
     async fn next(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "next", "()Ljava/lang/Object;", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "next", "()Ljava/lang/Object;", ())
+            .await
     }
 
     async fn has_previous(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<bool> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "hasPrevious", "()Z", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "hasPrevious", "()Z", ())
+            .await
     }
 
     async fn previous(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "previous", "()Ljava/lang/Object;", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "previous", "()Ljava/lang/Object;", ())
+            .await
     }
 
     async fn next_index(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "nextIndex", "()I", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "nextIndex", "()I", ())
+            .await
     }
 
     async fn previous_index(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
         let iterator: ClassInstanceRef<Object> = jvm.get_field(&this, "i", "Ljava/util/ListIterator;").await?;
-        jvm.invoke_virtual(&iterator, "previousIndex", "()I", ()).await
+        jvm.invoke_virtual(&iterator, &iterator.class_definition().name(), "previousIndex", "()I", ())
+            .await
     }
 
     async fn remove(jvm: &Jvm, _: &mut RuntimeContext, _: ClassInstanceRef<Self>) -> Result<()> {

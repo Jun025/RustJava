@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::MethodAccessFlags;
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
@@ -22,7 +22,7 @@ impl HashMapEntry {
                     "<init>",
                     "(ILjava/lang/Object;Ljava/lang/Object;Ljava/util/HashMap$Entry;)V",
                     Self::init,
-                    Default::default(),
+                    MethodAccessFlags::empty(),
                 ),
                 JavaMethodProto::new("getKey", "()Ljava/lang/Object;", Self::get_key, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("getValue", "()Ljava/lang/Object;", Self::get_value, MethodAccessFlags::PUBLIC),
@@ -34,16 +34,16 @@ impl HashMapEntry {
                 ),
                 JavaMethodProto::new("equals", "(Ljava/lang/Object;)Z", Self::equals, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("hashCode", "()I", Self::hash_code, MethodAccessFlags::PUBLIC),
-                JavaMethodProto::new("onAccess", "(Ljava/util/HashMap;)V", Self::on_access, Default::default()),
-                JavaMethodProto::new("onRemoval", "(Ljava/util/HashMap;)V", Self::on_removal, Default::default()),
+                JavaMethodProto::new("onAccess", "(Ljava/util/HashMap;)V", Self::on_access, MethodAccessFlags::empty()),
+                JavaMethodProto::new("onRemoval", "(Ljava/util/HashMap;)V", Self::on_removal, MethodAccessFlags::empty()),
             ],
             fields: vec![
-                JavaFieldProto::new("hash", "I", Default::default()),
-                JavaFieldProto::new("key", "Ljava/lang/Object;", Default::default()),
-                JavaFieldProto::new("value", "Ljava/lang/Object;", Default::default()),
-                JavaFieldProto::new("next", "Ljava/util/HashMap$Entry;", Default::default()),
+                JavaFieldProto::new("hash", "I", FieldAccessFlags::FINAL),
+                JavaFieldProto::new("key", "Ljava/lang/Object;", FieldAccessFlags::FINAL),
+                JavaFieldProto::new("value", "Ljava/lang/Object;", FieldAccessFlags::empty()),
+                JavaFieldProto::new("next", "Ljava/util/HashMap$Entry;", FieldAccessFlags::empty()),
             ],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -100,22 +100,28 @@ impl HashMapEntry {
         }
 
         let key: ClassInstanceRef<Object> = jvm.get_field(&this, "key", "Ljava/lang/Object;").await?;
-        let other_key: ClassInstanceRef<Object> = jvm.invoke_virtual(&other, "getKey", "()Ljava/lang/Object;", ()).await?;
+        let other_key: ClassInstanceRef<Object> = jvm
+            .invoke_virtual(&other, &other.class_definition().name(), "getKey", "()Ljava/lang/Object;", ())
+            .await?;
         let keys_equal = if key.is_null() {
             other_key.is_null()
         } else {
-            jvm.invoke_virtual(&key, "equals", "(Ljava/lang/Object;)Z", (other_key,)).await?
+            jvm.invoke_virtual(&key, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", (other_key,))
+                .await?
         };
         if !keys_equal {
             return Ok(false);
         }
 
         let value: ClassInstanceRef<Object> = jvm.get_field(&this, "value", "Ljava/lang/Object;").await?;
-        let other_value: ClassInstanceRef<Object> = jvm.invoke_virtual(&other, "getValue", "()Ljava/lang/Object;", ()).await?;
+        let other_value: ClassInstanceRef<Object> = jvm
+            .invoke_virtual(&other, &other.class_definition().name(), "getValue", "()Ljava/lang/Object;", ())
+            .await?;
         if value.is_null() {
             Ok(other_value.is_null())
         } else {
-            jvm.invoke_virtual(&value, "equals", "(Ljava/lang/Object;)Z", (other_value,)).await
+            jvm.invoke_virtual(&value, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", (other_value,))
+                .await
         }
     }
 
@@ -125,12 +131,12 @@ impl HashMapEntry {
         let key_hash = if key.is_null() {
             0
         } else {
-            jvm.invoke_virtual(&key, "hashCode", "()I", ()).await?
+            jvm.invoke_virtual(&key, "java/lang/Object", "hashCode", "()I", ()).await?
         };
         let value_hash = if value.is_null() {
             0
         } else {
-            jvm.invoke_virtual(&value, "hashCode", "()I", ()).await?
+            jvm.invoke_virtual(&value, "java/lang/Object", "hashCode", "()I", ()).await?
         };
         Ok(key_hash ^ value_hash)
     }
