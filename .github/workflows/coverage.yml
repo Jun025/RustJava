@@ -33,5 +33,14 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          fail_ci_if_error: true
+          # This fork has no CODECOV_TOKEN (secrets are not inherited from the
+          # upstream repo), so every upload is rejected with "Token required -
+          # not valid tokenless upload". Failing CI on that made `coverage` red
+          # on all 24 runs since the workflow started reporting, which buries
+          # real regressions instead of surfacing them. Upload errors are now
+          # non-fatal; the error text is still printed in this step's log.
+          # The coverage run itself is the separate "Generate code coverage"
+          # step above, which still fails the job if the build or tests break.
+          # Set CODECOV_TOKEN on this fork to make uploads work again.
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
