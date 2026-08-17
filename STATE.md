@@ -1,7 +1,8 @@
 # STATE
 
 ## 진행중
-- (없음)
+- [rustjava-upstream-sync-s1-tracing-cut-1f356ae] upstream 컷 `1f356ae` 머지 완료(충돌 2 해소 ·
+  tracing 축). green 전건 rc=0 · 169 passed. **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
 - [rustjava-runtime-time-todo-impl] RuntimeImpl 시간 API `todo!()` 3건 제거(now/sleep/yield) +
@@ -29,9 +30,25 @@
 
 ## 다음
 
-### ①(최우선) upstream 동기화 — ★**접근안 확정(2026-08-16)**. 정본 = `docs/upstream-sync-approach.md`
+### ①(최우선) upstream 동기화 — ★**S1 착지 대기(2026-08-17)**. 정본 = `docs/upstream-sync-approach.md`
 
-★**설계는 끝났다. 다음은 실행이다** — 아래는 그 문서의 요약이고, 착수 전 **문서를 읽어라**.
+★**S1(`1f356ae` · tracing 축)은 머지 완료 · PR 대기 중이다. 다음은 S2(`af4f6f8` · charset 축).**
+
+**S1 실측(2026-08-17 13:1x)**: `merge-tree` 충돌 **2 그대로**(`lang.rs`·`thread.rs`) — 계획서 예측과 일치.
+green 전건 rc=0 · `cargo test --all` **169 passed / 0 failed / 1 ignored**.
+★**계획서가 이름 붙인 3위험 중 S1 에서 실제로 터진 것은 tracing 하나뿐**이다 —
+`tests/test_class_format.rs` 4/4 통과(upstream `classfile/src/error.rs` 재작성은 S3 컷 `822504b` 에 온다) ·
+`charset.rs` 호출자 2건 생존(clippy green).
+★★**대신 계획서가 «몰랐던» 파손이 하나 나왔다 — `java/lang/System.setProperty` 서술자**:
+우리 PR #5 가 `…)Ljava/lang/String;` 로 고쳤고(**실제 javac 바이트코드**
+`test_data/UnsupportedCharset.class` 상수풀이 그 서술자다 — JDK 규격상 우리가 옳다),
+upstream 은 여전히 `…)Ljava/lang/Object;` 다. 충돌 0으로 우리 쪽이 머지되는데 upstream PR #176 이
+새로 들여온 wrapper 테스트 6개 호출부가 `Object` 서술자를 박아 두어 **`NoSuchMethodError` 3건**이 났다.
+⇒ 우리 서술자를 유지하고 **upstream 테스트 호출부 6곳을 고쳤다.**
+★**교훈: 「충돌 목록 밖 파손」은 우리 «테스트»만이 아니라 우리 «프로덕션 서술자 변경»에서도 나온다.
+그리고 그것은 upstream 이 «앞으로» 들여올 테스트에 의해 뒤늦게 터진다 — S2~S7 에서도 같은 형태를 예상하라.**
+
+아래는 접근안 문서의 요약이고, 착수 전 **문서를 읽어라**.
 
 **재실측(2026-08-16)**: `rev-list --left-right --count origin/main...upstream/main` → **`10  33`**
 (선행 08-15 의 `9 32` 는 낡았다) · 공통조상 `62cf0c6` · origin tip `85f294a` · upstream tip `ba5797b`.
