@@ -1,5 +1,20 @@
 # REPORT
 
+## [2026-08-17] `coverage` 상시 red 해소 (rustjava-coverage-workflow-codecov-token-red)
+- 무엇을: `.github/workflows/coverage.yml` 의 `fail_ci_if_error` 를 `true` → **`false`** 로 내리고
+  이유·복구법을 주석으로 박았다. **변경 파일 1개**(워크플로) + 문서 2개.
+- 왜: `coverage` 는 **보고를 시작한 이래 24/24 전건 red** 였다(2026-07-22~08-17). 근인은 단 하나 —
+  ★**이 저장소는 fork 라 upstream 의 시크릿을 상속하지 않는다.** `gh secret list` 는 **빈 목록**이고
+  `secrets.CODECOV_TOKEN` 이 빈 문자열로 전개돼 업로더가 `Token length: 0` →
+  `{"message":"Token required - not valid tokenless upload"}` 로 죽었다. `fail_ci_if_error: true` 가
+  그 업로드 실패를 job 실패로 승격시켜 왔다. ★**상수 red 는 신호가 아니다** — 진짜 회귀가 섞여도 안 보이고,
+  실제로 upstream 동기 매 회차가 「선재 인프라라 머지 차단 아님」이라는 **특례 문구를 손으로** 달아야 했다.
+- 사용자 영향: 없음(코드 무변경). CI 신호만 회복된다. ★**빌드 검사는 약해지지 않는다** —
+  `Generate code coverage` 는 별도 `run:` 스텝이고 `continue-on-error` 가 없어 빌드/테스트가 깨지면
+  여전히 job 이 red 다. 비치명이 된 것은 **codecov.io 로의 «발행»뿐**이고 그 오류 문구는 스텝 로그에 그대로 남는다.
+- 후속 추천: `CODECOV_TOKEN` 을 이 fork 에 등재하면 업로드까지 복구된다 — ★**human-step**(시크릿 발급·등재는
+  사람 몫). 등재 전까지는 codecov.io 에 데이터가 쌓이지 않는다(단, 토큰이 없던 지금까지도 쌓인 적이 없다).
+
 ## [2026-08-17] upstream 동기 S1 — 컷 `1f356ae` 머지 (rustjava-upstream-sync-s1-tracing-cut-1f356ae)
 - 무엇을: upstream `1f356ae`(#173~#179 · 5커밋)를 머지했다. 충돌 **2** 해소 —
   `lang.rs` 는 **양쪽 병합**(우리 `class_format_error` + upstream 의 Java 1.2 wrapper 9종),
