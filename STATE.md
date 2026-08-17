@@ -1,10 +1,14 @@
 # STATE
 
 ## 진행중
-- [rustjava-upstream-sync-s1-tracing-cut-1f356ae] upstream 컷 `1f356ae` 머지 완료(충돌 2 해소 ·
-  tracing 축). green 전건 rc=0 · 169 passed. **PR 대기 — 게이트③ 미착지.**
+- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
+  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
+  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-upstream-sync-s1-tracing-cut-1f356ae] upstream 컷 `1f356ae` 머지(충돌 2 해소 · tracing 축 ·
+  `System.setProperty` 서술자 파손 1건 추가 처리). ★게이트③ 완료: PR #11 스쿼시 머지 →
+  main `6bfe97c`(2026-08-17). ※원격 브랜치는 repo 설정 `deleteBranchOnMerge=true` 로 자동 삭제됨.
 - [rustjava-runtime-time-todo-impl] RuntimeImpl 시간 API `todo!()` 3건 제거(now/sleep/yield) +
   test_utils `r#yield` 구현 + tokio `time` 피처 추가 + 회귀 잠금 픽스처(`test_data/TimeApi`).
   ★게이트③ 완료: PR #2 스쿼시 머지 → main `13ab950`(2026-07-23), 브랜치 정리 완료.
