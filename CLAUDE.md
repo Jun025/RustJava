@@ -25,5 +25,5 @@
 - `cargo fmt --check` · `cargo clippy` · `cargo test` 전부 green(명령 상세 = `AGENTS.md`).
 - 착수·완료마다 STATE.md 의 "진행중/완료/다음" 을 갱신하고, 완료 시 REPORT.md 상단에
   `[YYYY-MM-DD]` 요약 3줄(무엇을·왜·사용자 영향) + 후속 추천을 append 한다.
-- ★작업 티켓의 **완주 지점 = PR 오픈**이다. 머지는 게이트② approve 후 별도 `-merge` 티켓 몫
+- ★작업 티켓의 **완주 지점 = PR 오픈**이다. 머지는 게이트② 검수자가 approve 와 같은 턴에 집행한다(`<id>-merge` 는 예외 경로)
   (`main` 직push 0 — `AGENTS.md` §Git Workflow).
