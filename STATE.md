@@ -1,6 +1,9 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
+  ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
+  복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**. **PR 대기 — 게이트③ 미착지.**
 - [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
   `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
@@ -34,9 +37,27 @@
 
 ## 다음
 
-### ①(최우선) upstream 동기화 — ★**S1 착지 대기(2026-08-17)**. 정본 = `docs/upstream-sync-approach.md`
+### ①(최우선) upstream 동기화 — ★**S2 착지 대기(2026-08-24)**. 정본 = `docs/upstream-sync-approach.md`
 
-★**S1(`1f356ae` · tracing 축)은 머지 완료 · PR 대기 중이다. 다음은 S2(`af4f6f8` · charset 축).**
+★**S2(`af4f6f8` · charset 축)는 머지 완료 · PR 대기 중이다. 다음은 S3(`822504b` · 오류 분류 축).**
+
+★★**S3 착수자에게 — 조상 복원을 먼저 확인하라.** S2 의 PR 도 스쿼시로 착지하면 `1f356ae`·`af4f6f8`
+둘 다 다시 조상에서 끊긴다. 착수 시 `git merge-base origin/main upstream/main` 이 `af4f6f8` 가 아니면
+S2 가 한 것과 같은 `git merge -s ours <직전 컷>` 을 **먼저** 하라. 안 하면 `merge-tree` 가 base 부터
+전부 재생해 충돌 수가 3배로 부풀고, 이미 해소한 자리를 다시 해소하게 된다(S2 실측 **15 → 5**).
+
+**S2 실측(2026-08-24)**: 충돌 **5** — S1 이 예고한 파일명과 **정확히 일치**
+(`io.rs`·`input_stream_reader.rs`·`unsupported_encoding_exception.rs`·`loader.rs`·`test_input_stream_reader.rs`).
+green 전건 rc=0 · `cargo test --all` **191 passed / 0 failed / 1 ignored**(S1 169 → +22).
+★**`charset.rs` dead-code red 예측은 «발동하지 않았다»** — 우리 `Charset`(4종)이 upstream 의 인라인
+2종보다 넓어 정본으로 남았고, 호출자는 오히려 **5 → 7건**으로 늘었다. 예측이 전제한 「upstream 판본을
+통째로 취한다」가 성립하지 않았기 때문이다.
+★★**S1 이 이름 붙인 형태가 이번엔 «조용한 중복»으로 나왔다** — `Throwable::getMessage` 를 우리와 upstream 이
+**바이트 동일하게, 다른 위치에** 추가해 git 이 **양쪽 다** 머지했고 `E0592 duplicate definitions` 로
+빌드가 깨졌다. 충돌 마커도 clippy 도 못 잡고 **컴파일만이 잡는다.**
+★**`--theirs` 로 통째 해소한 파일은 «우리 줄이 지워졌는지» 반드시 되짚어라** — `loader.rs` 에서
+`ClassFormatError::as_proto()` 등록 **1줄**이 그렇게 사라져 `test_class_format` 3건이 죽었다.
+S2 는 이후 「base 이후 우리가 추가한 전 줄이 머지 트리에 살아 있는가」를 기계로 훑어 확인했다.
 
 **S1 실측(2026-08-17 13:1x)**: `merge-tree` 충돌 **2 그대로**(`lang.rs`·`thread.rs`) — 계획서 예측과 일치.
 green 전건 rc=0 · `cargo test --all` **169 passed / 0 failed / 1 ignored**.
