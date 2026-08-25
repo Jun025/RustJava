@@ -1,5 +1,18 @@
 # REPORT
 
+## [2026-08-25] beta clippy `double_must_use` red 해소 (rustjava-ci-beta-clippy-double-must-use-red)
+- 무엇을: `Cargo.lock` 의 `async-trait` 0.1.89→**0.1.92**, `#[async_recursion]` **7지점**에 국소
+  `#[allow(clippy::double_must_use)]`, `rust.yml` matrix 에 `fail-fast: false` 1줄. **기능 변경 0.**
+- 왜: `rustup run beta cargo clippy --all -- -D warnings` 가 `origin/main`(코드 무변경)과 열린 PR
+  양쪽에서 **동일하게 13건** red 였다 ⇒ ★코드가 아니라 **부동 beta 채널이 움직였다**(1.99.0-beta.1,
+  2026-08-17). 13건 **전부** `note: this error originates in the attribute macro …` — 우리 소스에
+  `#[must_use]` 를 쓴 지점은 **0건**이고 `async_trait` 7 + `async_recursion` 6 의 매크로 확장이 찍은 것이다.
+  0.1.92 의 `async-trait` 은 그 `push(#[must_use])` 를 삭제해 7건이 사라지고, `async-recursion` 은
+  **1.1.1 이 최신**이라 올릴 곳이 없어 그 7지점(6+jvm_rust 1)만 국소 억제했다 — crate/워크스페이스 전역 억제는 쓰지 않았다.
+- 사용자 영향: 없음(런타임 동작 무변경). `main` 과 열린 PR 전건을 막던 게이트③ 병목이 풀린다.
+- 후속 추천: ★열린 PR 은 **자동으로 green 이 되지 않는다** — 이 PR 착지 후 각 PR 의 CI 재실행이 필요하다
+  (PR #13 `upstream-sync-s2` 는 이미 게이트② approve 상태라 재실행만 남는다).
+
 ## [2026-08-17] `coverage` 상시 red 해소 (rustjava-coverage-workflow-codecov-token-red)
 - 무엇을: `.github/workflows/coverage.yml` 의 `fail_ci_if_error` 를 `true` → **`false`** 로 내리고
   이유·복구법을 주석으로 박았다. **변경 파일 1개**(워크플로) + 문서 2개.
