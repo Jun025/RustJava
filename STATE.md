@@ -1,6 +1,9 @@
 # STATE
 
 ## 진행중
+- [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소 —
+  `async-trait` 0.1.89→0.1.92 + `async_recursion` 7지점 국소 `allow` + matrix `fail-fast: false`.
+  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
   `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**

@@ -1054,6 +1054,7 @@ impl Interpreter {
         })
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     async fn new_multi_array(jvm: &Jvm, array_class: &str, dimensions: &[i32]) -> Result<Box<dyn ClassInstance>> {
         let mut array = jvm.instantiate_array(&array_class[1..], dimensions[0] as _).await?;
