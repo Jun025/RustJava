@@ -25,6 +25,37 @@
 - 사용자 영향: 없음(런타임 동작 무변경). `main` 과 열린 PR 전건을 막던 게이트③ 병목이 풀린다.
 - 후속 추천: ★열린 PR 은 **자동으로 green 이 되지 않는다** — 이 PR 착지 후 각 PR 의 CI 재실행이 필요하다
   (PR #13 `upstream-sync-s2` 는 이미 게이트② approve 상태라 재실행만 남는다).
+## [2026-08-24] upstream 동기 S2 — 컷 `af4f6f8` 머지 (rustjava-upstream-sync-s2)
+- 무엇을: upstream `af4f6f8`(#177 CLDC 1.1 core API) 1커밋을 머지했다. **63파일 +3,217/−383.**
+  충돌 **5** 해소 — `io.rs`·`unsupported_encoding_exception.rs`·`loader.rs` 는 upstream 이 상위집합이라
+  그쪽을 취했고, `input_stream_reader.rs` 는 **우리 `Charset`(UTF-8·EUC-KR·ISO-8859-1·US-ASCII 4종)을
+  정본으로 유지**한 채 upstream 의 멀티바이트 경계 처리(`decode_length`·`end_of_input`)만 얹었으며,
+  `test_input_stream_reader.rs` 는 **양쪽 테스트 합집합**(우리 3 + upstream 4 = 7건 전부 통과)이다.
+  부수 2건: ⑴`Throwable::getMessage` **조용한 중복** 제거 ⑵`loader.rs` 에서 `--theirs` 가 지운
+  `ClassFormatError::as_proto()` 등록 1줄 복원.
+- 왜: ★**PR #11(S1)이 스쿼시로 착지해 upstream 조상이 끊겨 있었다.** `origin/main` 의 코드 트리는 S1
+  머지 결과와 **바이트 동일**(`git diff 0bd4f80 origin/main -- '*.rs' '*.toml' '*.lock'` 빈 출력)인데
+  git 의 merge-base 는 여전히 `62cf0c6` 라, `merge-tree` 가 `1f356ae` 의 6커밋을 통째로 재생하며
+  **충돌 15건**을 냈다 — S1 이 이미 해소한 자리들이었다. `git merge -s ours 1f356ae`(트리 무변경)로
+  부모만 기록해 base 를 복원하니 **충돌 5건**, 즉 S1 이 예고한 파일 5개와 정확히 일치했다.
+- 사용자 영향: CLDC 1.1 코어 API 가 들어온다(`InputStreamReader.ready()`·2인자 생성자,
+  `OutputStreamWriter`, `PrintStream` 확장, CLDC 예외 계층, `java.util.Date`/`Random`/`Calendar` 보강).
+  ★**기존 charset 동작은 그대로다** — ISO-8859-1/US-ASCII 는 upstream 인라인 판본에 없지만 우리 것이
+  살아남아 계속 동작하고, PR #5 의 종단 픽스처(`test_data/UnsupportedCharset`, ISO-8859-1 `aéb`)도 green 이다.
+  ★단 **2인자 생성자 `(InputStream, String)` 는 미지원 charset 을 «생성 시점»에 던진다**(upstream 신규 ·
+  JDK 규격). 1인자 생성자는 JDK 가 `UnsupportedEncodingException` 을 선언하지 않으므로 **기존대로
+  read() 시점에** 던진다 — 그래서 픽스처를 재컴파일하지 않고도 양쪽 테스트가 다 산다(이 맥에 JDK 부재).
+- 검증: `cargo fmt --all -- --check` · `cargo clippy --all -- -D warnings` ·
+  `cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings` ·
+  `cargo test --all` **4/4 rc=0** · **191 passed / 0 failed / 1 ignored**(S1 169 → +22, 우리 테스트 유실 0).
+  추가로 「base `1f356ae` 이후 우리가 추가한 260줄이 머지 트리에 살아 있는가」를 기계로 전수 대조했고,
+  부재 2건은 **의도한 해소**임을 확인했다(디코드 호출 1줄 = upstream 인자 채택 · `io.rs` `pub use` 1줄 = rustfmt 재배치).
+- 후속 추천: ⑴**게이트③ `rustjava-upstream-sync-s2-merge`**. ⑵**S3**(컷 `822504b` · 오류 분류 축) —
+  ★착수 전 `git merge-base origin/main upstream/main` 을 확인하고 `af4f6f8` 가 아니면 `-s ours` 로
+  조상을 먼저 복원하라(스쿼시 머지가 매 회차 이 문제를 재생산한다). S1 이 예고한
+  `classfile/src/error.rs` 재작성 ↔ 우리 `ParseError` 5변형 충돌이 거기서 터진다.
+  ⑶`charset.rs` dead-code red 예측은 **S2 에서 발동하지 않았고 앞으로도 발동 가능성이 낮다** —
+  호출자가 5 → 7건으로 늘었다. S3 의 `string.rs` 접촉 시 한 번 더 확인하면 이 축은 닫아도 된다.
 
 ## [2026-08-17] `coverage` 상시 red 해소 (rustjava-coverage-workflow-codecov-token-red)
 - 무엇을: `.github/workflows/coverage.yml` 의 `fail_ci_if_error` 를 `true` → **`false`** 로 내리고

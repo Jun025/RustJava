@@ -25,6 +25,16 @@ impl Charset {
         }
     }
 
+    // Canonical name stored in InputStreamReader's charset field and compared there.
+    pub fn canonical_name(&self) -> &'static str {
+        match self {
+            Self::Utf8 => "UTF-8",
+            Self::EucKr => "EUC-KR",
+            Self::Iso8859_1 => "ISO-8859-1",
+            Self::UsAscii => "US-ASCII",
+        }
+    }
+
     pub async fn resolve(jvm: &Jvm, name: &str) -> Result<Self> {
         match Self::from_name(name) {
             Some(x) => Ok(x),
