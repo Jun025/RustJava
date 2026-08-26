@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-08-26",
+  "title": "회차 워크로그 `.json` + `proposals` 규약 이식 — RustJava 의 cockpit 「후속 작업 추천」 구조적 ENOENT 해소",
+  "services": ["RustJava"],
+  "taskId": "rustjava-worklog-json-proposals-convention",
+  "summary": "cockpit `/api/proposals` 의 `derived.coverage` 에서 RustJava 만 `docs/worklog` 자체가 ENOENT 였다(2026-08-26 재실측: `archiveErr: pathspec 'docs/worklog' did not match any files`). qts 회차(2026-08-23)가 만든 규약을 스키마 발명 0 으로 복제해 AGENTS.md 에 「Round Worklog」 절을 세우고, `docs/worklog/` 를 이 회차 자신의 `.md`+`.json` 한 쌍으로 개시했다. 잠금은 qts 의 6축을 그대로 옮기되 pytest 가 없는 repo 라 `scripts/check-worklog-json.py` + CI 단일 job 으로 구현했다. 과거 회차 소급 0.",
+  "changes": [
+    "`AGENTS.md` — 「Round Worklog `docs/worklog/`」 절 신설. 소비처가 읽는 키 표(`date` · `proposals[]` 7키 · `adoptedProposals`/`declinedProposals`) + 그 밖의 키는 자유 + 소급 없음 명시. ★`CLAUDE.md` 가 `@AGENTS.md` 로 참조하므로 이 자리가 매 세션 상시 로드된다.",
+    "`scripts/check-worklog-json.py` 신설 — qts `tests/guardrail/test_worklog_json_schema.py` 와 같은 6축(파싱·짝 `.md` 실재·`date`↔파일명 일치·`proposals[]` 7키 전수·처분 ref 형식·AGENTS.md 문구 잔존).",
+    "`.github/workflows/rust.yml` — `worklog_json` job 1개 추가(ubuntu 단일 러너). 6셀 rust 매트릭스에 붙이지 않았다 — 문서 검사를 6번 돌릴 이유가 없다.",
+    "`docs/worklog/2026-08-26-worklog-json-proposals-convention.{md,json}` — 규약의 자기증명 1쌍 겸 `docs/worklog/` 개시."
+  ],
+  "deploy": { "sha": "", "urls": [] },
+  "verification": "기준선 실측(2026-08-26, 로컬 cockpit `GET :4477/api/proposals`): RustJava = `{json:0, md:0, proposals:0, archiveErr: \"fatal: pathspec 'docs/worklog' did not match any files\"}` ⇒ 08-23 실측(`ENOENT`)이 지금도 참이고 처방은 «폴더 신설»이 맞다(wie 의 `json:1 · proposals:0` 과 다른 처방). ★착지 전 수치는 바뀌지 않는다 — `worklogDirOf` 가 `git archive origin/main` 으로 읽으므로 머지 전 `0` 이 정상이다. 착지 후 기대값 = `json:1 · md:1 · proposals:2`(캐시 60초). 잠금 자체는 돌연변이 대조쌍으로 양방향 확인했다(제품 호출부 개악 → red, 원복 → green).",
+  "issues": [],
+  "proposals": [
+    {
+      "title": "RustJava 회차에 워크로그 작성을 «의무»로 할지 결정 — 규약만으로는 카드가 늘지 않는다",
+      "plainSummary": "이번에 만든 건 «워크로그를 쓸 때 형식을 맞추는» 규약이다. 아무도 쓰지 않으면 화면의 추천 수는 0 그대로다.",
+      "userBenefit": "RustJava 회차가 남긴 후속 제안이 실제로 화면에 모인다 — 지금은 «쓰기로 한 회차»만 모이고 그 빈도가 정해져 있지 않다.",
+      "why": "이 repo 의 회차 기록 정본은 `REPORT.md` 상단 append(`CLAUDE.md` §Definition of Done)이고, 워크로그는 오늘 처음 생겼다. ⇒ DoD 가 요구하는 것은 `REPORT.md` 이지 `docs/worklog/` 가 아니므로, 규약은 서 있어도 «흘러 들어오는 양»은 0 에 가까울 수 있다. otterpebble 은 1,163건으로 의무화 쪽을 골랐고 qts 는 12건으로 그러지 않았다 — RustJava 가 어느 쪽인지는 아직 아무도 정하지 않았다.",
+      "tradeoff": "⑴DoD 에 넣으면 매 회차 파일 2개가 늘어 정직한 부담이 는다. ⑵`REPORT.md` 를 파싱해 자동 생성하면 그것이 이 리니지가 반복해 기각한 «파서 제2원본»이다. ⑶현상 유지면 규약은 서 있고 카드는 0 인 상태가 계속된다. 셋 다 공짜가 아니다.",
+      "effort": "S — ⑴은 `CLAUDE.md` DoD 1줄 + AGENTS.md 포인터. ⑵는 별건 설계.",
+      "target": "CLAUDE.md · AGENTS.md"
+    },
+    {
+      "title": "잠금이 `cargo test` 밖에 있다 — 로컬 DoD 3명령으로는 안 돈다",
+      "plainSummary": "형식 검사는 CI 에서만 돈다. 로컬에서 평소 쓰는 검사 명령에는 안 걸려서, 틀린 파일을 올려야 비로소 빨개진다.",
+      "userBenefit": "워크로그 형식이 틀렸을 때 push 전에 알게 된다 — 지금은 PR 을 열어야 안다.",
+      "why": "`CLAUDE.md` DoD 는 `cargo fmt --check`·`cargo clippy`·`cargo test` 3개다. 워크로그 잠금을 그 안에 넣으려면 JSON 파서 의존성(`serde_json`)을 dev-dependency 로 들여야 하는데, 문서 검사 하나 때문에 워크스페이스 의존성을 늘리고 6셀 매트릭스의 빌드 시간을 태우는 값이 검사 값보다 크다고 보고 CI job 으로 갈랐다. 그 판단이 옳은지는 재고 여지가 있다.",
+      "tradeoff": "⑴`serde_json` dev-dep + Rust 테스트로 옮기면 `cargo test` 한 줄에 들어오지만 의존성·빌드시간이 는다. ⑵DoD 문안에 `python3 scripts/check-worklog-json.py` 를 4번째 명령으로 추가하면 공짜지만 «사람이 기억해야 하는 줄»이 하나 는다. ⑶현상 유지면 CI 가 유일한 그물이다(실제로 막기는 한다 — 머지 전에 red 다).",
+      "effort": "XS — ⑵면 1줄. ⑴이면 S.",
+      "target": "CLAUDE.md · scripts/check-worklog-json.py"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": ["2026-08-23-worklog-json-with-proposals-convention#p2"],
+  "declinedProposals": []
+}
