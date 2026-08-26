@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-08-27",
+  "title": "S4 — upstream 컷 3296139 머지(물량 회차, 충돌 20→2) + 들여온 타이머 회귀 실측",
+  "services": ["RustJava"],
+  "taskId": "rustjava-upstream-sync-s4",
+  "summary": "docs/upstream-sync-approach.md §5 의 7회차 분할 중 S4. 스쿼시 3회로 origin/main 의 upstream 조상이 최초 공통조상 62cf0c6 까지 되돌아가 있어, 첫 조치로 git merge -s ours --no-ff 822504b(트리 무변경 0줄 실측)를 넣어 충돌을 20 → 2 로 줄였다. 해소 2건은 jvm/src/jvm.rs(합집합)와 java/lang/thread.rs(upstream GlobalRef 본문 + PR #4 수동 span)이다. 계획서가 예측한 '새 충돌 0' 은 또 틀렸고 이로써 예측 대 실측 불일치가 3회 연속이다. 이 컷이 test_timer_periodic 을 flaky 로 만들었는데, 순정 upstream 3296139 에서도 3/8 실패로 재현돼 우리 해소 탓이 아님을 확인했다.",
+  "changes": [
+    "조상 복원 — git merge -s ours --no-ff 822504b. 트리 무변경 0줄 실측 후 집행. merge-base vs upstream/main: 62cf0c6 → 822504b. 충돌 20 → 2.",
+    "머지 — upstream 822504b..3296139 8커밋(4a2349a tokio 1.53 · 423d1bd classfile 오류 은닉 · 3d915ed bootstrap 위임 · 258cd4e 배열 중복 제거 · e557673 GlobalRef · f87e410 monitor 인자 일반화 · fd629c7 CDC text API · 3296139 CLI classpath).",
+    "jvm/src/jvm.rs — 합집합 해소. upstream 신규 load_bootstrap_class() 와 우리 #[allow(clippy::double_must_use)](PR #14)가 같은 자리에 왔을 뿐 의미 충돌 0.",
+    "java/lang/thread.rs — upstream 의 GlobalRef<Thread> 전환 본문을 취하고 #[tracing::instrument] 자리에 PR #4 의 tracing::info_span!+.instrument(span) 를 다시 얹었다. S1·S3 에 이어 세 번째 같은 형태.",
+    "java_runtime/tests/classes/java/util/test_timer.rs — test_timer_periodic 의 대기 여백을 500ms → 2000ms. assert!(run_count > 2) 단정 불변 · #[ignore] 0 · 삭제 0.",
+    "STATE.md — S3 완료(착지 sha 4bb796d 기입) · S4 진행중 · ① 절을 S4 실측으로 교체 · ③-1 을 S5 로 재부여하고 「첫 조치 = -s ours 3296139」를 명시.",
+    "REPORT.md — [2026-08-27] 항목 append."
+  ],
+  "deploy": { "sha": "", "urls": [] },
+  "verification": "CI rust.yml 4종 전건 로컬 rc=0 — cargo fmt --all -- --check / cargo clippy --all -- -D warnings / cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings / cargo test --all. cargo test --all = 261 passed / 0 failed / 1 ignored (S1 169 → S2 191 → S3 216 → S4 261). 계약4: git merge-tree --write-tree origin/main HEAD rc=0. 「해소분 0」 증명 = 미해소 충돌 파일 0 · 충돌 마커 0 · upstream 3296139 대비 삭제된 파일 0 · 다른 파일 37건 전수가 우리 fork 고유 자산(원장·CI·worklog·charset·오류분류·tracing·픽스처·타이머 여백). 충돌 2파일은 양방향 원본 전문 대조로 소실 전건 확인(thread.rs ours 4/theirs 1 · jvm.rs ours 21/theirs 1 — 전건 의도한 해소). 우리 자산 생존: System.setProperty 서술자 )Ljava/lang/String; 유지 · tracing::instrument 실사용 0건(주석 1건뿐) · Charset 호출자 7건 · test_class_format.rs 4/4.",
+  "issues": [
+    "머지하지 않았다 — 게이트③은 별 회차다.",
+    "★upstream 성능 회귀가 남아 있다: e557673(GlobalRef)의 GC 전역참조 스캔으로 TimerThread 1회전이 ~110~150ms 가 됐다(이전 대비 수 배). 테스트 여백으로 가렸을 뿐 원인은 그대로다. 수정은 upstream 발신이 필요해 이 리니지 밖이다.",
+    "★계획서 §5 의 회차별 「새 충돌」 예측이 3회 연속 하한이었다(S3 +9↔11 · S4 0↔2). S5~S7 도 하한으로 읽어라."
+  ],
+  "proposals": [
+    {
+      "title": "타이머 성능 회귀를 계측으로 잠가라 — 여백을 넓힌 자리는 다음에 또 넓히게 된다",
+      "plainSummary": "타이머가 느려져서 테스트가 간헐적으로 실패했다. 지금은 «더 오래 기다리게» 해서 넘겼는데, 더 느려지면 또 같은 일이 난다.",
+      "userBenefit": "타이머로 도는 코드(java.util.Timer 를 쓰는 앱)가 느려지면 «테스트가 흔들려서» 가 아니라 «수가 넘어서» 알게 된다.",
+      "why": "S4 가 들여온 e557673(JNI-style global references)은 GC 가 매번 전역참조 표를 스캔하게 만들었고, 그 결과 TimerThread 1회전이 ~110~150ms 가 됐다(500ms 창에서 기대 10회 → 실측 2~6회). 순정 upstream 3296139 에서도 3/8 실패로 재현되므로 우리 코드 문제가 아니다. 이번 처분은 대기 여백을 500ms → 2000ms 로 넓힌 것이고, 그것은 upstream 이 같은 자리에서 이미 두 번 한 처분(895d67d·ad8b477)이다. ⇒ ★세 번째다. 여백은 회귀를 «가리지» 막지 않는다.",
+      "tradeoff": "⑴회전 시간 상한을 단정하는 테스트를 새로 넣으면 회귀를 잡지만, 그 자체가 머신 부하에 흔들리는 또 하나의 시간 의존 테스트다. ⑵GC 스캔 빈도를 낮추는 실수정은 upstream 발신이 필요하고(CLAUDE.md 가 티켓 명시 허가로 묶는다) 착지 시점을 우리가 못 정한다. ⑶현상 유지면 다음 컷에서 또 넓히게 된다 — 그리고 그때는 «왜 넓히는지»를 아무도 모른다.",
+      "effort": "S — ⑴이면 테스트 1개. ⑵면 M(upstream 경로 확인 포함).",
+      "target": "java_runtime/tests/classes/java/util/test_timer.rs · jvm/src/garbage_collector.rs"
+    },
+    {
+      "title": "`thread.rs` 3연속 충돌 — 수동 span 을 «충돌하지 않는 자리»로 옮길지 결정하라",
+      "plainSummary": "같은 파일이 회차마다 충돌한다. 매번 손으로 푸는 대신, 우리 쪽 변경을 upstream 이 안 건드리는 곳으로 옮기는 방법이 있다.",
+      "userBenefit": "동기화 회차가 짧아지고 «같은 자리를 또 푸는» 실수 위험이 준다 — 지금은 회차마다 사람이 같은 판단을 다시 한다.",
+      "why": "S1·S3·S4 세 회차 연속으로 java/lang/thread.rs 가 충돌했고 원인은 매번 같다: upstream 이 ThreadStartProxy::call 본문을 재작성하는데 우리는 그 안에 수동 span 을 갖고 있다(PR #4 — tracing-attributes 상한 핀 제거의 대가). 남은 컷 S5~S7 에서도 재발을 기본값으로 잡아야 한다는 것이 S4 의 결론이다. 우리 변경이 «함수 본문 안»에 있는 한 upstream 이 그 함수를 만질 때마다 충돌한다.",
+      "tradeoff": "⑴span 을 SpawnCallback 호출부(context.spawn 쪽)로 올리면 본문 밖이라 충돌면이 사라지지만, span 범위가 넓어져 로그 의미가 미묘하게 달라진다. ⑵tracing 의 attributes 피처를 되살리면 upstream 과 완전히 같아져 충돌 0 이지만 ★PR #4 가 통째로 되돌아간다(tracing 계열 재동결) — 이 리니지가 명시적으로 거부한 길이다. ⑶현상 유지면 회차마다 1충돌인데, 실은 «1줄 치환»이라 비용이 크지 않다는 반론도 성립한다.",
+      "effort": "S — ⑴이면 함수 하나. 판정 자체는 XS.",
+      "target": "java_runtime/src/classes/java/lang/thread.rs · docs/upstream-sync-approach.md §4-C"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [],
+  "declinedProposals": []
+}
