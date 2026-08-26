@@ -2,16 +2,23 @@
 
 ## 진행중
 - [rustjava-upstream-sync-s3] upstream 컷 `822504b`(#180 오류 분류) 머지 — 충돌 **11** 해소.
-  ★**S2(PR #13)가 아직 열려 있어 그 브랜치 «위에» 쌓았다** — `main` 을 base 로 잡으면 S2 의 충돌 5건을
-  다시 만난다. 조상 무손상(`merge-base` = `af4f6f8`)이라 `-s ours` 는 **불필요**. **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
-  ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
-  복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**. **PR #13 · 게이트② approve · 게이트③ 대기.**
+  ★**S2(PR #13) 브랜치 «위에» 쌓았다** — 당시 `main` 에 S2 가 없어 base 를 `main` 으로 잡으면 S2 의 충돌
+  5건을 다시 만나기 때문이다. **PR #16 · 게이트② approve(핀 `3cf944d`) · 게이트③ 집행 중.**
+  ★★**착수 시 「upstream 조상 무손상이라 `-s ours` 불필요」로 적었는데, «축을 하나 놓쳤다»** —
+  #13 이 스쿼시로 착지하자 **upstream 조상(`822504b`)은 그대로인데 `origin/main` 과의 조상이 끊겼다**
+  (`merge-base` = `b3a4cf4` · `11ef501` 이 조상 **아님**) ⇒ main 과 **6충돌**(원장 1 + 코드 5, 내용은 전부 동일).
+  ⇒ 게이트③이 `git merge -s ours --no-ff 11ef501`(트리 무변경 실측)로 복원해 **충돌 0**으로 만들었다.
+  ★**교훈: 조상은 «upstream 축»과 «origin/main 축» 둘이다. 스쿼시가 끊는 것은 후자다.**
 - [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
   `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
+  ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
+  복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**.
+  ★게이트③ 완료: PR #13 스쿼시 머지 → main `11ef501`(2026-08-26). ★착지 전 base 를 `main` 으로 당겨
+  **#14(beta clippy)를 들여와** CI red 를 풀었다(핀 `eaa5668` rc=1 CI_RED → `df3b04a` rc=0 CI_GREEN).
 - [rustjava-worklog-json-proposals-convention] 회차 워크로그 `docs/worklog/` `.md`+`.json` 한 쌍 규약 이식.
   ★게이트③ 완료: PR #15 스쿼시 머지 → main `b3a4cf4`.
 - [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소.
@@ -249,30 +256,31 @@ green 기준은 전 회차 CI `rust.yml` 4종 동일(문서 §5 에 회차별 �
   ※단 upstream 은 완화책을 갖고 있다(`endOfInput` 필드 + UTF-8 lead-byte 역주사 · EUC-KR `>=0x81`
   홀드백). ⇒ **①의 머지로 함께 들어온다.** 별건 발권 전에 ① 이후 상태를 다시 재라.
 
-### ⑤운영 메모 — ★2026-08-27 S3 회차 실측으로 교체(구판 「열린 PR = 2건 · #8 좌초 중」은 **낡았다**)
+### ⑤운영 메모 — ★2026-08-27 S3 게이트③ 실측으로 교체(구판 「열린 PR = #13 하나」는 **낡았다**)
 
 ★**열린 PR = 1건**(`gh pr list -R Jun025/RustJava --state open`):
 
-| PR | 브랜치 | 생성 | 상태 | 원장 |
-|---|---|---|---|---|
-| **#13** `[rustjava-upstream-sync-s2]` | `feat/rustjava-upstream-sync-s2` | `2026-08-23T23:37:41Z` | `OPEN` · ★게이트② **approve**(핀 `eaa5668`) | `.done.md`·`.review.md` 둘 다 有 |
-| ~~#8~~ `[rustjava-claude-md-prune]` | — | `2026-08-05T07:56:55Z` | ★**MERGED**(`2026-08-18T19:26:08Z` → main `00bddf3`) | 3게이트 완주 |
-| ~~#14~~ `[…beta-clippy-double-must-use-red]` | — | — | **MERGED**(→ main `dde85ce`) | 완주 |
-| ~~#15~~ `[…worklog-json-proposals-convention]` | — | — | **MERGED**(→ main `b3a4cf4`) | 완주 |
+| PR | 브랜치 | 상태 | 원장 |
+|---|---|---|---|
+| **#16** `[rustjava-upstream-sync-s3]` | `feat/rustjava-upstream-sync-s3` | `OPEN` · ★게이트② **approve**(핀 `3cf944d`) · 게이트③ 집행 중 | `.done.md`·`.review.md` 둘 다 有 |
+| ~~#13~~ `[rustjava-upstream-sync-s2]` | — | ★**MERGED**(`2026-08-26T21:51:38Z` → main `11ef501`) | 3게이트 완주 |
+| ~~#8~~ · ~~#14~~ · ~~#15~~ | — | **MERGED**(→ `00bddf3` · `dde85ce` · `b3a4cf4`) | 완주 |
 
-★**#13 은 게이트③(`rustjava-upstream-sync-s2-merge`)만 남았다.** ★**S3(PR 신설)은 #13 위에 쌓았다** —
-`main` 에 S2 가 아직 없으므로 base 를 `main` 으로 잡으면 S2 의 충돌 5건을 **다시** 해소하게 된다.
+★★**스택 PR 을 다룰 때 반드시 기억할 것**(2026-08-27 실사고급 근접): #16 의 base 가
+`feat/rustjava-upstream-sync-s2` 였고 이 저장소는 `deleteBranchOnMerge=true` 다 ⇒ ★**#13 을 그냥 머지했으면
+#16 이 base 소멸로 자동 CLOSED 될 자리**였다(reopen 불가). S2 게이트③이 **머지 «전»에**
+`gh pr edit 16 --base main` 으로 선제 재타깃해 막았다. ⇒ ★**스택 PR 은 부모 머지 «전»에 자식 base 를 옮겨라.**
 
 ★**원격 브랜치**(`git ls-remote --heads origin` · 2026-08-27 실측) = **3건**:
-`main` · `feat/rustjava-upstream-sync-s2`(PR #13 의 head) · `wie-ktf-hardening`.
+`main` · `feat/rustjava-upstream-sync-s3`(PR #16 의 head) · `wie-ktf-hardening`.
 
 | 브랜치 | 성격 | 처분 |
 |---|---|---|
-| `feat/rustjava-upstream-sync-s2` | PR #13 의 head — 게이트③ 대기 | 머지와 함께 삭제(`--delete-branch`) |
+| `feat/rustjava-upstream-sync-s3` | PR #16 의 head — 게이트③ 집행 중 | 머지와 함께 자동 삭제(`deleteBranchOnMerge`) |
 | `wie-ktf-hardening` | 보존 판정(2026-07-25) | 위 ②로 **잔존 가치가 2건까지 줄었다** — 브리프 ③-2 가 그 2건을 새 브랜치로 옮겨 심으면 ★**보존 근거가 소멸**한다 |
 
-★~~`feat/rustjava-claude-md-prune`~~ 은 **더 이상 없다**(PR #8 머지와 함께 삭제) — 구판 표의 그 행은 폐기.
+⇒ ★**다음은 S4(`3296139`)** — 남은 upstream 커밋 **26**. 계획서 예측 **새 충돌 0**이나
+★**예측은 하한이다**(S3 가 +9 예측에 11 이었다).
 
-⇒ ★**「발권 대기 태스크 없음」이 아니다** — 게이트③ 2건(#13 · S3 PR) + 브리프 3건이 서 있다.
 - ★PR 발권 시 `--repo Jun025/RustJava` 명시(2026-07-22 upstream 오발행 사고 재발 방지).
 - ★upstream 발신(PR·이슈·코멘트·push)은 **티켓이 명시 허가할 때만**. 기본은 조회뿐.
