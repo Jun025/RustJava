@@ -4,6 +4,12 @@
 - [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
   ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
   복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**. **PR 대기 — 게이트③ 미착지.**
+- [rustjava-worklog-json-proposals-convention] 회차 워크로그 `docs/worklog/` `.md`+`.json` 한 쌍 규약
+  이식(qts 2026-08-23 규약 복제 · 스키마 발명 0) — `AGENTS.md` 절 + `scripts/check-worklog-json.py`
+  잠금 + `rust.yml` `worklog_json` job. **PR 대기 — 게이트③ 미착지.**
+- [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소 —
+  `async-trait` 0.1.89→0.1.92 + `async_recursion` 7지점 국소 `allow` + matrix `fail-fast: false`.
+  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
   `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**

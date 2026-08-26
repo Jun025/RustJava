@@ -111,6 +111,7 @@ impl Jvm {
         Ok(jvm)
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     pub async fn instantiate_class(&self, class_name: &str) -> Result<Box<dyn ClassInstance>> {
         tracing::trace!("Instantiate {class_name}");
@@ -322,6 +323,7 @@ impl Jvm {
     }
 
     // non-virtual
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     pub async fn invoke_special<T, U>(&self, instance: &Box<dyn ClassInstance>, class_name: &str, name: &str, descriptor: &str, args: T) -> Result<U>
     where
@@ -356,6 +358,7 @@ impl Jvm {
         }
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     pub async fn store_array<T, U>(&self, array: &mut Box<dyn ClassInstance>, offset: usize, values: T) -> Result<()>
     where
@@ -527,11 +530,13 @@ impl Jvm {
         monitor.notify(count);
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     pub async fn resolve_class(&self, class_name: &str) -> Result<Class> {
         self.resolve_class_internal(class_name, None).await
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     async fn resolve_class_internal(&self, class_name: &str, class_loader_wrapper: Option<&dyn ClassLoaderWrapper>) -> Result<Class> {
         tracing::trace!("Resolving class {class_name}");
@@ -755,6 +760,7 @@ impl Jvm {
         Ok(())
     }
 
+    #[allow(clippy::double_must_use)] // `#[must_use]` comes from the async_recursion macro expansion, not our code
     #[async_recursion::async_recursion]
     pub async fn ensure_initialized(&self, class: &Class) -> Result<()> {
         if class.definition.name().starts_with('[') {
