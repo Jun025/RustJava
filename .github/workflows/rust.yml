@@ -54,3 +54,10 @@ jobs:
       # test_utils requires tokio rt-multi-thread, which does not compile on wasm
       - run: cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings
       - run: cargo test --all
+
+  # docs-only lock (AGENTS.md "Round Worklog") — one runner, not the 6-cell matrix
+  worklog_json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-worklog-json.py

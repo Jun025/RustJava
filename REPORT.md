@@ -1,5 +1,18 @@
 # REPORT
 
+## [2026-08-26] 회차 워크로그 `.json` + `proposals` 규약 이식 (rustjava-worklog-json-proposals-convention)
+- 무엇을: `AGENTS.md` 에 「Round Worklog `docs/worklog/`」 절(소비처가 읽는 키 표 · 소급 없음),
+  `scripts/check-worklog-json.py` 잠금 6축, `rust.yml` 에 `worklog_json` job 1개(ubuntu 단일 러너),
+  `docs/worklog/` 개시 + 이 회차 `.md`/`.json` 한 쌍. **Rust 코드 변경 0.**
+- 왜: cockpit 「후속 작업 추천」 커버리지 6 repo 중 채워진 것이 2개뿐이고 RustJava 는
+  `docs/worklog` **디렉터리 자체가 없어**(2026-08-26 재실측 `archiveErr: pathspec … did not match`)
+  구조적으로 0건이었다. qts 회차가 만든 규약을 **복제**했다 — 새 스키마·새 기구 0.
+- 사용자 영향: 착지 후 RustJava 의 후속 제안이 cockpit 화면에 처음 뜬다(이 회차 2건).
+  회차마다 워크로그 2파일 작성 부담이 는다.
+- 후속 추천: ★**규약을 심었다 ≠ 카드가 계속 는다.** 이 repo 회차 기록 정본은 `REPORT.md` 라
+  워크로그 작성이 DoD 에 없다 — 의무화 여부는 미결(짝 `.json` 의 `proposals[0]`).
+  잠금이 `cargo test` 밖 CI job 이라 로컬 DoD 3명령으로는 안 돈다(`proposals[1]`).
+
 ## [2026-08-25] beta clippy `double_must_use` red 해소 (rustjava-ci-beta-clippy-double-must-use-red)
 - 무엇을: `Cargo.lock` 의 `async-trait` 0.1.89→**0.1.92**, `#[async_recursion]` **7지점**에 국소
   `#[allow(clippy::double_must_use)]`, `rust.yml` matrix 에 `fail-fast: false` 1줄. **기능 변경 0.**

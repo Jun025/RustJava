@@ -1,6 +1,9 @@
 # STATE
 
 ## 진행중
+- [rustjava-worklog-json-proposals-convention] 회차 워크로그 `docs/worklog/` `.md`+`.json` 한 쌍 규약
+  이식(qts 2026-08-23 규약 복제 · 스키마 발명 0) — `AGENTS.md` 절 + `scripts/check-worklog-json.py`
+  잠금 + `rust.yml` `worklog_json` job. **PR 대기 — 게이트③ 미착지.**
 - [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소 —
   `async-trait` 0.1.89→0.1.92 + `async_recursion` 7지점 국소 `allow` + matrix `fail-fast: false`.
   **PR 대기 — 게이트③ 미착지.**
