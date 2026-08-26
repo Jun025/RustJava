@@ -3,7 +3,7 @@ use core::time::Duration;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
 use java_constants::{FieldAccessFlags, MethodAccessFlags};
-use jvm::{ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+use jvm::{ClassInstanceRef, GlobalRef, Jvm, Result, runtime::JavaLangString};
 use tracing::Instrument;
 
 use crate::{
@@ -192,7 +192,7 @@ impl Thread {
         struct ThreadStartProxy {
             jvm: Jvm,
             thread_id: i32,
-            this: ClassInstanceRef<Thread>,
+            this: GlobalRef<Thread>,
         }
 
         #[async_trait::async_trait]
@@ -231,7 +231,7 @@ impl Thread {
                         }
                     }
 
-                    let mut this = self.this.clone();
+                    let mut this = (*self.this).clone();
                     let cleanup = if let Err(error) = self.jvm.monitor_enter(&self.this).await {
                         Err(error)
                     } else {
@@ -261,12 +261,16 @@ impl Thread {
 
         let id: i32 = jvm.invoke_virtual(&this, "hashCode", "()I", ()).await?;
 
+        let this = match jvm.new_global_ref(&this) {
+            Some(this) => this,
+            None => return Err(jvm.exception("java/lang/NullPointerException", "thread is null").await),
+        };
         context.spawn(
             jvm,
             Box::new(ThreadStartProxy {
                 jvm: jvm.clone(),
                 thread_id: id,
-                this: this.clone(),
+                this,
             }),
         );
 

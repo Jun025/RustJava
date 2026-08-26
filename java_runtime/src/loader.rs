@@ -101,6 +101,14 @@ pub fn get_runtime_class_proto(name: &str) -> Option<RuntimeClassProto> {
         crate::classes::java::net::URLClassLoader::as_proto(),
         crate::classes::java::net::URLConnection::as_proto(),
         crate::classes::java::net::URLStreamHandler::as_proto(),
+        crate::classes::java::text::DateFormat::as_proto(),
+        crate::classes::java::text::DecimalFormat::as_proto(),
+        crate::classes::java::text::FieldPosition::as_proto(),
+        crate::classes::java::text::Format::as_proto(),
+        crate::classes::java::text::NumberFormat::as_proto(),
+        crate::classes::java::text::ParseException::as_proto(),
+        crate::classes::java::text::ParsePosition::as_proto(),
+        crate::classes::java::text::SimpleDateFormat::as_proto(),
         crate::classes::java::util::AbstractCollection::as_proto(),
         crate::classes::java::util::AbstractList::as_proto(),
         crate::classes::java::util::AbstractMap::as_proto(),
@@ -160,17 +168,18 @@ pub fn get_runtime_class_proto(name: &str) -> Option<RuntimeClassProto> {
         crate::classes::org::rustjava::net::FileURLHandler::as_proto(),
         crate::classes::org::rustjava::net::JarURLConnection::as_proto(),
         crate::classes::org::rustjava::net::JarURLHandler::as_proto(),
+        crate::classes::org::rustjava::lang::RustJarClassLoader::as_proto(),
     ];
 
     protos.into_iter().find(|proto| proto.name == name)
 }
 
-struct JavaRuntimeClassLoader {
+struct JavaRuntimeBootstrapClassLoader {
     runtime: Box<dyn Runtime>,
 }
 
 #[async_trait::async_trait]
-impl BootstrapClassLoader for JavaRuntimeClassLoader {
+impl BootstrapClassLoader for JavaRuntimeBootstrapClassLoader {
     async fn load_class(&self, jvm: &Jvm, name: &str) -> Result<Option<Box<dyn ClassDefinition>>> {
         if let Some(element_type_name) = name.strip_prefix('[') {
             return Ok(Some(self.runtime.define_array_class(jvm, element_type_name).await?));
@@ -181,5 +190,5 @@ impl BootstrapClassLoader for JavaRuntimeClassLoader {
 }
 
 pub fn get_bootstrap_class_loader(runtime: Box<dyn Runtime>) -> impl BootstrapClassLoader {
-    JavaRuntimeClassLoader { runtime }
+    JavaRuntimeBootstrapClassLoader { runtime }
 }

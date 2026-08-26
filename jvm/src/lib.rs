@@ -10,6 +10,7 @@ mod class_loader;
 mod error;
 mod field;
 mod garbage_collector;
+mod global_ref;
 mod invoke_arg;
 mod jvm;
 mod method;
@@ -34,10 +35,11 @@ pub use self::{
     array_class_definition::ArrayClassDefinition,
     array_class_instance::{ArrayClassInstance, ArrayRawBuffer, ArrayRawBufferMut},
     class_definition::ClassDefinition,
-    class_instance::{Array, ClassInstance, ClassInstanceRef},
+    class_instance::{Array, AsClassInstance, ClassInstance, ClassInstanceRef},
     class_loader::BootstrapClassLoader,
     error::JavaError,
     field::Field,
+    global_ref::GlobalRef,
     jvm::Jvm,
     method::Method,
     monitor::{MonitorWait, MonitorWaitTimeout},
