@@ -9,12 +9,13 @@ mod field;
 mod interface;
 mod method;
 mod opcode;
+mod validation;
 
 pub use {
     attribute::{AttributeInfo, AttributeInfoCode},
     class::ClassInfo,
     constant_pool::{ConstantPoolReference, FieldMethodref},
-    error::ParseError,
+    error::ClassFileError,
     field::FieldInfo,
     method::MethodInfo,
     opcode::Opcode,

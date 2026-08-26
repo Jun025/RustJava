@@ -1,20 +1,30 @@
 # STATE
 
 ## 진행중
-- [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
-  ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
-  복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**. **PR 대기 — 게이트③ 미착지.**
-- [rustjava-worklog-json-proposals-convention] 회차 워크로그 `docs/worklog/` `.md`+`.json` 한 쌍 규약
-  이식(qts 2026-08-23 규약 복제 · 스키마 발명 0) — `AGENTS.md` 절 + `scripts/check-worklog-json.py`
-  잠금 + `rust.yml` `worklog_json` job. **PR 대기 — 게이트③ 미착지.**
-- [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소 —
-  `async-trait` 0.1.89→0.1.92 + `async_recursion` 7지점 국소 `allow` + matrix `fail-fast: false`.
-  **PR 대기 — 게이트③ 미착지.**
+- [rustjava-upstream-sync-s3] upstream 컷 `822504b`(#180 오류 분류) 머지 — 충돌 **11** 해소.
+  ★**S2(PR #13) 브랜치 «위에» 쌓았다** — 당시 `main` 에 S2 가 없어 base 를 `main` 으로 잡으면 S2 의 충돌
+  5건을 다시 만나기 때문이다. **PR #16 · 게이트② approve(핀 `3cf944d`) · 게이트③ 집행 중.**
+  ★★**착수 시 「upstream 조상 무손상이라 `-s ours` 불필요」로 적었는데, «축을 하나 놓쳤다»** —
+  #13 이 스쿼시로 착지하자 **upstream 조상(`822504b`)은 그대로인데 `origin/main` 과의 조상이 끊겼다**
+  (`merge-base` = `b3a4cf4` · `11ef501` 이 조상 **아님**) ⇒ main 과 **6충돌**(원장 1 + 코드 5, 내용은 전부 동일).
+  ⇒ 게이트③이 `git merge -s ours --no-ff 11ef501`(트리 무변경 실측)로 복원해 **충돌 0**으로 만들었다.
+  ★**교훈: 조상은 «upstream 축»과 «origin/main 축» 둘이다. 스쿼시가 끊는 것은 후자다.**
 - [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
   `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-upstream-sync-s2] upstream 컷 `af4f6f8`(#177 CLDC 1.1) 머지 — 충돌 **5** 해소.
+  ★**PR #11 이 스쿼시 머지돼 upstream 조상이 끊겨 있었다** — `-s ours` 로 `1f356ae` 를 부모로 기록해
+  복원한 뒤 머지했다(트리 무변경). 복원 전 충돌 **15** → 복원 후 **5**.
+  ★게이트③ 완료: PR #13 스쿼시 머지 → main `11ef501`(2026-08-26). ★착지 전 base 를 `main` 으로 당겨
+  **#14(beta clippy)를 들여와** CI red 를 풀었다(핀 `eaa5668` rc=1 CI_RED → `df3b04a` rc=0 CI_GREEN).
+- [rustjava-worklog-json-proposals-convention] 회차 워크로그 `docs/worklog/` `.md`+`.json` 한 쌍 규약 이식.
+  ★게이트③ 완료: PR #15 스쿼시 머지 → main `b3a4cf4`.
+- [rustjava-ci-beta-clippy-double-must-use-red] beta clippy `double_must_use` 13건 red 해소.
+  ★게이트③ 완료: PR #14 스쿼시 머지 → main `dde85ce`.
+- [rustjava-claude-md-prune] `CLAUDE.md` 프룬(autonomous-sop 삭제 + Goal/Constraints/DoD 신설).
+  ★게이트③ 완료: PR #8 스쿼시 머지 → main `00bddf3`(2026-08-18). ※구판 「좌초 중」 기재는 폐기.
 - [rustjava-upstream-sync-s1-tracing-cut-1f356ae] upstream 컷 `1f356ae` 머지(충돌 2 해소 · tracing 축 ·
   `System.setProperty` 서술자 파손 1건 추가 처리). ★게이트③ 완료: PR #11 스쿼시 머지 →
   main `6bfe97c`(2026-08-17). ※원격 브랜치는 repo 설정 `deleteBranchOnMerge=true` 로 자동 삭제됨.
@@ -43,9 +53,24 @@
 
 ## 다음
 
-### ①(최우선) upstream 동기화 — ★**S2 착지 대기(2026-08-24)**. 정본 = `docs/upstream-sync-approach.md`
+### ①(최우선) upstream 동기화 — ★**S3 착지 대기(2026-08-27)**. 정본 = `docs/upstream-sync-approach.md`
 
-★**S2(`af4f6f8` · charset 축)는 머지 완료 · PR 대기 중이다. 다음은 S3(`822504b` · 오류 분류 축).**
+★**S3(`822504b` · 오류 분류 축)까지 머지 완료 · PR 대기 중이다. 다음은 S4(`3296139` · 물량 회차).**
+
+**S3 실측(2026-08-27)**: ★**조상은 끊기지 않았다** — S2 가 PR 로만 열려 있고 아직 스쿼시되지 않아
+`merge-base HEAD upstream/main` = `af4f6f8` 그대로였다. ⇒ ★**`-s ours` 복원은 «불필요»했고 하지 않았다.**
+★**대신 브랜치를 `feat/rustjava-upstream-sync-s2` 위에 쌓았다**(base = `main` 으로 잡으면 S2 의 충돌 5건을
+다시 만난다). `origin/main` 의 신규 2커밋(#14 beta clippy · #15 worklog json)은 따로 머지해 얹었다.
+충돌 **11** — 계획서 예측 **+9** 에 **2건이 더 붙었다**: ⑴`AGENTS.md`(#15 가 만든 워크로그 절 ↔ upstream
+`Testing Boundaries` 절 · 계획서 작성 시점에 없던 파일) ⑵★**`thread.rs` 가 «다시» 충돌했다** — S1 이 이미
+해소한 자리인데 `822504b` 가 같은 함수를 재작성했다. ⇒ ★**「앞 회차가 닫은 파일은 다시 안 나온다」는 전제는 틀렸다.**
+green 전건 rc=0 · `cargo test --all` **216 passed / 0 failed / 1 ignored**(S2 191 → +25).
+★**계획서 §4-A 가 예고한 대로 `tests/test_class_format.rs` 가 «충돌 0으로» 깨질 뻔했다** — 문구 단정 3건
+(`"Truncated"`·`"tag 18"`·`"magic"`)을 **삭제**하고 `ClassFormatError` **종류 단정은 유지**해 4/4 통과.
+★**§4-B 의 `charset.rs` dead-code red 도 발동하지 않았다** — upstream 의 `decode_str`/`encode_str` 중복
+표를 **지우고** 우리 `charset::Charset` 으로 라우팅했다(호출자 7건 유지). 단 ★**기본 charset 경로는
+upstream 의미를 취했다** — JDK 는 `new String(byte[])`·`getBytes()` 에서 미지원 charset 에 예외를 던지지
+않는다(명시 charset 경로만 던진다). 우리 구판은 네 경로 전부에서 던졌다.
 
 ★★**S3 착수자에게 — 조상 복원을 먼저 확인하라.** S2 의 PR 도 스쿼시로 착지하면 `1f356ae`·`af4f6f8`
 둘 다 다시 조상에서 끊긴다. 착수 시 `git merge-base origin/main upstream/main` 이 `af4f6f8` 가 아니면
@@ -161,21 +186,24 @@ green 기준은 전 회차 CI `rust.yml` 4종 동일(문서 §5 에 회차별 �
 ※**전역 수리는 불가** — `Deref` 는 `Result` 를 못 돌려준다. upstream 방식(진입부 `is_null()` 가드)이 정답이다.
 
 ### ③다음 회차 발권 후보(우선순위 순)
-0. ★★**`rustjava-pr8-claude-md-prune-disposition`**(P1·S·low) — ★**PR #8 처분 «판정»**.
-   ★**이 항목이 목록 맨 위인 이유**: 아래 1~3 은 전부 «앞으로 할 일»인데 #8 은 **이미 벌어져 멈춰 있는 일**이다.
-   재료(2026-08-16 자력 실측, 판정은 하지 않았다):
-   - `Jun025/RustJava#8` `[rustjava-claude-md-prune]` · head `feat/rustjava-claude-md-prune`(`7e73a1c`) ·
-     `createdAt`/`updatedAt` **둘 다 `2026-08-05T07:56:55Z`** · `OPEN`/`MERGEABLE` · draft 아님.
-   - ⇒ **생성 후 11일간 손대지 않은 채 열려 있다.** 커밋도 push 도 코멘트도 그날 이후 0.
-   - ★**원장 비대칭**: `reports/rustjava-claude-md-prune.done.md` 는 실재하는데
-     **`reports/rustjava-claude-md-prune.review.md` 가 없다** ⇒ ★**게이트②가 아예 돌지 않고 좌초했다.**
-   - 내용은 `CLAUDE.md` **문서 전용**(autonomous-sop 절 삭제 + Goal/Constraints/DoD 신설).
-     ★현 `main` 의 `CLAUDE.md` 에는 그 변경이 **없다** — 즉 #8 이 닫히지 않는 한 레인 헌장이 두 판본으로 갈린다.
-   - ★**충돌 전망**: `CLAUDE.md` 는 위 「충돌 17파일」에 **없다** ⇒ ①머지와 독립적으로 처분 가능하다.
-   ★**처분(게이트② 재발권 / 닫기 / 재작성)은 이 항목이 «판정할 몫»이다 — 여기서 정하지 않았다.**
-1. ★**`rustjava-upstream-sync-s1` … `-s7`**(구판 `-32-commits` **폐기**) — ①의 머지를
+
+★★**0번 항목(`rustjava-pr8-claude-md-prune-disposition`)은 «해소됨» — 2026-08-27 S3 회차가 닫았다.**
+구판은 「`reports/rustjava-claude-md-prune.review.md` 가 **없다** ⇒ 게이트②가 아예 돌지 않고 좌초」를
+근거로 이 항목을 **최우선**에 뒀는데, 그 근거가 **둘 다 사실이 아니게 됐다**(실측):
+- `Jun025/RustJava#8` = ★**`MERGED`**(`mergedAt` **2026-08-18T19:26:08Z** · 머지커밋 `00bddf3`).
+  head `feat/rustjava-claude-md-prune` 는 머지와 함께 **삭제**됐다(`git ls-remote --heads origin` 잔존 0).
+- `reports/rustjava-claude-md-prune.review.md` **실재**(2026-08-19 03:42) · 승계 `-fix` 리니지의
+  `.done.md`/`.review.md` 도 **둘 다 실재** ⇒ ★**게이트②는 돌았고 3게이트를 완주했다.**
+- 「현 `main` 의 `CLAUDE.md` 에 그 변경이 없다」도 해소 — `origin/main` 의 `CLAUDE.md` 에
+  `## Goal` 절이 실재한다(= 프룬 판본이 정본).
+★**교훈: 이 절이 «이미 끝난 일»을 최우선으로 가리키면 레인이 조용해진다** — 실제로 발권이 멈춘 채
+18시간(`LANE_IDLE rustjava`)이 지났다. 「다음」 절 항목은 **닫히는 즉시** 닫아라.
+
+⇒ **재부여된 순서**(위 0번이 빠지고 1→3 이 한 칸씩 올라온다):
+
+1. ★**`rustjava-upstream-sync-s4` … `-s7`**(S1·S2·S3 **완료** · 구판 `-32-commits` **폐기**) — ①의 머지를
    `docs/upstream-sync-approach.md` §5 의 **7회차**로 쪼갠다. **한 티켓 = 한 컷**이고,
-   ★**S1(`1f356ae`) 부터 순서대로**다. 각 회차 완료 정의 = 그 컷의 충돌 해소 + CI `rust.yml` 4종 green
+   ★**순서대로**다 — **다음은 S4(`3296139`)**. 각 회차 완료 정의 = 그 컷의 충돌 해소 + CI `rust.yml` 4종 green
    + 문서 §5 의 회차별 추가 조건(S1 tracing 0건 / S2 charset 잠금 / S3 `test_class_format.rs` /
    S4~S7 해소분 0 증명). ★**착수 시 충돌을 재측정하라** — 앞 회차 착지로 기준선이 바뀐다.
 2. **`rustjava-null-guard-string-init-and-arraycopy`**(P2·S·low) — ②의 유효 잔존 2건 + 형제 전수.
@@ -228,29 +256,31 @@ green 기준은 전 회차 CI `rust.yml` 4종 동일(문서 §5 에 회차별 �
   ※단 upstream 은 완화책을 갖고 있다(`endOfInput` 필드 + UTF-8 lead-byte 역주사 · EUC-KR `>=0x81`
   홀드백). ⇒ **①의 머지로 함께 들어온다.** 별건 발권 전에 ① 이후 상태를 다시 재라.
 
-### ⑤운영 메모 — ★2026-08-16 자력 실측으로 교체(구판 「열린 PR 0」은 **거짓이었다**)
+### ⑤운영 메모 — ★2026-08-27 S3 게이트③ 실측으로 교체(구판 「열린 PR = #13 하나」는 **낡았다**)
 
-★**열린 PR = 2건**(`gh pr list -R Jun025/RustJava --state open`):
+★**열린 PR = 1건**(`gh pr list -R Jun025/RustJava --state open`):
 
-| PR | 브랜치 | 생성 | 마지막 갱신 | 상태 | 원장 |
-|---|---|---|---|---|---|
-| **#8** `[rustjava-claude-md-prune]` | `feat/rustjava-claude-md-prune` | `2026-08-05T07:56:55Z` | **같은 시각** | `OPEN`/`MERGEABLE` | `.done.md` 有 · ★**`.review.md` 無** |
-| ~~#9~~ `[rustjava-lane-restart-upstream-sync-precondition]` | — | `2026-08-15T14:49:33Z` | `2026-08-15T14:49:33Z` | ★**MERGED**(→ main `85f294a`) | 3게이트 완주 |
+| PR | 브랜치 | 상태 | 원장 |
+|---|---|---|---|
+| **#16** `[rustjava-upstream-sync-s3]` | `feat/rustjava-upstream-sync-s3` | `OPEN` · ★게이트② **approve**(핀 `3cf944d`) · 게이트③ 집행 중 | `.done.md`·`.review.md` 둘 다 有 |
+| ~~#13~~ `[rustjava-upstream-sync-s2]` | — | ★**MERGED**(`2026-08-26T21:51:38Z` → main `11ef501`) | 3게이트 완주 |
+| ~~#8~~ · ~~#14~~ · ~~#15~~ | — | **MERGED**(→ `00bddf3` · `dde85ce` · `b3a4cf4`) | 완주 |
 
-★**#8 은 12일째 좌초 중이고 게이트②가 아예 돌지 않았다** ⇒ 처분은 **브리프 ③-0** 으로 넘겼다.
-★#9 는 착지했으므로 **열린 PR 은 #8 하나**다(2026-08-16 실측 `gh pr list -R Jun025/RustJava`).
+★★**스택 PR 을 다룰 때 반드시 기억할 것**(2026-08-27 실사고급 근접): #16 의 base 가
+`feat/rustjava-upstream-sync-s2` 였고 이 저장소는 `deleteBranchOnMerge=true` 다 ⇒ ★**#13 을 그냥 머지했으면
+#16 이 base 소멸로 자동 CLOSED 될 자리**였다(reopen 불가). S2 게이트③이 **머지 «전»에**
+`gh pr edit 16 --base main` 으로 선제 재타깃해 막았다. ⇒ ★**스택 PR 은 부모 머지 «전»에 자식 base 를 옮겨라.**
 
-★**원격 브랜치**(`git ls-remote --heads origin`): `main` + 아래.
+★**원격 브랜치**(`git ls-remote --heads origin` · 2026-08-27 실측) = **3건**:
+`main` · `feat/rustjava-upstream-sync-s3`(PR #16 의 head) · `wie-ktf-hardening`.
 
 | 브랜치 | 성격 | 처분 |
 |---|---|---|
+| `feat/rustjava-upstream-sync-s3` | PR #16 의 head — 게이트③ 집행 중 | 머지와 함께 자동 삭제(`deleteBranchOnMerge`) |
 | `wie-ktf-hardening` | 보존 판정(2026-07-25) | 위 ②로 **잔존 가치가 2건까지 줄었다** — 브리프 ③-2 가 그 2건을 새 브랜치로 옮겨 심으면 ★**보존 근거가 소멸**한다 |
-| `feat/rustjava-claude-md-prune` | ★**PR #8 의 head — 좌초 중** | 브리프 ③-0 이 판정 |
 
-★**2026-08-16 재실측(`git ls-remote --heads origin`) = 3건**: `main` · `wie-ktf-hardening` ·
-`feat/rustjava-claude-md-prune`. PR #9 의 head `feat/rustjava-lane-restart-upstream-sync-precondition`
-은 **머지와 함께 삭제됐다**(잔존 0).
+⇒ ★**다음은 S4(`3296139`)** — 남은 upstream 커밋 **26**. 계획서 예측 **새 충돌 0**이나
+★**예측은 하한이다**(S3 가 +9 예측에 11 이었다).
 
-⇒ ★**「발권 대기 태스크 없음」이 아니다** — 처분 대기 1건(#8) + 브리프 3건이 서 있다.
 - ★PR 발권 시 `--repo Jun025/RustJava` 명시(2026-07-22 upstream 오발행 사고 재발 방지).
 - ★upstream 발신(PR·이슈·코멘트·push)은 **티켓이 명시 허가할 때만**. 기본은 조회뿐.

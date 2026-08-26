@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-08-27",
+  "title": "S3 — upstream 컷 822504b 머지(오류 분류 축, 충돌 11) + STATE.md 「다음」 절 현실화",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-s3",
+  "summary": "docs/upstream-sync-approach.md §5 의 7회차 분할 중 S3. upstream 822504b(#180) 1커밋을 머지하고 충돌 11건을 해소했다. 우리 ParseError(Rust 변형 5 · Java 예외 1종)를 upstream ClassFileError/ClassDefinitionError(Java 예외 4종)로 교체 — 계획서 §3-B 의 판정 그대로다. string.rs 는 upstream 골격을 우리 charset::Charset 으로 라우팅해 중복 charset 표를 흡수했고, thread.rs 는 upstream 본문 위에 PR #4 의 수동 span 을 다시 얹었다. 계획서 §4-A 가 예고한 tests/test_class_format.rs 의 «충돌 0 파손»이 실제로 나서 문구 단정 3건을 완화했다(종류 단정 유지). 부수로 STATE.md 「다음」 절의 최우선 항목이 이미 끝난 PR #8 을 가리키던 것을 닫았다.",
+  "changes": [
+    "머지 커밋 — upstream 822504b 1커밋. 충돌 11: AGENTS.md · classfile/src/{class,constant_pool,error,lib}.rs · java/lang/string.rs · java/lang/thread.rs · tests/.../test_string.rs · jvm_rust/class_definition.rs · src/runtime.rs · test_utils/src/lib.rs.",
+    "classfile 오류형 교체 — ParseError(Truncated/BadMagic/UnsupportedConstantPoolTag/Malformed/TrailingData) 삭제, upstream ClassFileError{InvalidFormat, UnsupportedVersion} + ClassDefinitionError 채택. Java 관측면이 ClassFormatError 1종 → ClassFormatError·UnsupportedClassVersionError·VerifyError·UnsupportedOperationException 4종.",
+    "java/lang/string.rs — upstream 의 decode_str/encode_str 중복 charset 표를 지우고 charset::Charset 으로 라우팅. 기본 charset 경로는 upstream 의미(미지원 시 UTF-8 폴백, JDK 규격), 명시 charset 경로는 UnsupportedEncodingException throw 유지.",
+    "java/lang/thread.rs — upstream 의 재작성 본문(monitor_enter/exit 로 감싼 정리 경로 + 예외 포맷 실패 처리)을 취하고 #[tracing::instrument] 자리에 PR #4 의 tracing::info_span!+.instrument(span) 를 다시 얹었다.",
+    "tests/test_class_format.rs — 메시지 문구 단정 3건 삭제(upstream 이 원인별 문구를 \"Invalid class file\" 로 평탄화), ClassFormatError 종류 단정 4건 유지. 4/4 통과.",
+    "STATE.md — 「다음」 ③-0(PR #8 처분) 항목을 «해소됨»으로 닫고 순서 재부여, ⑤ 운영 메모의 열린 PR/원격 브랜치 표를 2026-08-27 실측으로 교체, ① 절에 S3 실측 기록.",
+    "REPORT.md — [2026-08-27] 항목 append."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "CI rust.yml 4종 전건 로컬 rc=0 — cargo fmt --all -- --check / cargo clippy --all -- -D warnings / cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings / cargo test --all. cargo test --all = 216 passed / 0 failed / 1 ignored (S1 169 → S2 191 → S3 216, 우리 테스트 유실 0). tests/test_class_format.rs 4/4. git grep 'tracing::instrument|tracing-attributes' 0건(§4-C 불변). 충돌 재측정은 git merge-tree --write-tree --name-only HEAD 822504b = 11파일. 우리 고유 줄 생존 대조: base af4f6f8 이후 우리가 추가한 .rs 321줄 중 부재 81줄이며 전건 의도한 해소(ParseError 기구 · thread.rs 구본문 · 완화한 문구 단정 3줄)임을 확인했다.",
+  "issues": [
+    "게이트③에서 착지했다 — PR #16 · base 는 S2 착지 «전»에 main 으로 선제 재타깃됐다(부모 머지 시 자식 PR 자동 CLOSED 방지).",
+    "★착수 시 예측을 «절반» 틀렸다: 「S2 가 스쿼시로 들어가면 af4f6f8 조상이 끊긴다」로 적었는데, 실측은 ★upstream 조상(822504b·af4f6f8·1f356ae)은 «전건 무손상»이고 끊긴 것은 «origin/main 과의» 조상이었다(merge-base b3a4cf4 · 11ef501 이 조상 아님 · main 과 6충돌). ⇒ 복원은 필요했으나 대상이 «직전 upstream 컷»이 아니라 «main 의 S2 스쿼시커밋 11ef501» 이다. 게이트③이 `git merge -s ours --no-ff 11ef501`(트리 무변경 실측: `git diff df3b04a 11ef501` 빈 출력)로 복원해 충돌 0 으로 만들었다.",
+    "★다음 회차(S4~S7)에 그대로 재발한다 — 스택하지 않고 main 에서 따면 이 축은 애초에 생기지 않는다. S2·S3 가 스택한 것은 앞 회차가 미착지였기 때문이고, S4 착수 시점에는 S3 가 main 에 있으므로 스택할 이유가 없다."
+  ],
+  "proposals": [
+    {
+      "title": "계획서 §5 의 「새 충돌」 예측을 «하한»으로 다시 적어라 — 앞 회차가 닫은 파일이 다시 충돌한다",
+      "plainSummary": "회차별로 «몇 개나 충돌할지» 미리 적어 둔 표가 있는데, 실제로는 그보다 더 나온다. 표를 믿고 회차 크기를 잡으면 매번 조금씩 넘친다.",
+      "userBenefit": "다음 회차(S4~S7)를 맡는 사람이 실제 크기에 맞는 시간을 잡는다 — 지금은 표가 «0 충돌»이라고 적어 둔 회차에서도 손이 갈 수 있다.",
+      "why": "S3 는 계획서 예측 +9 에 대해 실측 11 이었다. 초과 2건의 성격이 서로 다르다: ⑴AGENTS.md 는 계획서 작성(2026-08-16) 이후 우리가 만든 파일이라 표에 있을 수 없었다 ⑵★thread.rs 는 S1 이 이미 해소한 파일인데 822504b 가 같은 함수를 재작성해 «다시» 충돌했다. ⑵가 중요하다 — 계획서의 「새 충돌 = 해당 컷에서 «처음» 충돌하는 파일 수」라는 정의가 «한 번 닫히면 다시 안 열린다»를 암묵 전제하는데, 그 전제가 실측으로 깨졌다.",
+      "tradeoff": "⑴표에 「재충돌 가능」 열을 더하면 정확해지지만 컷마다 다시 재야 해서 계획서가 무거워진다. ⑵문장 한 줄로 「예측은 하한이다」만 적으면 공짜지만 회차 크기 산정에는 여전히 못 쓴다. ⑶현상 유지면 다음 사람이 같은 자리에서 같은 놀람을 겪는다(이미 S2 가 15→5 로 한 번 겪었다).",
+      "effort": "XS — docs/upstream-sync-approach.md §5 에 2~3줄.",
+      "target": "docs/upstream-sync-approach.md"
+    },
+    {
+      "title": "classfile 진단 문구 손실을 되돌릴지 결정 — upstream ClassFileError 에 변형을 더하는 별 회차",
+      "plainSummary": "클래스파일이 깨졌을 때 «왜» 깨졌는지 알려 주던 메시지가 사라지고 «잘못된 클래스 파일»이라는 한 문장만 남았다.",
+      "userBenefit": "클래스파일이 거부될 때 원인(잘린 파일 / 매직 불일치 / 미지원 상수풀 태그)을 메시지에서 바로 읽는다 — 지금은 바이트를 직접 봐야 한다.",
+      "why": "계획서 §3-B 가 upstream 채택을 고른 근거는 «Java 관측면이 4배 세밀하다»였고 그 판단은 옳다. 하지만 치른 값이 실제로 청구됐다 — tests/test_class_format.rs 의 문구 단정 3건을 이번 회차가 «삭제»했다. 되살리려면 upstream classfile::ClassFileError 에 변형을 추가해야 하는데, 그것은 upstream(dlunch/RustJava) 발신이 필요해 이 머지 리니지 밖이다(계획서 §6 가 명시적으로 뺐다).",
+      "tradeoff": "⑴upstream PR 을 내면 정본이 고쳐지지만 CLAUDE.md 가 upstream 발신을 «티켓이 명시 허가할 때만» 으로 묶고 있어 별 승인이 필요하고 착지 시점을 우리가 못 정한다. ⑵우리 쪽에서 ClassFileError 를 다시 감싸면 포크 diff 가 늘어 다음 컷마다 충돌한다 — 이 리니지가 줄이려는 바로 그 비용이다. ⑶현상 유지면 진단은 계속 평문이고, 그 대신 포크 diff 는 0 이다.",
+      "effort": "M — upstream 발신 경로 확인 + 변형 추가 + 우리 쪽 테스트 복원.",
+      "target": "classfile/src/error.rs · tests/test_class_format.rs · docs/upstream-sync-approach.md §6"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [],
+  "declinedProposals": []
+}

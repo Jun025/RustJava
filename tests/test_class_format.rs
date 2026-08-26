@@ -28,13 +28,15 @@ fn hello_class() -> Vec<u8> {
     fs::read("test_data/Hello.class").unwrap()
 }
 
+// Only the exception *kind* is asserted, not the message: upstream `ClassFileError`
+// (cut 822504b) collapses every parse failure into a flat "Invalid class file",
+// so per-cause wording is no longer available. Restoring it needs upstream variants.
 #[tokio::test]
 async fn test_truncated_class_raises_class_format_error() {
     let (dir, path) = fixture("TruncatedHello.class", &hello_class()[..60]);
 
     let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
     assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
-    assert!(err.contains("Truncated"), "expected truncation cause in message, got: {err}");
 }
 
 #[tokio::test]
@@ -47,7 +49,6 @@ async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
 
     let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
     assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
-    assert!(err.contains("tag 18"), "expected offending tag in message, got: {err}");
 }
 
 #[tokio::test]
@@ -58,7 +59,6 @@ async fn test_bad_magic_raises_class_format_error() {
 
     let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
     assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
-    assert!(err.contains("magic"), "expected magic mismatch cause in message, got: {err}");
 }
 
 #[tokio::test]

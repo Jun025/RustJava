@@ -1,6 +1,6 @@
 mod io;
 
-use alloc::{collections::BTreeMap, sync::Arc};
+use alloc::{collections::BTreeMap, format, sync::Arc};
 use core::{
     sync::atomic::{AtomicU32, AtomicU64, Ordering},
     time::Duration,
@@ -12,9 +12,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use classfile::ClassFileError;
 use java_runtime::{File, FileDescriptorId, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback, get_runtime_class_proto};
 use jvm::{ClassDefinition, Jvm};
-use jvm_rust::{ArrayClassDefinitionImpl, ClassDefinitionImpl};
+use jvm_rust::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
 
 use self::io::{FileImpl, InputStreamFile, WriteStreamFile};
 
@@ -101,14 +102,20 @@ where
         tokio::spawn(async move {
             TASK_ID
                 .scope(task_id, async move {
-                    callback.call().await.unwrap();
+                    if let Err(error) = callback.call().await {
+                        tracing::error!(?error, "spawned Java task failed");
+                    }
                 })
                 .await;
         });
     }
 
+    fn exit(&self, status: i32) {
+        std::process::exit(status);
+    }
+
     fn now(&self) -> u64 {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_millis() as u64
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_millis() as u64
     }
 
     fn current_task_id(&self) -> u64 {
@@ -177,8 +184,23 @@ where
 
     async fn define_class(&self, jvm: &Jvm, data: &[u8]) -> jvm::Result<Box<dyn ClassDefinition>> {
         match ClassDefinitionImpl::from_classfile(data) {
-            Ok(class) => Ok(Box::new(class) as Box<_>),
-            Err(err) => Err(jvm.exception("java/lang/ClassFormatError", &err.to_string()).await),
+            Ok(class) => Ok(Box::new(class)),
+            Err(ClassDefinitionError::ClassFile(ClassFileError::InvalidFormat)) => {
+                Err(jvm.exception("java/lang/ClassFormatError", "Invalid class file").await)
+            }
+            Err(ClassDefinitionError::ClassFile(ClassFileError::UnsupportedVersion(version))) => Err(jvm
+                .exception(
+                    "java/lang/UnsupportedClassVersionError",
+                    &format!("Unsupported class file version {version}"),
+                )
+                .await),
+            Err(ClassDefinitionError::Verification) => Err(jvm.exception("java/lang/VerifyError", "Bytecode verification failed").await),
+            Err(ClassDefinitionError::UnsupportedFeature(feature)) => Err(jvm
+                .exception(
+                    "java/lang/UnsupportedOperationException",
+                    &format!("Unsupported class file feature: {feature}"),
+                )
+                .await),
         }
     }
 

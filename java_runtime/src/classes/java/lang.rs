@@ -51,7 +51,10 @@ mod string_index_out_of_bounds_exception;
 mod system;
 mod thread;
 mod throwable;
+mod unsatisfied_link_error;
+mod unsupported_class_version_error;
 mod unsupported_operation_exception;
+mod verify_error;
 mod virtual_machine_error;
 
 pub use self::{
@@ -70,5 +73,6 @@ pub use self::{
     number_format_exception::NumberFormatException, object::Object, out_of_memory_error::OutOfMemoryError, runnable::Runnable, runtime::Runtime,
     runtime_exception::RuntimeException, security_exception::SecurityException, short::Short, string::String, string_buffer::StringBuffer,
     string_index_out_of_bounds_exception::StringIndexOutOfBoundsException, system::System, thread::Thread, throwable::Throwable,
-    unsupported_operation_exception::UnsupportedOperationException, virtual_machine_error::VirtualMachineError,
+    unsatisfied_link_error::UnsatisfiedLinkError, unsupported_class_version_error::UnsupportedClassVersionError,
+    unsupported_operation_exception::UnsupportedOperationException, verify_error::VerifyError, virtual_machine_error::VirtualMachineError,
 };

@@ -50,3 +50,7 @@ the consumer does not read them, so they are for humans and the next round.
 "if a `.json` exists, is it well-formed and does it have its `.md` sibling" — it never demands a
 `.json` for an existing `.md`. Lock: `scripts/check-worklog-json.py`, run by the `worklog_json`
 CI job (`cargo test` does not cover docs).
+## Testing Boundaries
+- Keep `java_runtime/tests/classes` limited to Java standard library class and API behavior.
+- Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test_data/src` and expected output under `test_data`, executed by `tests/test_class.rs`.
+- Do not place JVM core behavior tests in the `java_runtime` standard library test tree.
