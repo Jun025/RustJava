@@ -12,12 +12,12 @@ use core::{
 
 use parking_lot::RwLock;
 
-use classfile::{AttributeInfo, ClassInfo, ConstantPoolReference, ParseError};
+use classfile::{AttributeInfo, ClassInfo, ConstantPoolReference};
 use java_class_proto::JavaClassProto;
 use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassDefinition, ClassInstance, Field, JavaType, JavaValue, Jvm, Method, Result};
 
-use crate::{class_instance::ClassInstanceImpl, field::FieldImpl, method::MethodImpl};
+use crate::{ClassDefinitionError, class_instance::ClassInstanceImpl, field::FieldImpl, method::MethodImpl, verifier};
 
 struct ClassDefinitionInner {
     name: String,
@@ -96,8 +96,9 @@ impl ClassDefinitionImpl {
         )
     }
 
-    pub fn from_classfile(data: &[u8]) -> core::result::Result<Self, ParseError> {
+    pub fn from_classfile(data: &[u8]) -> core::result::Result<Self, ClassDefinitionError> {
         let class = ClassInfo::parse(data)?;
+        verifier::verify(&class)?;
 
         let mut constant_values = Vec::new();
         let fields = class
