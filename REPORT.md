@@ -1,5 +1,42 @@
 # REPORT
 
+## [2026-08-27] upstream 동기 S3 — 컷 `822504b` 머지 (rustjava-upstream-sync-s3)
+- 무엇을: upstream `822504b`(#180 Harden JVM runtime correctness) 1커밋을 머지했다. 충돌 **11** 해소.
+  `classfile/{class,constant_pool,error,lib}.rs` · `jvm_rust/class_definition.rs` · `src/runtime.rs` ·
+  `test_utils/lib.rs` 는 **upstream 채택**(우리 `ParseError` 5변형 → upstream `ClassFileError` +
+  `ClassDefinitionError`). `java/lang/string.rs` 는 **upstream 골격을 우리 `charset::Charset` 으로
+  라우팅**해 중복 charset 표를 지웠고, `test_string.rs` 는 **양쪽 테스트 합집합**,
+  `thread.rs` 는 **upstream 본문 + PR #4 의 수동 span**, `AGENTS.md` 는 **양쪽 절 합집합**이다.
+  부수: `tests/test_class_format.rs` 의 **문구 단정 3건 삭제**(종류 단정은 유지).
+- 왜: 계획서 §3-B 가 판정한 대로 **Java 관측면에서 upstream 이 이긴다** — 우리 `ParseError` 는 Rust
+  변형이 5종이지만 Java 예외는 `ClassFormatError` **1종**뿐이고, upstream 은 `ClassFormatError` ·
+  `UnsupportedClassVersionError` · `VerifyError` · `UnsupportedOperationException` **4종**으로 나눈다.
+  JVM 구현체에서 값이 큰 쪽은 관측면이다. PR #3 의 목적(「패닉 대신 `ClassFormatError`」)은 upstream
+  에서도 그대로 성립한다(미지원 상수풀 태그 → `ErrorKind::Switch` → `InvalidFormat`, 패닉 0).
+  ★**치른 값은 진단 문구다** — 「Truncated」·「tag 18」·「magic」이 전부 `"Invalid class file"` 로 평탄해졌고,
+  §4-A 가 예고한 대로 `tests/test_class_format.rs` 3건이 **충돌 마커 없이** 그것 때문에 깨졌다.
+- 사용자 영향: 클래스파일 검증이 세분화된다 — 지원하지 않는 클래스파일 버전은 이제
+  `UnsupportedClassVersionError`, 바이트코드 검증 실패는 `VerifyError`, `invokedynamic` 은
+  `UnsupportedOperationException` 으로 **깔끔히 거부**된다(구판은 인터프리터 `todo!()` 패닉까지 갔다).
+  대신 `ClassFormatError` 메시지는 원인별 문구를 잃고 `"Invalid class file"` 평문이 된다.
+  ★**charset 동작 변경 1건**: 기본 charset 경로(`new String(byte[])`·`getBytes()`)는 미지원 이름에도
+  더 이상 `UnsupportedEncodingException` 을 던지지 않고 UTF-8 로 폴백한다 — **JDK 규격이 그렇다**.
+  명시 charset 경로(`new String(byte[],String)`·`getBytes(String)`)는 그대로 던진다.
+  ISO-8859-1·US-ASCII 는 우리 `Charset` 이 정본으로 남아 계속 동작한다(종단 픽스처 green).
+- 검증: `cargo fmt --all -- --check` · `cargo clippy --all -- -D warnings` ·
+  `cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings` ·
+  `cargo test --all` **4/4 rc=0** · **216 passed / 0 failed / 1 ignored**(S2 191 → +25, 우리 테스트 유실 0).
+  `tests/test_class_format.rs` **4/4** · `git grep 'tracing::instrument\|tracing-attributes'` **0건**(§4-C 불변).
+  추가로 「base `af4f6f8` 이후 우리가 추가한 .rs 321줄이 머지 트리에 살아 있는가」를 기계로 전수 대조했고,
+  부재 81줄은 **전건 의도한 해소**였다(`ParseError` 기구 · `thread.rs` 구본문 · 완화한 문구 단정 3줄).
+- 후속 추천: ⑴**게이트③ 순서 주의** — `rustjava-upstream-sync-s2-merge`(#13)가 **먼저**고 S3 PR 이 그 위다.
+  ★#13 이 스쿼시로 착지하면 `af4f6f8` 조상이 다시 끊기므로, S3 PR 이 `main` 으로 리타깃된 뒤
+  **S2 가 한 `-s ours` 를 다시 해야 할 수 있다**(착지 후 `merge-base` 를 재라).
+  ⑵**S4**(컷 `3296139`) — 계획서 예측 **새 충돌 0**. 검수는 「우리 해소분 0 증명 + green」.
+  ⑶★**계획서의 「새 충돌」 예측은 하한이다** — S3 는 +9 예측에 `AGENTS.md`·`thread.rs` **2건이 더 붙었다**.
+  전자는 계획서 이후 우리가 만든 파일이고, 후자는 **앞 회차가 이미 닫은 파일의 재충돌**이다.
+  ⑷`charset.rs` dead-code red 축은 **닫아도 된다** — S3 에서 오히려 upstream 중복 표를 흡수했다.
+
 ## [2026-08-26] 회차 워크로그 `.json` + `proposals` 규약 이식 (rustjava-worklog-json-proposals-convention)
 - 무엇을: `AGENTS.md` 에 「Round Worklog `docs/worklog/`」 절(소비처가 읽는 키 표 · 소급 없음),
   `scripts/check-worklog-json.py` 잠금 6축, `rust.yml` 에 `worklog_json` job 1개(ubuntu 단일 러너),
