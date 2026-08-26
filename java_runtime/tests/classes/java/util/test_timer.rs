@@ -93,7 +93,10 @@ async fn test_timer_periodic() -> Result<()> {
         .invoke_virtual(&timer, "schedule", "(Ljava/util/TimerTask;JJ)V", (test_class.clone(), 0i64, 50i64))
         .await?;
 
-    let _: () = jvm.invoke_static("java/lang/Thread", "sleep", "(J)V", (500i64,)).await?;
+    // 2000ms, not 500ms: cut 3296139 slowed a TimerThread iteration to ~110-150ms (global-reference
+    // GC scanning), so 500ms yields run_count 2-3 and straddles the assertion. Measured on upstream
+    // 3296139 itself, so this is margin, not a weakened assertion - the `> 2` bound is unchanged.
+    let _: () = jvm.invoke_static("java/lang/Thread", "sleep", "(J)V", (2000i64,)).await?;
     let run_count: i32 = jvm.get_field(&test_class, "runCount", "I").await?;
     assert!(run_count > 2);
 
