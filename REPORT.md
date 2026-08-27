@@ -44,7 +44,11 @@
   (`<id>-merge` 는 **예외 경로**다). ⑵**S5**(컷 `c4665b0` · 171파일 +33,138) —
   ★**착수 첫 조치는 `git merge -s ours --no-ff 3296139`**(S4 도 스쿼시로 착지하면 족보가 또 끊긴다).
   ⑶★**`thread.rs` 는 S1·S3·S4 «세 회차 연속» 충돌한다** — S5~S7 도 기본값으로 잡아라. 전략은 불변
-  (upstream 본문 + 수동 span 1줄 치환). ⑷**타이머 성능 회귀**는 upstream 발신이 필요해 이 리니지 밖이다 — 별 축 후보.
+  (upstream 본문 + 수동 span 1줄 치환). ⑷★**「타이머 성능 회귀」는 «없다» — 그 축으로 발권하지 마라**
+  (위 문단 참조: 컷 전후가 조건 맞춘 실측에서 동일하고, upstream 이 이미 두 번 넓힌 자리다).
+  ★**남는 별 축은 «우리 테스트의 시간 의존»이다** — `test_timer_periodic` 이 벽시계에 의존하고 이번이 세 번째
+  여백 확장이며 red 문턱이 약 4배 둔해졌다. ★**주인은 우리이고 upstream 발신은 «불요»다.**
+  판단 재료 = worklog `2026-08-27-upstream-sync-s4.json` `proposals[0]`.
 
 ## [2026-08-27] upstream 동기 S3 — 컷 `822504b` 머지 (rustjava-upstream-sync-s3)
 - 무엇을: upstream `822504b`(#180 Harden JVM runtime correctness) 1커밋을 머지했다. 충돌 **11** 해소.
