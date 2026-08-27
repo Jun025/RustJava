@@ -1,6 +1,17 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
+  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
+  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
+  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
+  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
+  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
+  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
+  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
+  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
+  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
+  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
   충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
   — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**

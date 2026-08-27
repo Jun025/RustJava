@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "date": "2026-08-27",
+  "title": "S1~S4 가 착지하고도 fork 가 upstream 에 가까워지지 않은 근인 확정(게이트③ --squash) + 계보 기록으로 behind 33 → 18",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-squash-defeats-convergence",
+  "summary": "S1~S4(PR #11·#13·#16·#17)가 전건 merged=true 인데 merge-base origin/main upstream/main 은 fork 시점 62cf0c6a 그대로였고 behind 33 이 줄지 않았다. 근인은 게이트③ 제품 repo --squash 다 — 네 머지커밋(6bfe97c4·11ef5010·4bb796de·3a597768) 전건 부모 1개로, 7·10·15·21 커밋이 각각 1커밋으로 접혔다. 가설 반증 시도는 실패했다(= 가설이 맞다): 브랜치 feat/rustjava-upstream-sync-s4 의 34a4235 는 부모 2개(c80638a + 3296139)인 진짜 머지이므로 계보는 브랜치에 있었고 스쿼시가 버린 것이다. 갈래 ⒞ 채택 — ⒜ origin/main 위에서 git merge -s ours 3296139(트리 SHA 동일 c4f57d10 = 트리 변경 0)로 네 컷 전건을 조상으로 기록해 merge-base 62cf0c6a → 3296139c · behind 33 → 18 · 컷 조상 0/4 → 4/4. ⒝ 게이트③ 규율 예외는 총괄 소관이라 손대지 않고 REPORT.md 후속 추천으로 올렸다. ★이 PR 자체가 --squash 로 착지하면 ⒜는 무효다.",
+  "changes": [
+    "계보 기록 — origin/main(3a59776) 위에서 git merge -s ours 3296139. 1f356ae·af4f6f8·822504b 는 전부 3296139 의 조상이라 한 머지가 네 컷을 덮는다. 트리 변경 0 근거는 트리 오브젝트 SHA 동일(c4f57d10…)이다 — git diff --stat 빈 출력은 -s ours 에서 정의상 항상 참이라 근거로 쓰지 않았다(S4 워크로그 교훈).",
+    "docs/upstream-sync-approach.md §5 — 「앞 회차가 착지하면 뒤 회차의 기준선이 바뀐다」가 거짓이었음을 정정. 표의 「새 충돌」이 base 전진 전제 위의 수임을 명시하고, 표를 쓰기 전 merge-base 를 먼저 재고 전진해 있지 않으면 merge-tree 로 전량 재측정하도록 규율화. 예측 대 실측 불일치(S3 +9↔11 · S4 0↔20) 기재.",
+    "docs/worklog/2026-08-27-upstream-sync-squash-convergence.{md,json} 신설.",
+    "STATE.md · REPORT.md 갱신."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "재실측(회신 시점): merge-base origin/main upstream/main = 62cf0c6a(2026-06-28) · S1~S4 컷 origin/main 조상 0/4(upstream/main 조상 4/4) · rev-list --count origin/main..upstream/main = 33 · PR #11/#13/#16/#17 merged=true(커밋 7/10/15/21) · 회차별 충돌 2→5→11→20. 근인 증명: gh api 로 얻은 네 merge_commit_sha 의 git cat-file -p parent 줄 수 전건 1. 반증 시도: 브랜치 34a4235 parent 2개(c80638a·3296139) + merge-base --is-ancestor 3296139 <branch> = YES ⇒ 계보는 브랜치에 있었고 스쿼시가 버렸다. 처방 후: tree BEFORE(3a59776)=tree AFTER(c118d21)=c4f57d10bce2087cebe2e1156f716f6ba8f75335 · git diff 3a59776..c118d21 = 0줄 · merge-base → 3296139c · behind 33 → 18 · 컷 조상 4/4. ★제품 코드(.rs) 변경 0 이라 cargo 축은 트리 불변으로 담보된다(트리 SHA 가 origin/main 과 동일).",
+  "issues": [
+    "★이 PR 이 --squash 로 착지하면 ⒜는 무효다 — 부모 2개가 1개로 접히며 3296139 조상 관계가 다시 사라지고 merge-base 는 62cf0c6a 로 되돌아간다. 반드시 gh pr merge --merge 로 착지시켜야 한다.",
+    "★같은 처방이 이미 한 번 지워졌다 — S4 브랜치의 c80638a(「record upstream cut 822504b as merged (tree unchanged)」)가 -s ours 계보 기록이었는데 PR #17 의 스쿼시에 함께 사라졌다. ⇒ 브랜치 처방만으로는 매 회차 무효화된다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다.",
+    "upstream/main 헤드까지 -s ours 하지 않았다. S5~S7 내용은 실제로 없어 그것까지 얹으면 거짓 주장이 되고 남은 물량이 조용히 사라진다.",
+    "★wie 도 같은 함정 위에 있다(behind 1067) — 이 repo 에서 고칠 수 없다."
+  ],
+  "proposals": [
+    {
+      "title": "게이트③ 제품 repo `--squash` 규율에 upstream 동기 PR 예외를 넣을지 총괄이 판정하라",
+      "plainSummary": "우리 fork 는 원본 저장소의 변경을 정기적으로 받아온다. 그런데 머지 방식이 «이력을 하나로 접는» 방식이라, 받아온 사실 자체가 기록되지 않는다. 그래서 다음 번에도 git 은 «아직 안 받았다»고 답하고 같은 충돌을 처음부터 다시 낸다.",
+      "userBenefit": "동기화 회차마다 앞 회차가 이미 푼 충돌을 다시 푸는 낭비가 사라진다. 실측으로 그 낭비는 회차마다 커졌다 — 충돌 2 → 5 → 11 → 20. 예외가 없으면 남은 S5~S7 에서 더 나빠진다.",
+      "why": "게이트③ 규율이 「제품 repo = --squash」를 못박는데(ORCHESTRATOR.md 2곳 · templates/merge-ticket.tpl), --squash 는 PR 의 부모 관계를 버리므로 upstream 커밋이 조상으로 기록될 방법이 없다. 실측: 네 머지커밋 전건 부모 1개 · merge-base 는 fork 시점 62cf0c6a 불변 · behind 33 불변. 반면 브랜치 34a4235 는 부모 2개였다 ⇒ 계보를 버린 것은 게이트③이다. ★같은 템플릿이 형제 증상을 이미 알고 있다: 「부모 PR 이 --squash 로 착지하면 자식 PR 은 공통 조상이 사라져 add/add 로 전건 충돌한다」. ★wie 도 같은 함정 위에 있다(behind 1067) — 예외는 RustJava 단독 문제가 아니다.",
+      "tradeoff": "⑴upstream 동기 PR 만 --merge 예외로 열면 계보가 남고 다음 회차 base 가 전진하지만, 제품 repo 이력에 머지커밋이 섞여 「티켓별 1커밋」 관행이 그 회차만 깨진다(orchestrator-ops 가 이미 같은 이유로 반대 방향 예외를 쓰고 있으므로 선례는 있다). ⑵예외 없이 회차마다 -s ours 계보 커밋을 넣는 방식은 이번처럼 스쿼시에 함께 지워져 무효다 — 실제로 S4 의 c80638a 가 그렇게 사라졌다. ⑶현상 유지면 S5~S7 이 앞 회차 충돌을 전부 다시 열고, 계획서 §5 의 「충돌 0」 예측은 남은 셋에서도 무의미하다.",
+      "effort": "S — 규율 문안 2곳(ORCHESTRATOR.md)과 스니펫 1곳(templates/merge-ticket.tpl). 판정 자체는 XS.",
+      "target": "~/orchestrator/ORCHESTRATOR.md · ~/orchestrator/templates/merge-ticket.tpl (★orchestrator 소관 — RustJava 세션이 고치지 않는다)"
+    },
+    {
+      "title": "S5~S7 의 「새 충돌」을 재측정할지 결정하라 — 표의 수는 전부 전진하는 base 위의 예측이다",
+      "plainSummary": "남은 세 회차의 난이도 예측이 «앞 회차가 제대로 반영됐다»는 가정 위에 쓰여 있었다. 그 가정이 틀렸던 것이 이번에 밝혀졌으니, 예측을 다시 재야 계획이 쓸모 있다.",
+      "userBenefit": "남은 회차의 크기를 실제 수로 잡을 수 있다 — 지금은 「충돌 0」으로 적힌 회차가 실제로 20충돌일 수 있고, 그러면 티켓 size/timeout 이 처음부터 틀린다(S4 가 정확히 그랬다).",
+      "why": "§5 표는 S4~S6 을 「충돌 0 · 물량」으로 잡았는데 S4 실측은 20 이었다. 예측 대 실측이 S3(+9↔11)·S4(0↔20) 연속으로 어긋났고, 어긋난 이유가 이 회차가 확정한 근인이다. ★단 재측정은 이 PR 이 --merge 로 착지한 «뒤»에 해야 의미가 있다 — merge-base 가 3296139 인 상태에서 잰 수라야 다음 회차의 실제 기준선이다. 지금 재면 또 낡은 수가 된다.",
+      "tradeoff": "⑴착지 후 재측정하면 정확하지만 별 회차가 하나 붙는다(git merge-tree 만 돌리면 되므로 XS 다). ⑵지금 브랜치 위에서 미리 재면 회차를 아끼지만, 게이트③이 --squash 로 착지시키면 그 수가 통째로 무효가 된다. ⑶재측정을 건너뛰면 S5 티켓이 「0충돌 물량」으로 발권되고 실제로는 설계 판단이 필요한 회차가 될 위험이 남는다.",
+      "effort": "XS — git merge-tree --write-tree --name-only 3회 + §5 표 갱신.",
+      "target": "docs/upstream-sync-approach.md §5"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [
+    "2026-08-27-upstream-sync-s3#p0"
+  ],
+  "declinedProposals": []
+}
