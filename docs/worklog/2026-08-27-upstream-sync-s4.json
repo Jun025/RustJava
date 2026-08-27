@@ -2,34 +2,39 @@
   "schema": 1,
   "date": "2026-08-27",
   "title": "S4 — upstream 컷 3296139 머지(물량 회차, 충돌 20→2) + 들여온 타이머 회귀 실측",
-  "services": ["RustJava"],
+  "services": [
+    "RustJava"
+  ],
   "taskId": "rustjava-upstream-sync-s4",
-  "summary": "docs/upstream-sync-approach.md §5 의 7회차 분할 중 S4. 스쿼시 3회로 origin/main 의 upstream 조상이 최초 공통조상 62cf0c6 까지 되돌아가 있어, 첫 조치로 git merge -s ours --no-ff 822504b(트리 무변경 0줄 실측)를 넣어 충돌을 20 → 2 로 줄였다. 해소 2건은 jvm/src/jvm.rs(합집합)와 java/lang/thread.rs(upstream GlobalRef 본문 + PR #4 수동 span)이다. 계획서가 예측한 '새 충돌 0' 은 또 틀렸고 이로써 예측 대 실측 불일치가 3회 연속이다. 이 컷이 test_timer_periodic 을 flaky 로 만들었는데, 순정 upstream 3296139 에서도 3/8 실패로 재현돼 우리 해소 탓이 아님을 확인했다.",
+  "summary": "docs/upstream-sync-approach.md §5 의 7회차 분할 중 S4. 스쿼시 3회로 origin/main 의 upstream 조상이 최초 공통조상 62cf0c6 까지 되돌아가 있어, 첫 조치로 git merge -s ours --no-ff 822504b 를 넣어 충돌을 20 → 2 로 줄였다(무해성 근거는 --diff-filter=D 0 + 양방향 전문 대조다 — `git diff --stat origin/main HEAD` 빈 출력은 -s ours 에서 정의상 항상 참이라 근거가 아니다). 해소 2건은 jvm/src/jvm.rs(합집합)와 java/lang/thread.rs(upstream GlobalRef 본문 + PR #4 수동 span)이다. 계획서가 예측한 '새 충돌 0' 은 또 틀렸고 이로써 예측 대 실측 불일치가 3회 연속이다. ★test_timer_periodic 의 여백을 500→2000ms 로 넓혔는데 이는 «컷이 들여온 회귀»가 아니라 «만성 경계 테스트»다 — 조건을 맞춘 교대 실측에서 컷 전후가 단독·병렬 어느 조건에서도 차이가 없고, upstream 이 같은 자리를 이미 두 번 넓혔다(2025-08·2025-10).",
   "changes": [
-    "조상 복원 — git merge -s ours --no-ff 822504b. 트리 무변경 0줄 실측 후 집행. merge-base vs upstream/main: 62cf0c6 → 822504b. 충돌 20 → 2.",
+    "조상 복원 — git merge -s ours --no-ff 822504b. merge-base vs upstream/main: 62cf0c6 → 822504b. 충돌 20 → 2. 무해성 근거 = --diff-filter=D 0 + 충돌 2파일 양방향 전문 대조(★`git diff --stat origin/main HEAD` 빈 출력은 -s ours 정의상 항상 참이므로 근거로 쓰지 않는다).",
     "머지 — upstream 822504b..3296139 8커밋(4a2349a tokio 1.53 · 423d1bd classfile 오류 은닉 · 3d915ed bootstrap 위임 · 258cd4e 배열 중복 제거 · e557673 GlobalRef · f87e410 monitor 인자 일반화 · fd629c7 CDC text API · 3296139 CLI classpath).",
     "jvm/src/jvm.rs — 합집합 해소. upstream 신규 load_bootstrap_class() 와 우리 #[allow(clippy::double_must_use)](PR #14)가 같은 자리에 왔을 뿐 의미 충돌 0.",
     "java/lang/thread.rs — upstream 의 GlobalRef<Thread> 전환 본문을 취하고 #[tracing::instrument] 자리에 PR #4 의 tracing::info_span!+.instrument(span) 를 다시 얹었다. S1·S3 에 이어 세 번째 같은 형태.",
-    "java_runtime/tests/classes/java/util/test_timer.rs — test_timer_periodic 의 대기 여백을 500ms → 2000ms. assert!(run_count > 2) 단정 불변 · #[ignore] 0 · 삭제 0.",
+    "java_runtime/tests/classes/java/util/test_timer.rs — test_timer_periodic 의 대기 여백을 500ms → 2000ms. assert!(run_count > 2) 단정 불변 · #[ignore] 0 · 삭제 0. ★«회귀 대응»이 아니라 «만성 경계 테스트에 정상 여백»이다. 주석에 그 근거와 감도 상한(red 문턱 1회전 ~167ms → ~667ms)을 적었다.",
     "STATE.md — S3 완료(착지 sha 4bb796d 기입) · S4 진행중 · ① 절을 S4 실측으로 교체 · ③-1 을 S5 로 재부여하고 「첫 조치 = -s ours 3296139」를 명시.",
     "REPORT.md — [2026-08-27] 항목 append."
   ],
-  "deploy": { "sha": "", "urls": [] },
-  "verification": "CI rust.yml 4종 전건 로컬 rc=0 — cargo fmt --all -- --check / cargo clippy --all -- -D warnings / cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings / cargo test --all. cargo test --all = 261 passed / 0 failed / 1 ignored (S1 169 → S2 191 → S3 216 → S4 261). 계약4: git merge-tree --write-tree origin/main HEAD rc=0. 「해소분 0」 증명 = 미해소 충돌 파일 0 · 충돌 마커 0 · upstream 3296139 대비 삭제된 파일 0 · 다른 파일 37건 전수가 우리 fork 고유 자산(원장·CI·worklog·charset·오류분류·tracing·픽스처·타이머 여백). 충돌 2파일은 양방향 원본 전문 대조로 소실 전건 확인(thread.rs ours 4/theirs 1 · jvm.rs ours 21/theirs 1 — 전건 의도한 해소). 우리 자산 생존: System.setProperty 서술자 )Ljava/lang/String; 유지 · tracing::instrument 실사용 0건(주석 1건뿐) · Charset 호출자 7건 · test_class_format.rs 4/4.",
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "CI rust.yml 4종 전건 로컬 rc=0 — cargo fmt --all -- --check / cargo clippy --all -- -D warnings / cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings / cargo test --all. cargo test --all = 261 passed / 0 failed / 1 ignored (S1 169 → S2 191 → S3 216 → S4 261). 계약4: git merge-tree --write-tree origin/main HEAD rc=0. 「해소분 0」 증명 = 미해소 충돌 파일 0 · 충돌 마커 0 · upstream 3296139 대비 삭제된 파일 0 · 다른 파일 39건(핀 1a90e7e 기준) 전수가 우리 fork 고유 자산(원장·CI·worklog·charset·오류분류·tracing·픽스처·타이머 여백). 충돌 2파일은 양방향 원본 전문 대조로 소실 전건 확인(thread.rs ours 4/theirs 1 · jvm.rs ours 21/theirs 1 — 전건 의도한 해소). 우리 자산 생존: System.setProperty 서술자 )Ljava/lang/String; 유지 · tracing::instrument 실사용 0건(주석 1건뿐) · Charset 호출자 7건 · test_class_format.rs 4/4.",
   "issues": [
-    "머지하지 않았다 — 게이트③은 별 회차다.",
-    "★upstream 성능 회귀가 남아 있다: e557673(GlobalRef)의 GC 전역참조 스캔으로 TimerThread 1회전이 ~110~150ms 가 됐다(이전 대비 수 배). 테스트 여백으로 가렸을 뿐 원인은 그대로다. 수정은 upstream 발신이 필요해 이 리니지 밖이다.",
+    "머지하지 않았다 — 게이트③은 별 회차다. ★repo CLAUDE.md DoD 상 머지는 게이트② 검수자가 approve 와 «같은 턴»에 집행하는 것이 기본 경로이고 <id>-merge 는 예외 경로다.",
+    "★test_timer_periodic 은 만성 경계 테스트다(컷 이전부터 500ms 창에서 3~4회). 여백을 넓혀 green 이지만 감도가 약 4배 둔해졌다 — proposals[0] 이 판단 재료를 담았다.",
     "★계획서 §5 의 회차별 「새 충돌」 예측이 3회 연속 하한이었다(S3 +9↔11 · S4 0↔2). S5~S7 도 하한으로 읽어라."
   ],
   "proposals": [
     {
-      "title": "타이머 성능 회귀를 계측으로 잠가라 — 여백을 넓힌 자리는 다음에 또 넓히게 된다",
-      "plainSummary": "타이머가 느려져서 테스트가 간헐적으로 실패했다. 지금은 «더 오래 기다리게» 해서 넘겼는데, 더 느려지면 또 같은 일이 난다.",
-      "userBenefit": "타이머로 도는 코드(java.util.Timer 를 쓰는 앱)가 느려지면 «테스트가 흔들려서» 가 아니라 «수가 넘어서» 알게 된다.",
-      "why": "S4 가 들여온 e557673(JNI-style global references)은 GC 가 매번 전역참조 표를 스캔하게 만들었고, 그 결과 TimerThread 1회전이 ~110~150ms 가 됐다(500ms 창에서 기대 10회 → 실측 2~6회). 순정 upstream 3296139 에서도 3/8 실패로 재현되므로 우리 코드 문제가 아니다. 이번 처분은 대기 여백을 500ms → 2000ms 로 넓힌 것이고, 그것은 upstream 이 같은 자리에서 이미 두 번 한 처분(895d67d·ad8b477)이다. ⇒ ★세 번째다. 여백은 회귀를 «가리지» 막지 않는다.",
-      "tradeoff": "⑴회전 시간 상한을 단정하는 테스트를 새로 넣으면 회귀를 잡지만, 그 자체가 머신 부하에 흔들리는 또 하나의 시간 의존 테스트다. ⑵GC 스캔 빈도를 낮추는 실수정은 upstream 발신이 필요하고(CLAUDE.md 가 티켓 명시 허가로 묶는다) 착지 시점을 우리가 못 정한다. ⑶현상 유지면 다음 컷에서 또 넓히게 된다 — 그리고 그때는 «왜 넓히는지»를 아무도 모른다.",
-      "effort": "S — ⑴이면 테스트 1개. ⑵면 M(upstream 경로 확인 포함).",
-      "target": "java_runtime/tests/classes/java/util/test_timer.rs · jvm/src/garbage_collector.rs"
+      "title": "`test_timer_periodic` 의 시간 의존을 없앨지 결정하라 — 여백은 세 번째로 넓혔다",
+      "plainSummary": "이 테스트는 «몇 번 울렸나»를 시계로 세는데, 머신이 바쁘면 수가 모자라 실패한다. 지금까지의 처방은 «더 오래 기다리기» 뿐이었고 이번이 세 번째다.",
+      "userBenefit": "타이머 테스트가 머신 부하와 무관하게 같은 답을 낸다 — 지금은 CI 가 붐비는 날 이유 없이 빨개질 수 있고, 그때마다 사람이 «진짜 회귀인가»를 다시 조사한다(이 회차가 실제로 그 조사에 한 회차를 썼다).",
+      "why": "★이것은 «컷이 들여온 회귀»가 아니다 — 조건을 맞춘 교대 실측에서 컷 전(4bb796d)과 컷 후(3296139)가 단독 10회 mean 3.5 대 3.5, 전 스위트 병렬 8회도 차이가 없다. 500ms 창에서 기대 10회 대비 3~4회만 도는 것은 «양쪽 공통의 기존 성질»이다. 사료가 그것을 확증한다: upstream 이 같은 자리를 넓힌 895d67d(2025-08-20)·ad8b477(2025-10-04)가 둘 다 이미 origin/main 의 조상이고, 한때 근인으로 지목됐던 e557673(GlobalRef)은 2026-07-18 이다 — 11개월 앞선다. ⇒ 남은 문제는 «성능»이 아니라 «테스트가 벽시계에 의존한다»는 설계다.",
+      "tradeoff": "⑴RuntimeContext 의 now/sleep 을 테스트에서 가상 시계로 갈면 결정적이 되지만, TestRuntime 이 tokio::time 을 그대로 쓰는 구조라 손이 크고 upstream 과 갈린다(다음 컷마다 충돌한다). ⑵tokio::time::pause() 를 쓰면 싸지만 TimerThread 가 실제 tokio 태스크로 도는 구조와 맞물리는지 검증이 필요하다. ⑶현상 유지(여백만 넓힘)면 공짜지만 ★감도가 실제로 내려갔다 — red 문턱이 1회전 ~167ms → ~667ms 로 약 4배 둔해져 «2.4배 저하»는 이제 통과한다(돌연변이 실측). 넷째 번에 또 넓히면 그때는 사실상 아무것도 안 잡는다.",
+      "effort": "M — ⑴이면 TestRuntime + 타이머 테스트. ⑵면 S 이나 검증이 붙는다. 판정 자체는 XS.",
+      "target": "java_runtime/tests/classes/java/util/test_timer.rs · test_utils/src/lib.rs"
     },
     {
       "title": "`thread.rs` 3연속 충돌 — 수동 span 을 «충돌하지 않는 자리»로 옮길지 결정하라",
