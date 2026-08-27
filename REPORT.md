@@ -1,5 +1,55 @@
 # REPORT
 
+## [2026-08-27] upstream 동기 S4 — 컷 `3296139` 머지 (rustjava-upstream-sync-s4)
+- 무엇을: upstream `3296139`(#184 CLI classpath) 까지 **8커밋**을 머지했다(GlobalRef · CDC text API ·
+  monitor 인자 일반화 · classfile 오류 은닉 · tokio 1.53). 충돌 **2** 해소 —
+  `jvm/src/jvm.rs` 는 **합집합**(upstream `load_bootstrap_class` + 우리 `double_must_use` allow),
+  `java/lang/thread.rs` 는 **upstream 의 `GlobalRef` 본문 + PR #4 의 수동 span**이다.
+  ★**첫 조치는 `git merge -s ours --no-ff 822504b`** — 그것이 **충돌 20 → 2**를 만들었다.
+  ★**무해성의 근거는 «`git diff --stat origin/main HEAD` 빈 출력»이 «아니다»** — `-s ours` 는 정의상 우리 트리를
+  유지하므로 그 출력은 **항상 참**이라 아무것도 증명하지 않는다. 근거는 ★**`--diff-filter=D` 0**(upstream 이
+  들여온 것 중 잃은 파일 0)**와 충돌 2파일의 양방향 전문 대조**다.
+- 왜: 스쿼시 착지 3회(#11·#13·#16)로 `origin/main` 의 upstream 조상이 ★**최초 공통조상 `62cf0c6` 까지
+  되돌아가 있었다**(`1f356ae`·`af4f6f8`·`822504b` 전건 조상 아님). 그대로 재면 git 이 앞 회차가 이미 해소한
+  자리를 통째로 재생해 **20충돌**을 낸다. 트리는 이미 동일하므로 부모만 기록해 base 를 복원했다.
+  ★**S2 회차가 세운 방법을 그대로 썼고, 이제 이 리니지에서 네 번째 적용이다.**
+- 사용자 영향: JNI 스타일 **전역 참조**(`GlobalRef`)가 들어와 스폰된 스레드가 자기 `this` 를 GC 로부터
+  안전하게 붙든다. **CLI 에 classpath 옵션**이 생기고(`-cp`/`-classpath`), `java.text` 포맷팅 API
+  (`DateFormat`·`DecimalFormat`·`SimpleDateFormat`·`NumberFormat`)가 추가된다.
+  ★**기존 동작 변경 0** — 우리 자산(charset 4종 · `System.setProperty` 서술자 · `ClassFormatError` 4종 분류 ·
+  수동 span)은 전건 생존했다.
+- 검증: `cargo fmt --all -- --check` · `cargo clippy --all -- -D warnings` ·
+  `cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings` ·
+  `cargo test --all` **4/4 rc=0** · **261 passed / 0 failed / 1 ignored**(S3 216 → +45).
+  「해소분 0」 증명 = ★**upstream `3296139` 대비 삭제된 파일 0** · 다른 파일 **39건 전수가 우리 fork 고유 자산**
+  (원장·CI·worklog·charset·오류분류·tracing·픽스처·타이머 여백). 충돌 2파일은 **양방향 원본 전문 대조**로
+  소실을 전건 확인했고 **의도 밖 0**이다.
+- ★**타이머 테스트 여백 1건 — «회귀»가 아니다**(★전 판본의 「들여온 upstream 회귀」 서술은 **틀렸다**):
+  `test_timer_periodic` 은 ★**컷 이전부터** 500ms 창에서 기대 10회 대비 **3~4회**만 도는 **만성 경계 테스트**이고,
+  머신 부하가 걸리면 ★**컷 양쪽이 «같은 비율로»** 단정 아래로 떨어진다.
+  ★**측정 조건을 맞춰 교대 실행한 실측**(★조건을 섞지 않는다):
+  ⒜**단독 실행 · 교대 10회** — `4bb796d`(컷 전) `3 3 3 3 4 4 4 4 3 4`(mean 3.5) ↔
+    `3296139`(컷 후) `4 3 4 3 4 3 4 3 4 3`(mean 3.5) ⇒ ★**차이 없음**
+  ⒝**전 스위트 병렬 · 교대 8회** — 컷 전 `4 4 4 4 3 4 3 4` ↔ 컷 후 `4 3 3 6 4 4 4 4` ⇒ ★**차이 없음**
+  ★**사료가 그 자체로 반증이다**: upstream 이 같은 자리를 넓힌 `895d67d`(**2025-08-20**)·`ad8b477`(**2025-10-04**)는
+  ★**둘 다 이미 `origin/main` 의 조상**이고, 근인으로 지목했던 `e557673`(GlobalRef)은 **2026-07-18** 이다
+  ⇒ ★**이 테스트는 지목된 커밋보다 «11개월 앞서» 이미 만성 flaky 였다.**
+  ★**전 판본이 틀린 이유는 «수»가 아니라 «조건»이다** — `origin/main` **10/10**(단독)과 순정 upstream **3/8 실패**(병렬)를
+  나란히 놓았다. ★**서로 다른 측정 조건의 수를 비교했다.**
+  **처분은 그대로다**(`sleep 500 → 2000ms` · `run_count > 2` **불변** · `#[ignore]` 0 · 삭제 0) —
+  단 성격이 「가리는 여백」이 아니라 ★**만성 경계 테스트에 정상 여백을 준 것**이다.
+  ★**대가**: 창을 넓히면 감도가 내려간다 — red 문턱이 1회전 **~167ms → ~667ms**(약 4배 둔화)로, 돌연변이
+  「루프 sleep 16ms → 700ms(5.6배 저하)」는 여전히 red 지만 「→ 300ms(2.4배)」는 이제 통과한다. 그 상한을 주석에 박았다.
+- 후속 추천: ⑴**게이트②** — `CLAUDE.md` DoD 상 ★**머지는 검수자가 approve 와 «같은 턴»에 집행**한다
+  (`<id>-merge` 는 **예외 경로**다). ⑵**S5**(컷 `c4665b0` · 171파일 +33,138) —
+  ★**착수 첫 조치는 `git merge -s ours --no-ff 3296139`**(S4 도 스쿼시로 착지하면 족보가 또 끊긴다).
+  ⑶★**`thread.rs` 는 S1·S3·S4 «세 회차 연속» 충돌한다** — S5~S7 도 기본값으로 잡아라. 전략은 불변
+  (upstream 본문 + 수동 span 1줄 치환). ⑷★**「타이머 성능 회귀」는 «없다» — 그 축으로 발권하지 마라**
+  (위 문단 참조: 컷 전후가 조건 맞춘 실측에서 동일하고, upstream 이 이미 두 번 넓힌 자리다).
+  ★**남는 별 축은 «우리 테스트의 시간 의존»이다** — `test_timer_periodic` 이 벽시계에 의존하고 이번이 세 번째
+  여백 확장이며 red 문턱이 약 4배 둔해졌다. ★**주인은 우리이고 upstream 발신은 «불요»다.**
+  판단 재료 = worklog `2026-08-27-upstream-sync-s4.json` `proposals[0]`.
+
 ## [2026-08-27] upstream 동기 S3 — 컷 `822504b` 머지 (rustjava-upstream-sync-s3)
 - 무엇을: upstream `822504b`(#180 Harden JVM runtime correctness) 1커밋을 머지했다. 충돌 **11** 해소.
   `classfile/{class,constant_pool,error,lib}.rs` · `jvm_rust/class_definition.rs` · `src/runtime.rs` ·

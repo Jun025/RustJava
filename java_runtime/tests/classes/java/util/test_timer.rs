@@ -93,7 +93,14 @@ async fn test_timer_periodic() -> Result<()> {
         .invoke_virtual(&timer, "schedule", "(Ljava/util/TimerTask;JJ)V", (test_class.clone(), 0i64, 50i64))
         .await?;
 
-    let _: () = jvm.invoke_static("java/lang/Thread", "sleep", "(J)V", (500i64,)).await?;
+    // 2000ms, not 500ms. This is a chronic boundary test, not a regression: a 500ms window has
+    // always yielded run_count 3-4 against an expected ~10, on BOTH sides of cut 3296139 (alternating
+    // standalone runs, 10 each: pre 3.5 mean, post 3.5 mean), and it tips below the bound whenever
+    // the machine is loaded. Upstream widened this same margin twice (895d67d, ad8b477) long before
+    // the cut. The `> 2` bound is unchanged - only the window grew.
+    // Known ceiling: a wider window is a duller detector. Mutating the TimerThread loop sleep 16ms
+    // -> 700ms (~5.6x slower) still goes red, but -> 300ms (~2.4x) now passes.
+    let _: () = jvm.invoke_static("java/lang/Thread", "sleep", "(J)V", (2000i64,)).await?;
     let run_count: i32 = jvm.get_field(&test_class, "runCount", "I").await?;
     assert!(run_count > 2);
 
