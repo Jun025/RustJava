@@ -32,6 +32,7 @@ test-utils = { path = "test-utils" }
 [package]
 name = "RustJava"
 description = "An embeddable JVM and Java runtime implemented in Rust"
+exclude = ["docs"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
