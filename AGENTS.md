@@ -18,16 +18,16 @@
 ## Project Structure
 - `jvm/` - Core JVM implementation (`#![no_std]`)
 - `jvm-bytecode/` - JVM class and bytecode implementation
-- `java-runtime/` - Java standard library implementations
+- `rustjava-runtime/` - Java standard library implementations
 - `classfile/` - Class file parser
 - `jvm-class-proto/` - Java class prototypes
 - `jvm-types/` - Shared JVM metadata types
 - `test-utils/` - Shared test utilities
 
 ## Testing Boundaries
-- Keep `java-runtime/tests/classes` limited to Java standard library class and API behavior.
+- Keep `rustjava-runtime/tests/classes` limited to Java standard library class and API behavior.
 - Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test-data/src` and expected output under `test-data`, executed by `tests/test_class.rs`.
-- Do not place JVM core behavior tests in the `java-runtime` standard library test tree.
+- Do not place JVM core behavior tests in the `rustjava-runtime` standard library test tree.
 
 ## Compatibility Sources
 - Implement Java compatibility from public specifications, Javadocs, and observable behavior tests. Do not consult or reproduce OpenJDK or other Java runtime implementation source code; keep the implementation independent to avoid licensing and provenance concerns.

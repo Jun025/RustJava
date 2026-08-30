@@ -12,11 +12,11 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use java_runtime::{
-    File, FileDescriptorId, FileOpenOptions, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback, get_runtime_class_proto,
-};
 use jvm::{ClassDefinition, Jvm};
 use jvm_bytecode::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
+use rustjava_runtime::{
+    File, FileDescriptorId, FileOpenOptions, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback, get_runtime_class_proto,
+};
 
 use self::io::{FileImpl, InputStreamFile, WriteStreamFile};
 

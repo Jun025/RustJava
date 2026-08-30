@@ -22,7 +22,7 @@ use tokio::sync::{Notify, oneshot};
 use jvm::{ClassDefinition, Jvm, Result};
 use jvm_bytecode::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
 
-use java_runtime::{
+use rustjava_runtime::{
     File, FileDescriptorId, FileOpenOptions, FileSize, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback,
     get_bootstrap_class_loader, get_runtime_class_proto,
 };

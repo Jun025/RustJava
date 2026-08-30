@@ -13,4 +13,4 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time"] }
 
 jvm = { workspace = true }
 jvm-bytecode = { workspace = true }
-java-runtime = { workspace = true }
+rustjava-runtime = { workspace = true }
