@@ -5,6 +5,7 @@ members = ["classfile", "java_runtime", "jvm", "jvm_rust", "test_utils"]
 version = "0.1.1"
 edition = "2024"
 license = "MIT"
+repository = "https://github.com/dlunch/RustJava"
 
 [workspace.dependencies]
 anyhow = { version = "^1.0", default-features = false }
@@ -33,6 +34,7 @@ name = "rust_java"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "rust_java"
