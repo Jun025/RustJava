@@ -1,11 +1,11 @@
 use alloc::{format, vec, vec::Vec};
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{
     Array, ClassInstanceRef, Jvm, Result,
     runtime::{JavaIoInputStream, JavaLangString},
 };
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     FileType, RuntimeClassProto, RuntimeContext,

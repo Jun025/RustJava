@@ -1,8 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeMap, format, vec, vec::Vec};
 use core::time::Duration;
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::{
     RuntimeClassProto, RuntimeContext,
     classes::java::{
@@ -11,7 +9,9 @@ use java_runtime::{
     },
 };
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaError, Jvm, Result, runtime::JavaLangString};
-use jvm_rust::ClassDefinitionImpl;
+use jvm_bytecode::ClassDefinitionImpl;
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::{TestRuntime, create_test_jvm, test_jvm};
 

@@ -6,11 +6,11 @@ use core::{
 
 use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc, vec};
 
-use java_class_proto::JavaFieldProto;
-use java_constants::{ClassAccessFlags, FieldAccessFlags};
 use java_runtime::{Runtime, RuntimeClassProto, SpawnCallback, classes::java::lang::Object};
 use jvm::{Array, ClassInstanceRef, JavaError, Jvm, Result};
-use jvm_rust::ClassDefinitionImpl;
+use jvm_bytecode::ClassDefinitionImpl;
+use jvm_class_proto::JavaFieldProto;
+use jvm_types::{ClassAccessFlags, FieldAccessFlags};
 
 use test_utils::{TestRuntime, create_test_jvm};
 

@@ -1,6 +1,5 @@
 use alloc::{collections::BTreeMap, vec};
 
-use java_constants::{FieldAccessFlags, MethodAccessFlags};
 use java_runtime::{
     Runtime,
     classes::java::{
@@ -10,6 +9,7 @@ use java_runtime::{
     },
 };
 use jvm::{ClassInstanceRef, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{FieldAccessFlags, MethodAccessFlags};
 use test_utils::{TestRuntime, create_test_jvm};
 
 #[tokio::test]

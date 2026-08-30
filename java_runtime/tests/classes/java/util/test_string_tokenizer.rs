@@ -1,11 +1,11 @@
 use alloc::vec::Vec;
 
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::{
     lang::{Object, String},
     util::StringTokenizer,
 };
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

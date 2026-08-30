@@ -1,8 +1,8 @@
 use alloc::{format, string::ToString, vec, vec::Vec};
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaError, Jvm, Result, runtime::JavaLangString};
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use regex::{Regex, RegexBuilder};
 
 use crate::{

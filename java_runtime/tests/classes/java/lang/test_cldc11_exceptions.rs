@@ -1,6 +1,6 @@
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use java_runtime::{classes::java::lang::String, get_runtime_class_proto};
 use jvm::{ClassInstanceRef, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

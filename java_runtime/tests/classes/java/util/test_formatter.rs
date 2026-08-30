@@ -1,4 +1,3 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::{
     classes::java::{
         io::{File, OutputStream, PrintStream},
@@ -8,6 +7,7 @@ use java_runtime::{
     get_runtime_class_proto,
 };
 use jvm::{Array, ClassInstanceRef, JavaError, JavaValue, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use test_utils::test_jvm;
 
 #[test]

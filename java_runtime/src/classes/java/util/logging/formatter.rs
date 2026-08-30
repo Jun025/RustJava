@@ -1,8 +1,8 @@
 use alloc::{string::String as RustString, vec, vec::Vec};
 
-use java_class_proto::JavaMethodProto;
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+use jvm_class_proto::JavaMethodProto;
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use crate::{
     RuntimeClassProto, RuntimeContext,

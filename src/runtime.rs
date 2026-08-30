@@ -16,7 +16,7 @@ use java_runtime::{
     File, FileDescriptorId, FileOpenOptions, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback, get_runtime_class_proto,
 };
 use jvm::{ClassDefinition, Jvm};
-use jvm_rust::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
+use jvm_bytecode::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
 
 use self::io::{FileImpl, InputStreamFile, WriteStreamFile};
 

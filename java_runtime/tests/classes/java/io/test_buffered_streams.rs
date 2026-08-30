@@ -1,6 +1,6 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::get_runtime_class_proto;
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use java_runtime::classes::java::io::{InputStream, OutputStream, Writer};
 use java_runtime::classes::java::lang::Object;

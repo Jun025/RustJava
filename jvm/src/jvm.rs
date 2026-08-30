@@ -16,7 +16,7 @@ use event_listener::Event;
 use hashbrown::HashSet;
 use parking_lot::RwLock;
 
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     Result,

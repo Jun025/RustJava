@@ -11,6 +11,6 @@ pub use self::{
 };
 
 pub type RuntimeContext = dyn runtime::Runtime;
-pub type RuntimeClassProto = java_class_proto::JavaClassProto<dyn runtime::Runtime>;
+pub type RuntimeClassProto = jvm_class_proto::JavaClassProto<dyn runtime::Runtime>;
 
 pub static RT_RUSTJAR: &str = "rt.rustjar";

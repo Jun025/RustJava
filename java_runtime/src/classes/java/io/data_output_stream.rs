@@ -2,9 +2,9 @@ use alloc::{vec, vec::Vec};
 
 use bytemuck::cast_vec;
 
-use java_class_proto::JavaMethodProto;
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, Jvm, Result};
+use jvm_class_proto::JavaMethodProto;
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use crate::{
     RuntimeClassProto, RuntimeContext,

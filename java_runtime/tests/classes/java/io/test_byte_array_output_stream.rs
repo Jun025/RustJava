@@ -2,9 +2,9 @@ use alloc::{vec, vec::Vec};
 
 use bytemuck::cast_vec;
 
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::io::{ByteArrayOutputStream, OutputStream};
 use jvm::{Array, ClassInstanceRef, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

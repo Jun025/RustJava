@@ -1,7 +1,7 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::lang::Math;
 use java_runtime::classes::java::util::Random;
 use jvm::{ClassInstanceRef, Result};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

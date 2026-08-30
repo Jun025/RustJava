@@ -4,9 +4,9 @@ use alloc::{
 };
 
 use classfile::FieldInfo;
-use java_class_proto::JavaFieldProto;
-use java_constants::FieldAccessFlags;
 use jvm::Field;
+use jvm_class_proto::JavaFieldProto;
+use jvm_types::FieldAccessFlags;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct FieldInner {

@@ -1,9 +1,9 @@
 use alloc::{format, string::String as RustString, string::ToString, vec, vec::Vec};
 use core::fmt::Write;
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaError, Jvm, Result, runtime::JavaLangString};
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     RuntimeClassProto, RuntimeContext,

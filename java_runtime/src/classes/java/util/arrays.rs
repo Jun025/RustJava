@@ -1,9 +1,9 @@
 use alloc::vec;
 use core::cmp::Ordering;
 
-use java_class_proto::JavaMethodProto;
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaValue, Jvm, Result};
+use jvm_class_proto::JavaMethodProto;
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
 

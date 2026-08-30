@@ -13,9 +13,9 @@ use core::{
 use parking_lot::RwLock;
 
 use classfile::{AttributeInfo, ClassInfo, ConstantPoolReference};
-use java_class_proto::JavaClassProto;
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassDefinition, ClassInstance, Field, JavaType, JavaValue, Jvm, Method, Result};
+use jvm_class_proto::JavaClassProto;
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{ClassDefinitionError, class_instance::ClassInstanceImpl, field::FieldImpl, method::MethodImpl, verifier};
 

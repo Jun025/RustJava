@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use java_constants::ClassAccessFlags;
+use jvm_types::ClassAccessFlags;
 
 use classfile::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference, Opcode};
 

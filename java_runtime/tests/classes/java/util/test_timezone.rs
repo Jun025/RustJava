@@ -1,9 +1,9 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::{
     lang::String,
     util::{SimpleTimeZone, TimeZone},
 };
 use jvm::{Array, ClassInstanceRef, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

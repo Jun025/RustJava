@@ -2,9 +2,9 @@ use core::char;
 
 use alloc::vec;
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, JavaChar, Jvm, Result, runtime::JavaLangClass};
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     RuntimeClassProto, RuntimeContext,

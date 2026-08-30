@@ -1,9 +1,9 @@
 use alloc::{boxed::Box, format, vec};
 use core::time::Duration;
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, GlobalRef, Jvm, Result, runtime::JavaLangString};
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     RuntimeClassProto, RuntimeContext, SpawnCallback,
@@ -138,7 +138,7 @@ impl Thread {
                 JavaFieldProto::new("alive", "Z", FieldAccessFlags::PRIVATE),
                 JavaFieldProto::new("daemon", "Z", FieldAccessFlags::PRIVATE),
             ],
-            access_flags: java_constants::ClassAccessFlags::PUBLIC,
+            access_flags: jvm_types::ClassAccessFlags::PUBLIC,
         }
     }
 

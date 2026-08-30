@@ -1,10 +1,10 @@
 use alloc::{borrow::ToOwned, string::ToString, vec};
 
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 use url::Url;
 
-use java_class_proto::JavaMethodProto;
 use jvm::{ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+use jvm_class_proto::JavaMethodProto;
 
 use crate::{
     RuntimeClassProto, RuntimeContext,

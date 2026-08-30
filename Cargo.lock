@@ -3,6 +3,23 @@
 version = 4
 
 [[package]]
+name = "RustJava"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytemuck",
+ "java-runtime",
+ "jvm",
+ "jvm-bytecode",
+ "jvm-class-proto",
+ "test-utils",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,7 +105,7 @@ dependencies = [
 name = "classfile"
 version = "0.1.1"
 dependencies = [
- "java_constants",
+ "jvm-types",
  "nom",
 ]
 
@@ -296,24 +313,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "java_class_proto"
-version = "0.1.1"
-dependencies = [
- "async-trait",
- "dyn-clone",
- "java_constants",
- "jvm",
-]
-
-[[package]]
-name = "java_constants"
-version = "0.1.1"
-dependencies = [
- "bitflags",
-]
-
-[[package]]
-name = "java_runtime"
+name = "java-runtime"
 version = "0.1.1"
 dependencies = [
  "async-trait",
@@ -322,14 +322,14 @@ dependencies = [
  "dyn-clone",
  "encoding_rs",
  "hashbrown",
- "java_class_proto",
- "java_constants",
  "jvm",
- "jvm_rust",
+ "jvm-bytecode",
+ "jvm-class-proto",
+ "jvm-types",
  "libm",
  "parking_lot",
  "regex",
- "test_utils",
+ "test-utils",
  "tokio",
  "tracing",
  "tracing-attributes",
@@ -349,16 +349,16 @@ dependencies = [
  "dyn-hash",
  "event-listener",
  "hashbrown",
- "java_constants",
+ "jvm-types",
  "nom",
  "parking_lot",
- "test_utils",
+ "test-utils",
  "tokio",
  "tracing",
 ]
 
 [[package]]
-name = "jvm_rust"
+name = "jvm-bytecode"
 version = "0.1.1"
 dependencies = [
  "async-recursion",
@@ -366,11 +366,28 @@ dependencies = [
  "bytemuck",
  "classfile",
  "dyn-clone",
- "java_class_proto",
- "java_constants",
  "jvm",
+ "jvm-class-proto",
+ "jvm-types",
  "parking_lot",
  "tracing",
+]
+
+[[package]]
+name = "jvm-class-proto"
+version = "0.1.1"
+dependencies = [
+ "async-trait",
+ "dyn-clone",
+ "jvm",
+ "jvm-types",
+]
+
+[[package]]
+name = "jvm-types"
+version = "0.1.1"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]
@@ -569,23 +586,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "rust_java"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "async-trait",
- "bytemuck",
- "java_class_proto",
- "java_runtime",
- "jvm",
- "jvm_rust",
- "test_utils",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -652,13 +652,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_utils"
+name = "test-utils"
 version = "0.1.1"
 dependencies = [
  "async-trait",
- "java_runtime",
+ "java-runtime",
  "jvm",
- "jvm_rust",
+ "jvm-bytecode",
  "tokio",
  "tracing",
 ]

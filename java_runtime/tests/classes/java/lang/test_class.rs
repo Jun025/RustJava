@@ -1,4 +1,3 @@
-use java_constants::MethodAccessFlags;
 use java_runtime::{
     Runtime,
     classes::java::{
@@ -11,6 +10,7 @@ use jvm::{
     Array, ClassInstanceRef, JavaError, Jvm, Result,
     runtime::{JavaLangClass, JavaLangString},
 };
+use jvm_types::MethodAccessFlags;
 
 use test_utils::{TestRuntime, test_jvm};
 

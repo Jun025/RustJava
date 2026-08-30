@@ -1,5 +1,6 @@
 [package]
-name = "jvm_rust"
+name = "jvm-bytecode"
+description = "JVM class and bytecode support for the jvm crate"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -14,6 +15,6 @@ parking_lot = { workspace = true }
 tracing = { workspace = true }
 
 classfile = { workspace = true }
-java_class_proto = { workspace = true }
-java_constants = { workspace = true }
 jvm = { workspace = true }
+jvm-class-proto = { workspace = true }
+jvm-types = { workspace = true }

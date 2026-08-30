@@ -20,7 +20,7 @@ use std::{
 use tokio::sync::{Notify, oneshot};
 
 use jvm::{ClassDefinition, Jvm, Result};
-use jvm_rust::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
+use jvm_bytecode::{ArrayClassDefinitionImpl, ClassDefinitionError, ClassDefinitionImpl};
 
 use java_runtime::{
     File, FileDescriptorId, FileOpenOptions, FileSize, FileStat, FileType, IOError, IOResult, RT_RUSTJAR, Runtime, SpawnCallback,

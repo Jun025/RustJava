@@ -6,9 +6,9 @@ use core::{
 use alloc::{boxed::Box, format, vec};
 
 use dyn_clone::clone_box;
-use java_class_proto::JavaMethodProto;
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstance, ClassInstanceRef, Jvm, MonitorWaitTimeout, Result, runtime::JavaLangString};
+use jvm_class_proto::JavaMethodProto;
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use crate::{Runtime, RuntimeClassProto, RuntimeContext, SpawnCallback, classes::java::lang::String};
 

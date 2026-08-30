@@ -1,4 +1,3 @@
-use java_constants::MethodAccessFlags;
 use java_runtime::{
     classes::java::{
         lang::{CharSequence, String, StringBuffer},
@@ -7,6 +6,7 @@ use java_runtime::{
     get_runtime_class_proto,
 };
 use jvm::{ClassInstanceRef, JavaError, Jvm, Result, runtime::JavaLangString};
+use jvm_types::MethodAccessFlags;
 
 use test_utils::test_jvm;
 

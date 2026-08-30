@@ -1,9 +1,9 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::{
     classes::java::{lang::String, util::logging::Level},
     get_runtime_class_proto,
 };
 use jvm::{ClassInstanceRef, JavaError, Result, runtime::JavaLangString};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use test_utils::test_jvm;
 
 #[test]

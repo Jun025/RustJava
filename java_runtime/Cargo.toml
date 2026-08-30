@@ -1,5 +1,6 @@
 [package]
-name = "java_runtime"
+name = "java-runtime"
+description = "A Java standard library implementation for RustJava"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -21,12 +22,12 @@ tracing-attributes = { version = "<0.1.29" }                                    
 url = { version = "^2.5", default-features = false }
 zip = { version = "^8.6", features = ["deflate"], default-features = false }
 
-java_class_proto = { workspace = true }
-java_constants = { workspace = true }
 jvm = { workspace = true }
+jvm-class-proto = { workspace = true }
+jvm-types = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 
-jvm_rust = { workspace = true }
-test_utils = { workspace = true }
+jvm-bytecode = { workspace = true }
+test-utils = { workspace = true }

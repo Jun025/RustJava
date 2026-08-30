@@ -5,15 +5,15 @@ use alloc::{
     vec::Vec,
 };
 
-use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::{
     RuntimeClassProto, RuntimeContext,
     classes::java::{lang::Object, util::TreeMapEntry},
     get_runtime_class_proto,
 };
 use jvm::{Array, ClassInstanceRef, JavaError, Jvm, Result};
-use jvm_rust::ClassDefinitionImpl;
+use jvm_bytecode::ClassDefinitionImpl;
+use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::{TestRuntime, create_test_jvm};
 

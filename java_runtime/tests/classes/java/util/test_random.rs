@@ -1,6 +1,6 @@
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::util::Random;
 use jvm::{Array, ClassInstanceRef, JavaError, Result};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 

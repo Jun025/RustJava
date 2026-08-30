@@ -3,7 +3,7 @@ use core::fmt::Debug;
 
 use dyn_clone::{DynClone, clone_trait_object};
 
-use java_constants::ClassAccessFlags;
+use jvm_types::ClassAccessFlags;
 
 use crate::{ArrayClassDefinition, ClassInstance, Field, JavaValue, Jvm, Method, Result, as_any::AsAny};
 

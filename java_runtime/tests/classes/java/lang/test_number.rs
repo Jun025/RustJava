@@ -1,6 +1,6 @@
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::lang::{Comparable, Number};
 use jvm::{JavaError, Result};
+use jvm_types::{ClassAccessFlags, MethodAccessFlags};
 
 use test_utils::test_jvm;
 
