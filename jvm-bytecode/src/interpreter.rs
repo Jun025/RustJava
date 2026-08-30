@@ -1,3 +1,5 @@
+#![allow(clippy::double_must_use)] // temporary until https://github.com/rust-lang/rust-clippy/issues/17529 fix lands
+
 use alloc::{boxed::Box, format, vec, vec::Vec};
 use core::iter;
 
