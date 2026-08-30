@@ -6,7 +6,7 @@ use classfile::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference,
 
 #[test]
 fn test_hello() {
-    let hello = include_bytes!("../../test_data/Hello.class");
+    let hello = include_bytes!("../../test-data/Hello.class");
 
     let class = ClassInfo::parse(hello).unwrap();
 
@@ -57,7 +57,7 @@ fn test_hello() {
 
 #[test]
 fn test_odd_even() {
-    let odd_even = include_bytes!("../../test_data/OddEven.class");
+    let odd_even = include_bytes!("../../test-data/OddEven.class");
 
     let class = ClassInfo::parse(odd_even).unwrap();
 
@@ -85,7 +85,7 @@ fn test_odd_even() {
 
 #[test]
 fn test_superclass() {
-    let super_class = include_bytes!("../../test_data/SuperClass.class");
+    let super_class = include_bytes!("../../test-data/SuperClass.class");
 
     let class = ClassInfo::parse(super_class).unwrap();
 
@@ -98,7 +98,7 @@ fn test_superclass() {
 
 #[test]
 fn test_switch() {
-    let super_class = include_bytes!("../../test_data/Switch.class");
+    let super_class = include_bytes!("../../test-data/Switch.class");
 
     let class = ClassInfo::parse(super_class).unwrap();
 
@@ -128,7 +128,7 @@ fn test_switch_rejects_entry_counts_larger_than_remaining_input() {
 
 #[test]
 fn test_invokeinterface() {
-    let interface = include_bytes!("../../test_data/Interface.class");
+    let interface = include_bytes!("../../test-data/Interface.class");
 
     let class = ClassInfo::parse(interface).unwrap();
 
@@ -147,7 +147,7 @@ fn test_invokeinterface() {
 
 #[test]
 fn test_malformed_class_files_return_structured_errors() {
-    let hello = include_bytes!("../../test_data/Hello.class");
+    let hello = include_bytes!("../../test-data/Hello.class");
 
     assert_eq!(ClassInfo::parse(&[]).err(), Some(ClassFileError::InvalidFormat));
 
@@ -179,7 +179,7 @@ fn test_malformed_class_files_return_structured_errors() {
 
 #[test]
 fn test_class_info_validation_rejects_invalid_names_descriptors_and_code_layout() {
-    let hello = include_bytes!("../../test_data/Hello.class");
+    let hello = include_bytes!("../../test-data/Hello.class");
 
     let mut invalid_name = ClassInfo::parse(hello).unwrap();
     invalid_name.this_class = "[I".to_string().into();
@@ -196,5 +196,5 @@ fn test_class_info_validation_rejects_invalid_names_descriptors_and_code_layout(
 
 #[test]
 fn test_array_clone_method_owner_is_a_valid_class_constant() {
-    assert!(ClassInfo::parse(include_bytes!("../../test_data/Array.class")).is_ok());
+    assert!(ClassInfo::parse(include_bytes!("../../test-data/Array.class")).is_ok());
 }

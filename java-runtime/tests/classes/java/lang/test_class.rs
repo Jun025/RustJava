@@ -583,10 +583,10 @@ async fn test_define_class_translates_parser_errors_to_java_errors() -> Result<(
         .into();
     let name: ClassInstanceRef<String> = None.into();
 
-    let mut unsupported_version = include_bytes!("../../../../../test_data/Hello.class").to_vec();
+    let mut unsupported_version = include_bytes!("../../../../../test-data/Hello.class").to_vec();
     unsupported_version[6..8].copy_from_slice(&71u16.to_be_bytes());
 
-    let mut verification_error = include_bytes!("../../../../../test_data/MultiArray.class").to_vec();
+    let mut verification_error = include_bytes!("../../../../../test-data/MultiArray.class").to_vec();
     let multianewarray = [0x10, 0x0a, 0x10, 0x0a, 0x10, 0x0a, 0x10, 0x0a, 0x10, 0x0a, 0xc5, 0x00, 0x07, 0x05];
     let multianewarray_offset = verification_error
         .windows(multianewarray.len())

@@ -5,7 +5,7 @@ use test_utils::test_jvm_filesystem;
 
 #[tokio::test]
 async fn test_jar_manifest() -> Result<()> {
-    let jar = include_bytes!("../../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 
@@ -45,7 +45,7 @@ async fn test_jar_manifest() -> Result<()> {
 
 #[tokio::test]
 async fn test_entries() -> Result<()> {
-    let jar = include_bytes!("../../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 

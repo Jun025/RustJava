@@ -5,7 +5,7 @@ import java.util.zip.ZipFile;
 public class ZipCorrupt {
     public static void main(String[] args) throws Exception {
         try {
-            new ZipFile(new File("test_data/FileLength.txt"));
+            new ZipFile(new File("test-data/FileLength.txt"));
             System.out.println("no-ex");
         } catch (ZipException e) {
             System.out.println("zipex");

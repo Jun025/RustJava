@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn rejects_multianewarray_dimensions_larger_than_the_array_type() {
-        let mut class = ClassInfo::parse(include_bytes!("../../test_data/MultiArray.class")).unwrap();
+        let mut class = ClassInfo::parse(include_bytes!("../../test-data/MultiArray.class")).unwrap();
         let mut changed = false;
         for method in &mut class.methods {
             for attribute in &mut method.attributes {

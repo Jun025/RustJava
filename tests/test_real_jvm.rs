@@ -10,7 +10,7 @@ use test_helper::{run_class, run_jar};
 #[tokio::test]
 #[ignore]
 async fn test_real_jvm() -> Result<()> {
-    let base_path = Path::new("test_data");
+    let base_path = Path::new("test-data");
 
     let paths = fs::read_dir(base_path).unwrap();
 
@@ -43,7 +43,7 @@ async fn test_real_jvm() -> Result<()> {
                 .unwrap();
 
             (
-                run_class(&path, &[Path::new("./test_data/")], &[]).await,
+                run_class(&path, &[Path::new("./test-data/")], &[]).await,
                 String::from_utf8(java_result.stdout).unwrap(),
             )
         };

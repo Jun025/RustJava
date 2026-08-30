@@ -26,7 +26,7 @@
 
 ## Testing Boundaries
 - Keep `java-runtime/tests/classes` limited to Java standard library class and API behavior.
-- Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test_data/src` and expected output under `test_data`, executed by `tests/test_class.rs`.
+- Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test-data/src` and expected output under `test-data`, executed by `tests/test_class.rs`.
 - Do not place JVM core behavior tests in the `java-runtime` standard library test tree.
 
 ## Compatibility Sources

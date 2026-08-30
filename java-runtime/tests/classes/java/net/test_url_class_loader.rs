@@ -7,7 +7,7 @@ use test_utils::test_jvm_filesystem;
 
 #[tokio::test]
 async fn test_jar_loading() -> Result<()> {
-    let jar = include_bytes!("../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 
@@ -56,7 +56,7 @@ async fn test_jar_loading() -> Result<()> {
 
 #[tokio::test]
 async fn test_jar_loading_with_slash() -> Result<()> {
-    let jar = include_bytes!("../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 
@@ -143,7 +143,7 @@ async fn test_load_from_dir() -> Result<()> {
 
 #[tokio::test]
 async fn test_jar_loading_no_file() -> Result<()> {
-    let jar = include_bytes!("../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 
@@ -203,7 +203,7 @@ async fn test_load_from_dir_no_file() -> Result<()> {
 
 #[tokio::test]
 async fn test_missing_url_does_not_prevent_later_jar_lookup() -> Result<()> {
-    let jar = include_bytes!("../../../../../test_data/test.jar");
+    let jar = include_bytes!("../../../../../test-data/test.jar");
     let filesystem = [("test.jar".into(), jar.to_vec())].into_iter().collect();
     let jvm = test_jvm_filesystem(filesystem).await?;
 

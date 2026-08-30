@@ -9,7 +9,7 @@ use test_helper::{run_class, run_jar};
 // TODO parameterized tests..
 #[tokio::test]
 async fn test_class() -> Result<()> {
-    let base_path = Path::new("test_data");
+    let base_path = Path::new("test-data");
 
     let paths = fs::read_dir(base_path).unwrap();
 
@@ -35,7 +35,7 @@ async fn test_class() -> Result<()> {
         let result = if extension.unwrap().to_str().unwrap() == "jar" {
             run_jar(&path, &[]).await
         } else {
-            run_class(&path, &[Path::new("./test_data/")], &[]).await
+            run_class(&path, &[Path::new("./test-data/")], &[]).await
         };
 
         if let Err(err) = result {
