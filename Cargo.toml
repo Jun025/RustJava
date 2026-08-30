@@ -27,7 +27,7 @@ jvm = { path = "jvm", version = "0.1.1" }
 jvm-bytecode = { path = "jvm-bytecode", version = "0.1.1" }
 jvm-class-proto = { path = "jvm-class-proto", version = "0.1.1" }
 jvm-types = { path = "jvm-types", version = "0.1.1" }
-test-utils = { path = "test-utils", version = "0.1.1" }
+test-utils = { path = "test-utils" }
 
 [package]
 name = "RustJava"
