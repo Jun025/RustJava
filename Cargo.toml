@@ -1,5 +1,5 @@
 [workspace]
-members = ["classfile", "java_runtime", "jvm", "jvm_rust", "test_utils"]
+members = ["classfile", "java-runtime", "jvm", "jvm-bytecode", "jvm-class-proto", "jvm-types", "test-utils"]
 
 [workspace.package]
 version = "0.1.1"
@@ -22,12 +22,12 @@ tracing = { version = "^0.1", default-features = false, features = ["attributes"
 tokio = { version = "^1.52", features = ["macros"] }
 
 classfile = { path = "classfile", version = "0.1.1" }
-java-runtime = { path = "java_runtime", version = "0.1.1" }
+java-runtime = { path = "java-runtime", version = "0.1.1" }
 jvm = { path = "jvm", version = "0.1.1" }
-jvm-bytecode = { path = "jvm_rust", version = "0.1.1" }
-jvm-class-proto = { path = "java_class_proto", version = "0.1.1" }
-jvm-types = { path = "java_constants", version = "0.1.1" }
-test-utils = { path = "test_utils", version = "0.1.1" }
+jvm-bytecode = { path = "jvm-bytecode", version = "0.1.1" }
+jvm-class-proto = { path = "jvm-class-proto", version = "0.1.1" }
+jvm-types = { path = "jvm-types", version = "0.1.1" }
+test-utils = { path = "test-utils", version = "0.1.1" }
 
 [package]
 name = "RustJava"
