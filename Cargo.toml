@@ -1,5 +1,5 @@
 [workspace]
-members = ["classfile", "java-runtime", "jvm", "jvm-bytecode", "jvm-class-proto", "jvm-types", "test-utils"]
+members = ["classfile", "java-runtime", "jvm", "jvm-bytecode", "jvm-class-proto", "jvm-types"]
 
 [workspace.package]
 version = "0.1.1"
