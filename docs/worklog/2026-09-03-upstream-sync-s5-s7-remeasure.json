@@ -28,7 +28,8 @@
     "★.json 소비자는 proposals[]·adoptedProposals·declinedProposals 만 읽는다 — verification·issues·summary 에 적은 수는 cockpit 에 도달하지 않는다(사람 축이다). 이번 정정의 실물은 docs/upstream-sync-approach.md §5 · REPORT.md · STATE.md 에 있다.",
     "S5~S7 을 실제로 수행하지 않았다 — 이 회차는 재측정과 문서다(티켓 non-goal). merge-tree 는 워킹트리·ref 를 만지지 않는 읽기 전용 측정이다.",
     "머지하지 않았다 — 게이트②·③은 별 세션이다. upstream(dlunch/RustJava) 발신 0.",
-    "★[2026-09-04 게이트² 반려 처분] 측정 22셀은 전건 정확했고 «그 수를 설명하는 문장» 5건을 고쳤다: ⑴class_format_error.rs 의 「upstream 변경 0」은 거짓이고 0 인 쪽이 우리였다(major) ⑵우리 쪽 numstat 방향 반전 ⑶148 이 base 3a59776 의 오파싱인데 ⓒ의 참값 3 과 짝지어졌다 ⑷UnsupportedCharset.java 경로 ⑸구간 커밋 표기의 왼쪽 끝점 생략. 표·결론은 바꾸지 않았다."
+    "★[2026-09-04 게이트² 반려 처분] 측정 22셀은 전건 정확했고 «그 수를 설명하는 문장» 5건을 고쳤다: ⑴class_format_error.rs 의 「upstream 변경 0」은 거짓이고 0 인 쪽이 우리였다(major) ⑵우리 쪽 numstat 방향 반전 ⑶148 이 base 3a59776 의 오파싱인데 ⓒ의 참값 3 과 짝지어졌다 ⑷UnsupportedCharset.java 경로 ⑸구간 커밋 표기의 왼쪽 끝점 생략. 표·결론은 바꾸지 않았다.",
+    "★[게이트③ 2026-09-04] PR #19 를 ★--merge 로 착지시켰다(★--squash 아님 — rustjava 는 contracts/upstream-sync-repos.conf 등재 repo 라 스쿼시가 merge-base 를 fork 시점으로 되돌린다). 검수 핀 aafb5313(불이동) · 착지 «전» PR #20 이 먼저 들어와 REPORT.md·STATE.md 에 위치 충돌 2건이 났고 합집합으로 해소했다(코드 파일 충돌 0 · 해소면 밖 변경 0 — approach.md 와 이 워크로그 쌍은 승인 형상과 바이트 동일)."
   ],
   "proposals": [
     {
