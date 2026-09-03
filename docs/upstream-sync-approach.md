@@ -426,6 +426,50 @@ upstream 신규 io 테스트 **3파일 5곳**이 `System.setProperty` 를 **`)Lj
 > ★**개명 충돌은 내용 충돌보다 위험하다** — 3-way 가 rename 을 놓치면 우리 픽스처가 «삭제 대 수정»으로 나타나 **조용히 사라질 수 있다.**
 > ⇒ S8 은 「물량」이 아니라 **별도 판정 회차**로 잡아라(발권 전 `--find-renames` 로 대응관계를 먼저 고정).
 
+### ★★[2026-09-04] S6 착지 기록 — ★**「새 충돌 0」은 «델타»였다. 「풀 것이 없다」가 아니다**
+
+**착수 시 재측정**(★§5 상시 규칙 · base 병기): base = `origin/main` **`a0b5d3c`** · `merge-base` **`c4665b0`**
+⇒ 컷 `95ebc5c` 충돌 ★**1건** — `java_runtime/src/classes/java/lang/string.rs`.
+
+★★**예측(0)과 어긋난 것이 «아니다» — 축이 다르다. 이 구별을 여기 못박는다**:
+
+| 무엇을 잰 수인가 | base | 값 |
+|---|---|---|
+| 2026-09-03 재측정의 「S6 새 충돌 **0**」 = ★**델타**(새로 «나타난» 파일 수) | `8c1238b`(merge-base `3296139c`) | 누적 `c4665b0` **3** → `95ebc5c` **3** ⇒ 델타 **0** |
+| 이번 착수 재측정 = ★**누적**(그 base 에서 실제로 열리는 파일 수) | `a0b5d3c`(merge-base `c4665b0`) | ★**1** |
+
+⇒ ★★**둘 다 참이다.** `string.rs` 는 S5 에서 «이미» 충돌 집합에 있었으므로 S6 에서 «새로» 나타나지 않았고(델타 0),
+S5 착지로 base 가 옮겨간 뒤에도 **우리 쪽 분기가 남아 있어**(`c4665b0`→`origin/main` **+8/−28** = S5 의 설계 판단 산물)
+upstream 이 그 파일을 만지는 한(이 구간 **+402/−121**) **계속 열린다**.
+★★**§5 상시 규칙에 한 줄 보탠다 — 충돌 수를 적을 때는 base 와 «함께» ★«델타인가 누적인가»도 밝혀라.**
+base 만 병기하면 「0」이 「풀 것이 없다」로 읽힌다 — 이번이 정확히 그 형태였다.
+
+**해소 — `string.rs` import 블록 «합집합»**(충돌면은 import 한 곳뿐):
+우리 `charset::Charset` **유지** + upstream 의 재구조화 `classes::java::{lang::{Object, System},
+util::{Formatter, Locale, regex::{Matcher, Pattern}}}` **채택**.
+검증: `Charset::from_name`·`Charset::resolve` 호출부 **4곳 생존** · ★**S5 가 버린 `decode_str`/`encode_str` 재유입 0**.
+
+★★**계약4⒝ 정독이 「충돌 0으로 들어온」 파손 1건을 «테스트를 돌리기 전에» 잡았다 — 이 형태는 이번이 «세 번째»다.**
+upstream 이 이 구간에 **새로** 넣은 `java_runtime/tests/classes/java/util/regex/test_pattern_syntax_exception.rs` 가
+`System.setProperty` 를 **`)Ljava/lang/Object;`** 로 **3곳** 부른다(우리는 PR #5 에서 JDK 규격대로 `String`).
+★**신규 파일이라 충돌이 «날 수가 없다»** — `merge-tree` 가 원리적으로 못 보는 자리다.
+⇒ 서술자만 `String` 으로 맞췄다(S5 가 5곳에 적용한 **확립된 처분**과 같다 · `Properties.setProperty` 의 `Object` 는 JDK 규격상 옳아 **무접촉**).
+★**전례**: S3 `tests/test_class_format.rs` 3건 → S5 io 테스트 5곳 → ★**S6 regex 테스트 3곳.**
+⇒ ★**「우리가 JDK 규격에 맞춘 것 ↔ upstream 이 안 맞춘 것」이 매 회차 새 파일로 재유입된다.**
+
+**계약4⒞ `Cargo.lock` — S5 를 문 자리를 먼저 봤다**: ★**내려간 크레이트 0건**(`async-trait` **0.1.92 유지** ·
+upstream `95ebc5c` 의 lock 도 이미 0.1.92) · 올라간 3(`event-listener` 5.4.1→5.4.2 · `regex-automata` 0.4.14→0.4.16 ·
+`regex-syntax` 0.8.10→0.8.11) · 추가 `regex` · 제거 `concurrent-queue`·`crossbeam-utils`.
+
+**착지 실측**: `merge-base origin/main upstream/main` ★**`c4665b0` → `95ebc5c`** · behind **24 → 13** ·
+머지커밋 **부모 2개**(`a0b5d3c` + `95ebc5c`) · `95ebc5c` 대비 **삭제 파일 0** ·
+`cargo test --all` ★**554 passed / 0 failed / 1 ignored**(S5 427 → **+127**) · stable 4종 + ★**beta 2종 전건 rc=0** ·
+`git grep 'tracing::instrument'` 실사용 **0**(주석 1) · `charset.rs` 실재 · 픽스처 4파일 · `test_class_format.rs` **4/4**.
+
+★**S7 참고(이 회차는 «안 했다»)**: 같은 base 에서 `ba5797b` 누적 충돌 = **2건**(`string.rs` · `thread.rs`) ·
+구간 `95ebc5c..ba5797b` **1커밋**. ★**그 수도 S6 착지로 base 가 또 바뀌므로 S7 착수 시 다시 재라.**
+
+
 ★**S1~S3 이 이 동기화의 «전부»다** — 세 회차가 판단을 다 쓰고, 각각 **한 축씩만** 다룬다.
 검수자가 한 회차에서 읽어야 하는 것은 **우리 해소분**이지 upstream 원본 diff 가 아니다:
 

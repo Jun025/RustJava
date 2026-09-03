@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "upstream 동기 S6 — 컷 95ebc5c(regex·Formatter·Locale) 머지 · 충돌 1 해소 · merge-base c4665b0 → 95ebc5c",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-s6-cut-95ebc5c",
+  "summary": "upstream 95ebc5c(11커밋 · 142파일 +17,593/−483)을 --merge 로 흡수하고 충돌 1건을 해소했다. ★착수 시 재측정(base = origin/main a0b5d3c · merge-base c4665b0)에서 충돌은 예측 0 이 아니라 1건(java/lang/string.rs)이었다. ★그 차이가 이 회차의 첫 산출이다 — 예측과 실측은 둘 다 참이고 축이 다르다: 2026-09-03 재측정의 「S6 새 충돌 0」은 옛 base 8c1238b 에서 잰 «델타»(누적 3 → 3, 새로 나타난 파일 0)이고, 이번 값은 새 base 에서 잰 «누적 1»이다. string.rs 는 S5 의 설계 판단으로 우리 분기(+8/−28)가 남아 upstream 이 그 파일을 만지는 한(이 구간 +402/−121) 계속 열린다. ⇒ §5 상시 규칙에 한 줄 보탰다: 충돌 수에는 base 와 함께 «델타인가 누적인가»도 밝혀라(base 만 병기하면 0 이 「풀 것이 없다」로 읽힌다). 해소는 import 블록 합집합(우리 charset::Charset + upstream 의 재구조화된 classes::java::{lang, util::{Formatter, Locale, regex}}) — Charset 라우팅 4곳 생존 · S5 가 버린 decode_str/encode_str 재유입 0. 그리고 계약4⒝ 정독이 「충돌 0으로 들어온」 파손 1건을 테스트 전에 잡았다: upstream 이 이 구간에 새로 넣은 java/util/regex/test_pattern_syntax_exception.rs 가 System.setProperty 를 )Ljava/lang/Object; 로 3곳 부른다(우리는 PR #5 에서 JDK 규격대로 String) — 신규 파일이라 충돌이 날 수가 없다. 서술자만 String 으로 맞췄다(S5 가 5곳에 적용한 확립된 처분).",
+  "changes": [
+    "git merge 95ebc5c --no-ff — 머지커밋 부모 2개. merge-base origin/main upstream/main c4665b0 → 95ebc5c · behind 24 → 13. -s ours 는 쓰지 않았다(merge-base 가 이미 c4665b0 로 서 있어 복원할 것이 없었다 — S5 부터 2회 연속).",
+    "java_runtime/src/classes/java/lang/string.rs — 유일 충돌(import 블록 hunk 1개)을 합집합으로 해소. 우리 charset::Charset 유지 + upstream 의 재구조화 classes::java::{lang::{Object, System}, util::{Formatter, Locale, regex::{Matcher, Pattern}}} 채택. --theirs 였으면 charset::Charset 이 사라져 Charset 호출부 4곳이 컴파일 실패한다.",
+    "java_runtime/tests/classes/java/util/regex/test_pattern_syntax_exception.rs — upstream 신규 파일. System.setProperty 서술자 3곳을 )Ljava/lang/Object; → )Ljava/lang/String; (우리 PR #5 자산에 맞춤 · 값은 `_` 로 버려져 바인딩 타입 무접촉 · Properties.setProperty 7곳은 JDK 규격상 Object 라 무접촉).",
+    "Cargo.lock — 재생성. ★S5 를 문 자리를 먼저 쟀다: 내려간 크레이트 0건(async-trait 0.1.92 유지 · upstream 95ebc5c 의 lock 도 이미 0.1.92 라 이번엔 하강 압력 자체가 없었다) · 올라간 3(event-listener·regex-automata·regex-syntax) · 추가 regex · 제거 concurrent-queue·crossbeam-utils.",
+    "docs/upstream-sync-approach.md §5 — 「[2026-09-04] S6 착지 기록」 절 신설(델타/누적 구별 · 합집합 해소 · 신규 파일 파손 3회째 · Cargo.lock · 착지 실측 · S7 참고값). 재측정 표는 재작성하지 않았다.",
+    "STATE.md · REPORT.md · docs/worklog/2026-09-04-upstream-sync-s6.{md,json} 갱신·신설."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "착수 실측: base = origin/main a0b5d3c · merge-base origin/main upstream/main = c4665b0620bae7b8859b22589b76c205f924ce3c · behind 24 · 열린 PR 0. 착수 시 충돌 재측정 git merge-tree --write-tree --name-only origin/main 95ebc5c = 1건(java/lang/string.rs). 대조: 같은 명령을 옛 base 8c1238b 로 돌리면 c4665b0 누적 3 · 95ebc5c 누적 3 ⇒ 델타 0(그것이 「새 충돌 0」의 정체다). 착수 baseline cargo test --all = 427 passed / 0 failed / 1 ignored. 착지 후: merge-base = 95ebc5c0c7560ae062a49a67e42d62563b8ee01b · behind 13 · git log -1 --format=%p = a0b5d3c 95ebc5c(부모 2개). green: stable 4종 rc=0(fmt / clippy / wasm32 clippy / test) + ★beta 2종 rc=0(cargo +beta clippy 2축 — S5 가 물린 자리를 push 전에 직접 확인) · cargo test --all = ★554 passed / 0 failed / 1 ignored(S1 169 → S2 191 → S3 216 → S4 261 → S5 427 → S6 554 · 새 red 0) · cargo +beta test --all 도 554 동수. 「해소분 0」 = 95ebc5c 대비 삭제 파일 0건 · 다른 파일 50건 전수가 우리 fork 고유 자산. 계약4⒝ 정독 대상 좁히기: comm -12 로 양쪽이 둘 다 만진 파일 9건만 정독(우리 49 ∩ upstream 142). 그 9건 전건에서 우리 자산 생존 확인 — AGENTS.md +56/−0 · java_runtime/Cargo.toml tracing-attributes 핀 부재 유지 · jvm/src/jvm.rs setProperty String + double_must_use allow 6곳 · test_print_stream +3/−3 · test_print_writer +1/−1 · test_boolean +2/−2 · test_string +41/−0. 교집합 밖 신규 파일 파손은 「우리 자산 서술자를 전 테스트 트리에 대고 다시 grep」 으로 잡았다(awk 로 java/lang/System + setProperty + Object 3줄 인접 판정). S4·S5 축 생존: tracing::instrument 실사용 0(thread.rs:267 주석 1건뿐 · 수동 span 2곳 생존) · tracing-attributes 0 · charset.rs 실재 + Charset 호출부 4 · 픽스처 4파일 · tests/test_class_format.rs 4/4. ★티켓 계약5 의 예시 「test_timer.rs 의 500→2000ms 여백」은 낡았다 — S5 착지로 upstream 이 그 파일을 manual clock 기반 결정성 스위트 12건으로 대체해 여백이 0곳인 것이 정상이다(회귀 아님 · 근거는 §5 S5 착지 기록에 인용 보존). python3 scripts/check-worklog-json.py rc=0.",
+  "issues": [
+    "★★「S6 새 충돌 0」 예측은 «델타»였고 「풀 것이 없다」가 아니었다 — 티켓조차 그렇게 읽었다. §5 상시 규칙이 base 병기만 요구하고 «델타/누적»을 요구하지 않아 생긴 오독이라, 이번에 그 한 줄을 §5 에 보탰다.",
+    "★★「충돌 목록에 없는 파손」이 이번이 세 번째다(S3 test_class_format.rs 3건 → S5 io 테스트 5곳 → S6 regex 테스트 3곳). 이번 건은 upstream 신규 파일이라 merge-tree 도 교집합 대조도 원리적으로 못 본다 — 「우리 자산 서술자를 전 트리에 다시 grep」 이 유일하게 통한 축이었다. S5 워크로그 proposals[1] 이 아직 미처분이다.",
+    "★string.rs 는 S5 의 설계 판단(우리 Charset 라우팅 유지)이 남아 있는 한 upstream 이 그 파일을 만질 때마다 계속 충돌한다 — S7 에서도 충돌 집합에 있다(같은 base 기준 ba5797b 누적 2건 = string.rs + thread.rs). 이것은 결함이 아니라 그 판단의 «상시 비용»이다.",
+    "★티켓 계약5 의 예시 「test_timer.rs 의 500→2000ms 여백이 살아 있는가」는 낡았다 — S5 가 그 파일을 upstream 결정성 스위트로 대체했으므로 여백 0곳이 정상이다. 다음 회차 티켓이 같은 예시를 승계하면 «회귀 없음»을 «회귀»로 오독한다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③이 --squash 면 merge-base 전진(c4665b0 → 95ebc5c)이 통째로 사라진다: <id>-merge 티켓에 merge_strategy: merge 필수(bin/queue-lint 검사22).",
+    "S7 은 손대지 않았다(이 회차는 S6 하나 — merge-base 가 95ebc5c 에서 멈춘 것이 증거). S8 신설 지시(2026-09-03-upstream-sync-s5-s7-remeasure#p0)는 총괄 보류분이라 집행하지 않았다. upstream 발신 0."
+  ],
+  "proposals": [
+    {
+      "title": "S7(컷 ba5797b · 1커밋)을 발권하라 — 남은 마지막 계획 회차이고 충돌 2건이 예상된다",
+      "plainSummary": "원본 저장소의 변경을 받아오는 마지막 계획 회차다. 커밋 하나짜리 구간이지만 바뀐 양이 커서, 우리가 따로 손봐 둔 파일 두 개가 부딪힐 것으로 보인다. 착수할 때 다시 재야 한다.",
+      "userBenefit": "원본과의 격차가 13커밋에서 12커밋으로 줄고, 계획서가 세운 7회차가 완주된다. 남은 12커밋은 폴더 이름이 통째로 바뀐 구간이라 성격이 달라 별도 회차로 다뤄야 하는데, 그 경계가 이 회차로 명확해진다.",
+      "why": "§5 의 7회차 계획에서 S7 이 마지막이다. 이번 착지 시점 base(a0b5d3c 이전)에서 ba5797b 누적 충돌은 2건(string.rs · thread.rs)이었고, 구간은 95ebc5c..ba5797b 1커밋이다. thread.rs 는 S1·S3·S4 에서 세 번 충돌한 자리이고(upstream 이 ThreadStartProxy::call 을 반복 재작성한다) 해소 전략이 확립돼 있다: upstream 본문 + PR #4 의 수동 span. string.rs 는 S5 의 설계 판단이 남긴 상시 비용이다.",
+      "tradeoff": "⑴바로 발권하면 7회차가 완주되고 S8(개명 스윕) 경계가 깨끗해지지만, S6 착지로 base 가 또 바뀌어 착수 시 재측정이 필수다. ⑵S8 을 먼저 설계하면 개명 대응표를 한 번에 잡을 수 있으나 S7 의 1커밋이 그 안에 섞여 회차가 커진다. ⑶건너뛰면 ba5797b 의 접근 플래그·가상 디스패치 스윕이 개명 구간과 함께 와서 판정이 두 배로 어려워진다.",
+      "effort": "M — 1커밋 구간이나 diff 가 319파일 32만 줄대라 「해소분 0」 증명과 스위트 확인이 본체다.",
+      "target": "docs/upstream-sync-approach.md §5 · rustjava-upstream-sync-s7 티켓"
+    },
+    {
+      "title": "「우리 자산 서술자」 목록을 문서화하고 머지 후 재확인을 계약에 넣을지 판정하라 — 같은 파손이 세 번 났다",
+      "plainSummary": "우리가 원본과 다르게 고쳐 둔 함수 이름·형식이 몇 개 있는데, 원본이 새 파일을 추가할 때마다 그 파일이 옛 형식을 쓰고 있어서 조용히 깨진다. 합칠 때 충돌 표시가 안 뜨는 자리라 매번 사람이 기억해서 찾아야 한다.",
+      "userBenefit": "동기화 회차가 「충돌 다 풀었다」로 끝났는데 실제로는 깨진 채 넘어가는 일이 사라진다. 지금은 사람이 기억할 때만 잡히고, 잊으면 테스트가 덮는 자리에서만 드러난다.",
+      "why": "같은 형태가 세 번 났다: S3 test_class_format.rs 문구 단정 3건 · S5 io 테스트 5곳 · S6 regex 테스트 3곳. 셋 다 「우리가 JDK 규격에 맞춘 것 ↔ upstream 이 안 맞춘 것」이고, S6 건은 upstream 신규 파일이라 merge-tree 도 「양쪽이 둘 다 만진 파일」 교집합 대조도 원리적으로 못 본다. 실제로 통한 축은 「우리 자산 서술자를 전 트리에 대고 다시 grep」 하나뿐이었다. 현재 알려진 자산은 System.setProperty 서술자()Ljava/lang/String;)와 ClassFormatError 종류 단정 두 축이다.",
+      "tradeoff": "⑴자산 목록 + grep 명령을 §4 에 적고 회차 계약에 「머지 후 재확인」을 넣으면 싸다(명령 몇 줄)지만 목록을 사람이 유지해야 하고, 새 자산이 생길 때 갱신을 잊으면 다시 샌다. ⑵기계 잠금(자산 서술자를 고정하는 테스트)을 만들면 확실하나 새 도구이고 upstream 이 그 자리를 만질 때마다 손이 간다. ⑶현상 유지면 매 회차 사람의 기억에 의존한다 — 세 번 다 잡히긴 했으나 S5 는 테스트가 잡았지 정독이 잡은 게 아니다.",
+      "effort": "S — ⑴이면 §4 에 자산 목록 + grep 스니펫 한 곳. 판정 자체는 XS.",
+      "target": "docs/upstream-sync-approach.md §4 · 회차 티켓 템플릿"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [
+    "2026-09-04-upstream-sync-s5#p0"
+  ],
+  "declinedProposals": []
+}
