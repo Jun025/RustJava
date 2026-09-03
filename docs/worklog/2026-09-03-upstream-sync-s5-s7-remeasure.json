@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "date": "2026-09-03",
+  "title": "S5~S7 「새 충돌」 재측정(세 base 병기) + 「충돌 수에 base 병기」를 §5 상시 규칙으로 채택",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-remeasure-s5-s7-and-lock-restore-basis",
+  "summary": "PR #18 이 --merge 로 착지해 merge-base origin/main upstream/main 이 3296139c 로 전진한 뒤 기준으로 S5~S7 을 다시 쟀고, 세 base 를 병기했다(ⓐ계획 기준 03438b0 · ⓑ복원 전 3a59776 · ⓒ복원 후 8c1238b). 같은 컷 ba5797b 가 base 에 따라 19 · 112 · 4 로 갈린다(28배). 새 충돌(ⓒ) = S5 +3 · S6 +0 · S7 +1 이고, S5 는 「충돌 0 물량」이 아니다. 그 3건(Cargo.lock · string.rs · test_timer.rs)은 전부 upstream 이 아니라 우리가 앞 회차에 남긴 로컬 분기가 만든다 — test_timer.rs 는 S4 가 넣은 500→2000ms 여백 그 자체다. 예측 대 실측은 예측이 나온 기준(ⓐ)끼리 짝지었다: S5 0↔+1 일치 · S6 0↔+0 일치 · S7 +3↔+2 예측 과대. 「예측은 하한」은 S7 에서 처음 깨졌다 — Cargo.lock 이중 계상 · class_format_error.rs 경로 오기 · class_format_error.rs 와 throwable.rs 는 둘 다 우리 쪽이 3296139 와 바이트 동일이라 upstream 변경(+4/−3 · +81/−29)이 깨끗이 적용된다(S3 가 upstream 오류 분류를 채택해 수렴시켰다). 판정: 「충돌 수를 적을 때 base 를 반드시 병기한다」를 docs/upstream-sync-approach.md §5 상시 규칙으로 두었다.",
+  "changes": [
+    "docs/upstream-sync-approach.md §5 — 「[상시 규칙 · 2026-09-03 채택] 충돌 수를 적을 때는 base 를 반드시 병기한다」 절 신설(형식 · 19/112/4 근거표 · 병기해야 할 두 축) + 「[2026-09-03 재측정]」 블록 신설(세 base 대조표 · ⓒ 충돌 파일 목록 · 예측 대 실측 · S5~S7 재조정 판정 · S8 부수 발견).",
+    "docs/upstream-sync-approach.md 「제안 — 7회차」 표 — S5~S7 「새 충돌」 칸을 취소선 + 화살표로 정정하고(사료 보존) 표 아래에 「취소선 칸은 2026-08-16 계획 기준의 사료다 — 지우지 마라」 표지 추가. 2026-08-27 정정 블록은 무접촉.",
+    "STATE.md — 진행중 항목 신설 · ① 절의 「S4 착지 대기」·「다음은 S4」·「예측은 하한 3회 연속」·「thread.rs 는 S5~S7 도 기본값」 네 곳을 취소선/정정 표지로 갱신.",
+    "REPORT.md — [2026-09-03] 요약 3줄 + 검증 + 후속 추천 2건 append.",
+    "docs/worklog/2026-09-03-upstream-sync-s5-s7-remeasure.{md,json} 신설."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "선행 조건 실측: gh pr list -R Jun025/RustJava --state open → 0건 · PR #18 머지커밋 8c1238b 부모 2개 · git merge-base origin/main upstream/main = 3296139cc7ce63822941db5180bd19a8545367e4 · git rev-list --count origin/main..upstream/main = 30. 측정: git merge-tree --write-tree --name-only <base> <cut> 의 2번째 줄~첫 빈 줄 앞까지를 센다(그 뒤 Auto-merging 정보 블록을 세면 안 된다. ★[2026-09-04 정정] 초판의 「148 → 실제 3」은 두 base 를 섞은 짝이다 — 오파싱 148 은 base 3a59776(ⓑ)에서만 나오고 그 base 의 참값은 45 다(같은 오파싱을 ⓒ 8c1238b 에 돌리면 15/참값 3 · ⓐ 03438b0 이면 58/참값 17). 정확한 문장은 「base 3a59776 에서 148(참값 45)」이고, 파싱 결론 자체는 참이다). ★방법 검증: 계획서 §5 첫 표의 base 03438b0 로 같은 파싱을 돌리면 0·1·2·2·7·16·17·17·17·19 가 한 자리도 안 틀리고 재현된다. 결과 — ⓐ(base 03438b0 · merge-base 62cf0c6a): 3296139=16 · c4665b0=17 · 95ebc5c=17 · ba5797b=19. ⓑ(base 3a59776 · merge-base 62cf0c6a): 10 · 45 · 61 · 112. ⓒ(base 8c1238b · merge-base 3296139c): 0 · 3 · 3 · 4. ★ⓑ↔ⓒ 차이가 계보뿐임을 통제: ⓒ 트리를 ⓑ 계보에 얹은 합성 커밋 git commit-tree 4788ef2f -p 3a59776(ref 미생성)로 재도 45·61·112 로 동일 ⇒ 문서 4파일 diff 영향 0. S7 예측 미달 근거: ★[2026-09-04 정정] 초판이 class_format_error.rs 를 「3296139..ba5797b 에서 upstream 변경 0」이라 적은 것은 거짓이고 0 인 쪽이 반대였다 — 실측 git diff --numstat 3296139 ba5797b -- java_runtime/src/classes/java/lang/class_format_error.rs → 4 3(=+4/−3)이고, 0 줄인 것은 git diff --numstat 3296139 origin/main -- 같은 경로다(블롭 0dbd369a3d906dce6d7bfce470f20606eaf4acf1 로 3296139 와 origin/main 이 동일). ⇒ 충돌하지 않는 이유는 「우리 쪽이 merge-base 와 바이트 동일」이다. throwable.rs 도 같은 술어다 — 우리 git diff --numstat 3296139 origin/main 0줄(블롭 30ace64c 동일)인데 upstream 3296139→ba5797b 은 +81/−29. ★결론(S7 예측 과대 = ⓐ +2)은 불변이다. ★[2026-09-04 정정] 우리 쪽 numstat 방향 — 정본은 git diff --numstat <merge-base> <ours> 다: string.rs +8/−28 · test_timer.rs +8/−1(초판의 +28/−8·+1/−8 은 역순 diff origin/main 3296139 출력이라 폐기). upstream 열은 방향이 옳았다(3296139→c4665b0 = string.rs +285/−31 · test_timer.rs +626/−46) ⇒ 한 표 안에서 방향이 섞였던 것이고, 그래서 §5 상시 규칙에 diff 방향 토큰을 추가했다. 구간 커밋 수는 전부 증분이다: 3296139..c4665b0 6 · c4665b0..95ebc5c 11 · 95ebc5c..ba5797b 1 · ba5797b..upstream/main 12 = 합 30(누적은 3296139..95ebc5c 17 · 3296139..ba5797b 18 로 다른 수다). S8 축: ⓒ 누적 11 · java_runtime→rustjava-runtime · test_data→test-data 개명 · ★충돌 경로 실측 전문 11건 = Cargo.lock, java_runtime/src/classes/java/lang/string.rs, java_runtime/tests/classes/java/lang/test_string.rs, java_runtime/tests/classes/java/util/test_timer.rs, rustjava-runtime/src/charset.rs, rustjava-runtime/src/classes/java/lang/thread.rs, test-data/TimeApi.class, test-data/TimeApi.txt, test-data/UnsupportedCharset.class, test-data/UnsupportedCharset.txt, test-data/src/UnsupportedCharset.java(★.java 만 src/ 아래 — 초판의 UnsupportedCharset.{java,class,txt} 는 경로 오기). 락: python3 scripts/check-worklog-json.py rc=0. ★코드(.rs) 변경 0 이므로 cargo 축은 트리 입력 불변으로 담보된다.",
+  "issues": [
+    "★S5 는 「충돌 0 물량」이 아니다 — ⓒ 기준 새 충돌 3건이고 그중 string.rs 는 설계 판단이다(upstream 3296139→c4665b0 +285/−31 ↔ 우리 3296139→origin/main +8/−28). S5 티켓을 「물량」으로 발권하면 size/timeout 이 처음부터 틀린다(S4 가 정확히 그렇게 틀렸다).",
+    "★「예측은 하한이다」가 절대적이지 않음이 처음 실측됐다 — S7 예측 +3 ↔ 실측 ⓐ+2 · ⓒ+1. 초과는 우리 로컬 분기가 만들고(S5 0↔+3) 미달은 앞 회차가 수렴시켜서 난다(S3 가 upstream 오류 분류를 채택). 하한으로 쓰되 근거로 삼지 마라.",
+    "★계획서 §5 표의 S7 「+3」은 Cargo.lock 을 S5·S7 에 이중 계상했고, class_format_error.rs 의 경로도 틀렸다(classfile/src/ 가 아니라 java_runtime/src/classes/java/lang/). 취소선으로 사료를 남기고 정정했다.",
+    "★「7회차」로는 upstream 헤드에 닿지 않는다 — ba5797b 뒤로 12커밋(헤드 bd42427 · 2026-08-31)이 더 붙었고 ⓒ 누적 충돌 11(S7 의 4 대비 +7)이다. 그 구간이 java_runtime/→rustjava-runtime/ · test_data/→test-data/ 개명 스윕이라 새 7건이 우리 고유 산출물에 꽂힌다: rustjava-runtime/src/charset.rs · test-data/UnsupportedCharset.class · test-data/UnsupportedCharset.txt · test-data/src/UnsupportedCharset.java(★.java 만 src/ 아래다) · test-data/TimeApi.class · test-data/TimeApi.txt · java_runtime/tests/classes/java/lang/test_string.rs. 개명 충돌은 3-way 가 rename 을 놓치면 픽스처가 「삭제 대 수정」으로 조용히 사라진다.",
+    "★옛 워크로그 .json(2026-08-27-upstream-sync-squash-convergence.json)의 수는 고치지 않았다 — 그 안의 수는 S2·S4 값이고 지금도 정확하며(이번 회차는 S5~S7 을 쟀다), 요구 ③ 사료 보존과도 정합한다. 대신 그 파일 proposals[1] 을 adoptedProposals 로 처분해 cockpit 패널에서 내렸다.",
+    "★.json 소비자는 proposals[]·adoptedProposals·declinedProposals 만 읽는다 — verification·issues·summary 에 적은 수는 cockpit 에 도달하지 않는다(사람 축이다). 이번 정정의 실물은 docs/upstream-sync-approach.md §5 · REPORT.md · STATE.md 에 있다.",
+    "S5~S7 을 실제로 수행하지 않았다 — 이 회차는 재측정과 문서다(티켓 non-goal). merge-tree 는 워킹트리·ref 를 만지지 않는 읽기 전용 측정이다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. upstream(dlunch/RustJava) 발신 0.",
+    "★[2026-09-04 게이트² 반려 처분] 측정 22셀은 전건 정확했고 «그 수를 설명하는 문장» 5건을 고쳤다: ⑴class_format_error.rs 의 「upstream 변경 0」은 거짓이고 0 인 쪽이 우리였다(major) ⑵우리 쪽 numstat 방향 반전 ⑶148 이 base 3a59776 의 오파싱인데 ⓒ의 참값 3 과 짝지어졌다 ⑷UnsupportedCharset.java 경로 ⑸구간 커밋 표기의 왼쪽 끝점 생략. 표·결론은 바꾸지 않았다.",
+    "★[게이트③ 2026-09-04] PR #19 를 ★--merge 로 착지시켰다(★--squash 아님 — rustjava 는 contracts/upstream-sync-repos.conf 등재 repo 라 스쿼시가 merge-base 를 fork 시점으로 되돌린다). 검수 핀 aafb5313(불이동) · 착지 «전» PR #20 이 먼저 들어와 REPORT.md·STATE.md 에 위치 충돌 2건이 났고 합집합으로 해소했다(코드 파일 충돌 0 · 해소면 밖 변경 0 — approach.md 와 이 워크로그 쌍은 승인 형상과 바이트 동일)."
+  ],
+  "proposals": [
+    {
+      "title": "S8 을 신설하고 「개명 스윕 판정 회차」로 발권하라 — ba5797b 뒤 12커밋이 우리 픽스처를 조용히 지울 수 있다",
+      "plainSummary": "원본 저장소가 폴더 이름을 통째로 바꿨다(java_runtime → rustjava-runtime, test_data → test-data). 우리가 직접 만든 테스트 자료가 바로 그 폴더 안에 있어서, 평소처럼 합치면 「지워진 파일을 우리가 고쳤다」는 형태로 나타나 자칫 조용히 사라질 수 있다.",
+      "userBenefit": "우리가 PR #2·#5 에서 만든 회귀 잠금 픽스처(TimeApi · UnsupportedCharset)와 charset.rs 가 동기화 중에 유실되지 않는다. 유실되면 이미 고친 패닉 3지점이 아무도 모르게 다시 열린다.",
+      "why": "계획서 §5 의 「7회차」는 2026-08-16 헤드(ba5797b)까지만 덮는데, 지금 헤드는 bd42427 이고 그 사이 12커밋이 더 있다(behind 30). 그 구간의 누적 충돌은 base 8c1238b(merge-base 3296139c) 기준 11 로 S7 의 4 대비 +7 이고, 새로 걸리는 7건이 전부 우리 고유 산출물이다: rustjava-runtime/src/charset.rs · test-data/UnsupportedCharset.class · test-data/UnsupportedCharset.txt · test-data/src/UnsupportedCharset.java(★.java 만 src/ 아래다) · test-data/TimeApi.class · test-data/TimeApi.txt · java_runtime/tests/classes/java/lang/test_string.rs. 원인은 크레이트·디렉터리 개명이라 앞 회차들과 성격이 다르다.",
+      "tradeoff": "⑴별도 판정 회차로 잡으면 회차가 하나 늘지만 rename 대응관계를 먼저 고정할 수 있다(git diff --find-renames). ⑵S7 뒤에 「물량」으로 붙이면 충돌 11건을 한 회차에 만나고, 그중 5건이 바이너리 픽스처(.class)라 3-way 가 무력해 수동 판정이 필요하다. ⑶미루면 upstream 이 더 전진해 개명 이후 커밋이 쌓이고 대응관계가 더 흐려진다.",
+      "effort": "M — 개명 대응표 고정 + 픽스처 5건 경로 이전 판정 + charset.rs·test_string.rs 내용 충돌 해소 + 4종 green.",
+      "target": "docs/upstream-sync-approach.md §5(S8 행 추가) · rustjava-upstream-sync-s8 티켓"
+    },
+    {
+      "title": "S5 티켓의 성격을 「물량」에서 「설계 판단 1건 포함」으로 바꿔 발권하라",
+      "plainSummary": "다음 동기화 회차가 「손댈 것 없는 단순 작업」으로 계획돼 있는데, 실제로는 우리가 고친 문자열 처리 코드와 원본의 대규모 개편이 정면으로 겹친다. 판단이 필요한 작업이다.",
+      "userBenefit": "티켓의 크기·시간이 처음부터 맞아서 회차가 넘어가지 않는다. S4 가 「충돌 0 물량」으로 발권됐다가 실제로 20충돌을 만난 전례가 있다.",
+      "why": "2026-09-03 재측정(base 8c1238b · merge-base 3296139c) 결과 S5 의 새 충돌은 0 이 아니라 3 이다: Cargo.lock(재생성) · java_runtime/src/classes/java/lang/string.rs(우리 3296139→origin/main +8/−28 ↔ upstream 3296139→c4665b0 +285/−31 = 설계 판단) · java_runtime/tests/classes/java/util/test_timer.rs(S4 가 넣은 500→2000ms 여백을 upstream 재작성 위에 다시 얹는 기계 작업). ★그 3건은 upstream 물량이 아니라 우리가 앞 회차에 남긴 로컬 분기가 만든다 — ⓐ 계획 기준에는 없던 파일이다.",
+      "tradeoff": "⑴성격을 바꿔 발권하면 size 가 S→M 이 되고 검수도 「해소분 0 증명」이 아니라 실제 hunk 검토가 된다. ⑵그대로 「물량」으로 두면 착수 세션이 설계 판단을 만나고, 계획서가 그것을 예고하지 않은 상태가 된다. ⑶string.rs 를 upstream 판본으로 통째 채택하면 판단이 사라지지만 PR #5 의 charset 배선이 되돌아갈 위험이 있어 그것 자체가 판정 사항이다.",
+      "effort": "XS — 티켓 문안과 size 조정. 실제 해소는 S5 회차 몫.",
+      "target": "rustjava-upstream-sync-s5 티켓 · docs/upstream-sync-approach.md §5"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [
+    "2026-08-27-upstream-sync-squash-convergence#p1"
+  ],
+  "declinedProposals": []
+}
