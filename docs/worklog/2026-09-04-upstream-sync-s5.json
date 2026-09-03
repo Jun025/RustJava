@@ -28,7 +28,8 @@
     "★★충돌 «목록에 없던» 파손 1건이 실제로 났다(§4 가 경고한 형태) — upstream 신규 io 테스트 3파일 5곳의 System.setProperty 서술자가 우리 PR #5 자산과 어긋나 충돌 마커 0줄인데 NoSuchMethodError 3건. merge-tree 는 충돌만 보고하므로 이 부류는 «스위트를 돌려야» 드러난다.",
     "★string.rs 의 dead code 함정: 충돌면은 「표」에 났는데 의미가 갈린 곳은 「충돌하지 않은 4개 호출부」였다. 충돌면만 보고 한쪽을 통째로 고르면 그 둘이 어긋난다 — 이 estate 가 반복해 밟은 자리다.",
     "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③이 --squash 면 merge-base 전진(3296139c → c4665b0)이 통째로 사라진다: <id>-merge 티켓에 merge_strategy: merge 필수(bin/queue-lint 검사22).",
-    "S6·S7 은 손대지 않았다(이 회차는 S5 하나). upstream 발신 0."
+    "S6·S7 은 손대지 않았다(이 회차는 S5 하나). upstream 발신 0.",
+    "★[게이트③ 2026-09-04] PR #21 을 ★--merge 로 착지시켰다(★--squash 아님 — rustjava 는 contracts/upstream-sync-repos.conf 등재 repo 이고, 이 저장소가 바로 스쿼시 3회로 족보가 원점으로 되돌아간 사고의 당사자다). 검수 핀 2b364ba9(불이동) · base 무전진(origin/main = 1983d9f = 머지 부모1) · 원장 동봉으로 head 가 한 번 움직였고 전/후 sha 는 회신에 있다. ★착지로 base 가 바뀌므로 §5 의 S6·S7 새 충돌 수는 다시 재야 한다(이 회차는 재지 않았다 — S5 하나만 착지)."
   ],
   "proposals": [
     {
