@@ -350,7 +350,8 @@ fork 시점) ⑵**복원 후** = 계보 기록 뒤(`merge-base` 가 직전 컷).
 >
 > **S5~S7 재조정 판정**(수만 바뀌고 순서·축은 불변):
 > - **S5** = 「충돌 0 물량」이 **아니다.** `string.rs` 는 **설계 판단**(우리 charset/`value_range` 분기 ↔ upstream +285/−31)이 붙는다.
->   `test_timer.rs` 는 **S4 여백(2000ms)을 upstream 재작성 위에 다시 얹는** 기계 작업이고, `Cargo.lock` 은 **재생성**이다.
+>   ~~`test_timer.rs` 는 **S4 여백(2000ms)을 upstream 재작성 위에 다시 얹는** 기계 작업이고~~ → ★**착지로 반증됐다(아래 S5 착지 기록)**,
+>   `Cargo.lock` 은 **재생성**이다.
 > - **S6** = 진짜 「새 충돌 0」이다(S5 를 닫으면 남는 게 없다).
 > - **S7** = `thread.rs` 1건. ★**STATE ①의 「`thread.rs` 는 S5~S7 도 「또 충돌한다」를 기본값으로 잡아라」가 «절반» 맞았다** —
 >   S5·S6 은 **충돌하지 않고** S7 에서만 다시 열린다. 해소 전략은 불변(upstream 본문 + `#[tracing::instrument]` 한 줄만 수동 span 치환).
@@ -370,6 +371,58 @@ fork 시점) ⑵**복원 후** = 계보 기록 뒤(`merge-base` 가 직전 컷).
 > ★★**[2026-09-04 정정] 초판의 `test-data/UnsupportedCharset.{java,class,txt}` 는 «경로 오기»다** — `.java` 만
 > `test-data/src/` 아래에 있다. ★**S8 의 첫 조치가 `--find-renames` 대응표 고정이라 이 목록의 경로는 정확해야 한다**
 > (★이 회차가 §5 에서 정정한 결함이 정확히 «경로 오기»였다 — 같은 자리를 두 번 밟았다).
+
+### ★★[2026-09-04] S5 착지 기록 — 예측 3건 중 **2건은 맞고 1건은 반증됐다**
+
+**착수 시 재측정**(§5 상시 규칙 · base = 당시 `main` **`1983d9f`** · `merge-base` **`3296139c`**):
+충돌 **3건**으로 위 재측정 표와 **일치**(그 사이 #19·#20 이 착지했으나 둘 다 문서 회차라 수가 안 바뀌었다).
+
+| # | 파일 | 예측 | ★실제 처분 |
+|---|---|---|---|
+| 1 | `Cargo.lock` | 재생성 | ✔ **재생성**(`cargo build` · 손 머지 0) |
+| 2 | `string.rs` | ★설계 판단 | ✔ **설계 판단이 맞았다 — 단 «형태»가 예상과 달랐다**(아래) |
+| 3 | `test_timer.rs` | 여백 «되얹기» | ★**반증 — 되얹을 자리가 사라졌다**(아래) |
+
+★**2 `string.rs` — 진짜 판단은 「어느 쪽을 취하나」가 아니라 「upstream 이 되살린 것을 버릴 것인가」였다.**
+upstream 은 `copyValueOf` 2종을 신설하면서 **`decode_str`/`encode_str` 하드코딩 charset 표를 «되살렸다»**.
+그런데 그 표를 쓰던 **4개 호출부는 충돌 없이 자동병합돼 우리 `Charset` 라우팅을 유지**했다.
+⇒ upstream 블록을 통째로 취했으면 **표 2함수가 dead code 로 남아** §5 의 S3 완료조건
+(「`charset.rs` 배선으로 dead code 0」)을 깼을 것이다. ⇒ ★**신규 API 는 취하고 표는 버렸다.**
+★**이것이 「union 자동병합 경계」의 실례다** — 충돌면은 «표»에만 났고, 의미가 갈린 곳은 «충돌하지 않은 호출부»였다.
+
+★★**3 `test_timer.rs` — 예측이 «되얹기»였는데, upstream 이 «벽시계 의존 자체»를 없앴다.**
+upstream `c4665b0` 은 우리 2개 벽시계 테스트를 ★**manual clock(`new_with_queued_spawns_and_manual_clock`) +
+queued spawn + monitor notification** 기반 **결정성 스위트 12건**으로 **대체**했다(`Thread.sleep` 기반 단정 **0건** ·
+`TEST_BARRIER_TIMEOUT` 은 행 방지용이지 타이밍 단정이 아니다). ⇒ **`upstream 채택`.**
+★★**S4 가 남긴 「우리 테스트의 시간 의존」 별 축은 이로써 «소멸»했다 — 발권하지 마라.**
+★**그러나 «왜 2000ms 였는지»는 지우지 않는다**(그 근거가 사라지면 다음 사람이 같은 자리를 다시 넓힌다):
+> 500ms 창은 **컷 이전부터** 기대 ~10회 대비 `run_count` **3~4**만 냈고(조건 맞춘 교대 실행에서 컷 전후 mean **3.5** 동일),
+> upstream 이 같은 여백을 **두 번**(`895d67d` 2025-08-20 · `ad8b477` 2025-10-04) 이미 넓혔다.
+> `> 2` 단정은 불변이고 창만 넓혔으며, 대가는 감도(red 문턱 1회전 ~167ms → ~667ms · 약 4배 둔화)였다.
+
+★★**충돌 «목록에 없던» 파손 1건 — §4 가 경고한 바로 그 형태가 실제로 났다.**
+upstream 신규 io 테스트 **3파일 5곳**이 `System.setProperty` 를 **`)Ljava/lang/Object;`** 로 부르는데,
+우리는 PR #5 에서 **JDK 규격대로 `)Ljava/lang/String;`** 으로 고쳐 뒀다 ⇒ ★**충돌 마커 0줄인데 `NoSuchMethodError` 3건.**
+⇒ **서술자만 `String` 으로 맞췄다**(값은 `_` 로 버려지므로 바인딩 타입 무접촉).
+★**새 처분이 아니다** — `test_boolean`·`test_integer`·`test_long` 이 **앞 회차에 이미 같은 처분**을 받았고
+그 3파일은 이번에 자동병합으로 통과했다. ★`java/util/Properties.setProperty` 의 `Object` 반환은 **JDK 규격상 옳아 무접촉**이다.
+
+★★**`Cargo.lock` 재생성 함정 1건 — CI beta 셀 3개를 red 로 만들었다(로컬 stable 은 green 이었다).**
+첫 시도는 충돌한 `Cargo.lock` 을 **upstream 판본으로 취한 뒤** `cargo build` 를 돌렸는데, 그 lock 이 이미
+유효해서 cargo 가 **아무것도 올리지 않았다** ⇒ ★**`async-trait` 이 우리 `0.1.92` → upstream `0.1.91` 로 «내려갔다».**
+★**0.1.91 의 매크로가 `#[must_use]` 를 이중으로 달아** beta clippy 의 `double_must_use` 가 `jvm/` 의
+`#[async_trait]` 트레이트 **7자리**를 물었다(`array_class_definition`·`class_definition`·`class_loader`×2·`method`·`lib`).
+★**그 트레이트들은 `main` 과 바이트 동일**이고 `main` 의 beta 셀은 **green** 이었다 ⇒ ★**코드가 아니라 lock 이 원인**이다.
+⇒ **처방**: `main` 의 lock 에서 출발해 다시 `cargo build`(= §2 의 「도구가 다시 만든다」 그대로).
+`async-trait` **0.1.92 유지** · lock 델타는 **`libm` 추가 1건**뿐. ★**`#[allow]` 를 뿌리지 않았다** — PR #14 가
+그 처방을 쓴 자리는 `async_recursion` 매크로였고, 이번 건은 **버전만 되돌리면 사라진다**.
+★**재현·검증은 로컬 beta 툴체인으로 했다**: `cargo +beta clippy --all -- -D warnings` **rc=1 → rc=0** ·
+`cargo +beta test --all` **427 passed / 0 failed / 1 ignored**(stable 과 동수).
+
+**착지 실측**: `merge-base origin/main upstream/main` **`3296139c` → `c4665b0`** · behind **30 → 24** ·
+머지커밋 **부모 2개** · `c4665b0` 대비 **삭제 파일 0** ·
+`cargo test --all` **427 passed / 0 failed / 1 ignored**(S4 261 → **+166**) · green 4종 rc=0 ·
+`git grep 'tracing::instrument\|tracing-attributes'` 실사용 **0**(주석 1건) · `tests/test_class_format.rs` **4/4**.
 > ★**개명 충돌은 내용 충돌보다 위험하다** — 3-way 가 rename 을 놓치면 우리 픽스처가 «삭제 대 수정»으로 나타나 **조용히 사라질 수 있다.**
 > ⇒ S8 은 「물량」이 아니라 **별도 판정 회차**로 잡아라(발권 전 `--find-renames` 로 대응관계를 먼저 고정).
 

@@ -1,5 +1,40 @@
 # REPORT
 
+## [2026-09-04] upstream 동기 S5 — 컷 `c4665b0` 머지 (rustjava-upstream-sync-s5-with-remeasured-conflicts)
+- 무엇을: upstream `c4665b0`(#190 Java 1.2 runtime API 확장) 까지 **6커밋**(171파일 +33,138/−1,058)을 머지했다.
+  재측정된 충돌 **3** 해소 — `Cargo.lock` **재생성** · `string.rs` ★**설계 판단** · `test_timer.rs` **upstream 채택**.
+  ★**`merge-base origin/main upstream/main` `3296139c` → `c4665b0`** · behind **30 → 24** · 머지커밋 **부모 2개**.
+- 왜: §5 「[2026-09-03 재측정]」이 예고한 3건을 닫아 다음 회차(S6)의 기준선을 만든다.
+  ★**착수 시 재측정 결과가 그 표와 일치**했다(그 사이 #19·#20 이 착지했으나 둘 다 문서 회차라 수가 안 바뀌었다).
+- 사용자 영향: **Java 1.2 런타임 API 가 대폭 넓어진다** — `String.copyValueOf` 2종, `compareTo(Object)` 브리지,
+  `PrintStream`/`PrintWriter`/`BufferedReader`·`Writer` 계열 계약 정비, `Properties`·`Boolean`·`Integer`·`Long`
+  파싱 경로, `Timer` 의 fixed-rate/fixed-delay·min-heap·overflow 처리. ★**우리 자산 변경 0** —
+  charset 4종 · `System.setProperty` 서술자 · `ClassFormatError` 4종 분류 · 수동 span · 픽스처 전건 생존.
+- 검증: green 4종 rc=0(`fmt` · `clippy` · wasm32 `clippy` · `test --all`) ·
+  `cargo test --all` **427 passed / 0 failed / 1 ignored**(S4 261 → **+166**) ·
+  ★「해소분 0」 = **`c4665b0` 대비 삭제 파일 0** · 다른 파일 **47건 전수가 우리 fork 고유 자산** ·
+  `git grep 'tracing::instrument\|tracing-attributes'` 실사용 **0**(주석 1건) · `tests/test_class_format.rs` **4/4**.
+- ★★**`string.rs` — 진짜 판단은 「어느 쪽을 취하나」가 아니라 「upstream 이 «되살린» 것을 버릴 것인가」였다.**
+  upstream 이 `copyValueOf` 2종을 신설하며 `decode_str`/`encode_str` 하드코딩 charset 표를 되살렸는데,
+  그 표를 쓰던 **4개 호출부는 충돌 없이 자동병합돼 우리 `Charset` 라우팅을 유지**했다.
+  ⇒ 통째로 취했으면 **표 2함수가 dead code** 로 남아 S3 완료조건(「`charset.rs` 배선으로 dead code 0」)을 깼다.
+  ★**충돌면은 «표»에 났는데 의미가 갈린 곳은 «충돌하지 않은 호출부»였다** — 「union 자동병합 경계」의 실례다.
+- ★★**`test_timer.rs` — 「되얹기」 예측이 반증됐다.** upstream 이 우리 벽시계 테스트 2건을
+  **manual clock + queued spawn + monitor notification** 기반 **결정성 스위트 12건**으로 대체했다
+  (`Thread.sleep` 기반 단정 **0건**). ⇒ S4 의 `500→2000ms` 여백은 **되얹을 자리가 사라졌다**.
+  ★★**S4 가 남긴 「우리 테스트의 시간 의존」 별 축은 소멸했다 — 그 축으로 발권하지 마라.**
+  ★**단 «왜 2000 이었는지»의 근거는 `docs/upstream-sync-approach.md` §5 착지 기록에 인용으로 보존했다.**
+- ★★**충돌 «목록에 없던» 파손 1건 — §4 가 경고한 형태가 실제로 났다.** upstream 신규 io 테스트 **3파일 5곳**이
+  `System.setProperty` 를 `)Ljava/lang/Object;` 로 부르는데 우리는 PR #5 에서 JDK 규격대로 `)Ljava/lang/String;`
+  으로 고쳐 뒀다 ⇒ ★**충돌 마커 0줄인데 `NoSuchMethodError` 3건**. 서술자만 `String` 으로 맞췄다.
+  ★**새 처분이 아니다** — `test_boolean`·`test_integer`·`test_long` 이 앞 회차에 이미 같은 처분을 받았고
+  이번엔 자동병합으로 통과했다. ★`java/util/Properties.setProperty` 의 `Object` 반환은 JDK 규격상 옳아 **무접촉**.
+- 후속 추천: ⑴**게이트③은 반드시 `--merge`** — `<id>-merge` 티켓 frontmatter 에 `merge_strategy: merge` 필수
+  (`rustjava` 는 `contracts/upstream-sync-repos.conf` 등재 · 스쿼시가 `merge-base` 를 되돌린다).
+  ⑵**S6**(컷 `95ebc5c` · 11커밋) — §5 예측 **새 충돌 0**이고 이번 S5 해소로 그 전제가 실제로 섰다.
+  ★그래도 **착수 시 재측정**하라(upstream 헤드가 계속 전진한다).
+  ⑶★**S8 은 여전히 필요하고 제일 크다** — 개명 스윕(`java_runtime/`→`rustjava-runtime/`)이 우리 픽스처에 꽂힌다.
+
 ## [2026-09-04] 워크로그 의무화 «결정» + 형식 잠금을 로컬 DoD 안으로 (rustjava-worklog-mandate-decision-and-local-gate)
 - 무엇을: 운영자 채택 제안 2건을 한 회차로 처리했다. ⑴**워크로그 작성을 DoD 의무로 «결정»**
   (`CLAUDE.md` 1줄 + `AGENTS.md` 포인터) ⑵**형식 잠금 `python3 scripts/check-worklog-json.py` 를
