@@ -22,8 +22,12 @@
     **검증기로 막을 수 없다.** ⇒ 이 조항은 **1차 방어**이며 **최종 방어는 diff 검토**다.
 
 ## Definition of Done
-- `cargo fmt --check` · `cargo clippy` · `cargo test` 전부 green(명령 상세 = `AGENTS.md`).
+- `cargo fmt --check` · `cargo clippy` · `cargo test` · `python3 scripts/check-worklog-json.py`
+  전부 green(명령 상세 = `AGENTS.md`).
 - 착수·완료마다 STATE.md 의 "진행중/완료/다음" 을 갱신하고, 완료 시 REPORT.md 상단에
   `[YYYY-MM-DD]` 요약 3줄(무엇을·왜·사용자 영향) + 후속 추천을 append 한다.
+- ★**후속 추천을 적었으면 `docs/worklog/YYYY-MM-DD-<slug>.{md,json}` 한 쌍도 남긴다** —
+  `.json` 이 없으면 그 추천은 cockpit 「후속 작업 추천」 패널에 **구조적으로 도달하지 못한다**
+  (규약·되돌릴 수 = `AGENTS.md` §Round Worklog).
 - ★작업 티켓의 **완주 지점 = PR 오픈**이다. 머지는 게이트② 검수자가 approve 와 같은 턴에 집행한다(`<id>-merge` 는 예외 경로)
   (`main` 직push 0 — `AGENTS.md` §Git Workflow).
