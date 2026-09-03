@@ -1,13 +1,17 @@
 mod jar;
+mod logging;
+mod regex;
 mod test_array_list;
 mod test_arrays;
 mod test_collection_contracts;
 mod test_collections;
 mod test_date;
+mod test_formatter;
 mod test_gregorian_calendar;
 mod test_hash_map;
 mod test_hash_set;
 mod test_hashtable;
+mod test_linked_hash_map;
 mod test_list_views;
 mod test_locale;
 mod test_properties;

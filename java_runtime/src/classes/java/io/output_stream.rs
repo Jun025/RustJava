@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::JavaMethodProto;
-use java_constants::ClassAccessFlags;
+use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext};
@@ -14,17 +14,17 @@ impl OutputStream {
         RuntimeClassProto {
             name: "java/io/OutputStream",
             parent_class: Some("java/lang/Object"),
-            interfaces: vec![],
+            interfaces: vec!["java/io/Closeable", "java/io/Flushable"],
             methods: vec![
-                JavaMethodProto::new("<init>", "()V", Self::init, Default::default()),
-                JavaMethodProto::new("write", "([B)V", Self::write_bytes, Default::default()),
-                JavaMethodProto::new("write", "([BII)V", Self::write_bytes_offset, Default::default()),
-                JavaMethodProto::new_abstract("write", "(I)V", Default::default()),
-                JavaMethodProto::new("flush", "()V", Self::flush, Default::default()),
-                JavaMethodProto::new("close", "()V", Self::close, Default::default()),
+                JavaMethodProto::new("<init>", "()V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("write", "([B)V", Self::write_bytes, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("write", "([BII)V", Self::write_bytes_offset, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new_abstract("write", "(I)V", MethodAccessFlags::PUBLIC | MethodAccessFlags::ABSTRACT),
+                JavaMethodProto::new("flush", "()V", Self::flush, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("close", "()V", Self::close, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![],
-            access_flags: ClassAccessFlags::ABSTRACT,
+            access_flags: ClassAccessFlags::PUBLIC | ClassAccessFlags::ABSTRACT,
         }
     }
 
@@ -39,6 +39,9 @@ impl OutputStream {
     async fn write_bytes(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, buffer: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.io.OutputStream::write({this:?}, {buffer:?})");
 
+        if buffer.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let length = jvm.array_length(&buffer).await?;
 
         let _: () = jvm.invoke_virtual(&this, "write", "([BII)V", (buffer, 0, length as i32)).await?;
@@ -56,6 +59,9 @@ impl OutputStream {
     ) -> Result<()> {
         tracing::debug!("java.io.OutputStream::write({this:?}, {buffer:?}, {offset:?}, {length:?})");
 
+        if buffer.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let mut bytes = vec![0; length as usize];
         jvm.array_raw_buffer(&buffer).await?.read(offset as _, &mut bytes)?;
         for byte in bytes {

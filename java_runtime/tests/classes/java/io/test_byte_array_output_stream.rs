@@ -60,6 +60,27 @@ async fn test_byte_array_output_stream() -> Result<()> {
 }
 
 #[tokio::test]
+async fn null_byte_arrays_throw_null_pointer_exception() -> Result<()> {
+    let jvm = test_jvm().await?;
+    let stream = jvm.new_class("java/io/ByteArrayOutputStream", "()V", ()).await?;
+    let null: ClassInstanceRef<Array<i8>> = None.into();
+
+    let result: Result<()> = jvm.invoke_virtual(&stream, "write", "([B)V", (null.clone(),)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null write buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    let result: Result<()> = jvm.invoke_virtual(&stream, "write", "([BII)V", (null, 0, 0)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null ranged write buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn baos_01_write_to_and_named_encoding_use_only_logical_count_after_close() -> Result<()> {
     let jvm = test_jvm().await?;
 
