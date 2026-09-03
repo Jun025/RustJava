@@ -49,7 +49,36 @@ the consumer does not read them, so they are for humans and the next round.
 **No retroactive conversion.** The convention applies to new rounds only; the lock asks only
 "if a `.json` exists, is it well-formed and does it have its `.md` sibling" — it never demands a
 `.json` for an existing `.md`. Lock: `scripts/check-worklog-json.py`, run by the `worklog_json`
-CI job (`cargo test` does not cover docs).
+CI job **and by the local DoD** (`CLAUDE.md` §Definition of Done — 4th command; `cargo test` does
+not cover docs, so it stays a plain script).
+
+**Mandatory since 2026-09-04** (decision, not a habit): a round that writes 후속 추천 into
+`REPORT.md` also writes the `docs/worklog/` pair. Rationale — the failure is **silent and
+unlockable**: the lock only validates a `.json` that *exists*, so a round that skips it produces
+zero cards with no error anywhere. Measured before deciding: of the **4 rounds landed since the
+convention itself landed** (`b3a4cf4`, 2026-08-26 → `origin/main`), **3 wrote the pair (75%)**;
+the one miss (PR #13) branched off *before* the convention, so among rounds that could have known
+it is **3/3**. The mandate costs one line and converts an observed habit (n=3, all one lineage)
+into a checked one.
+
+**Revert numbers — recount at the 10th round landed after 2026-09-04.** Do not re-argue this
+from taste; re-measure:
+
+```sh
+# ⒜ 미작성 회차: 착지 회차 중 worklog 쌍이 없는 것
+for c in $(git rev-list --first-parent <2026-09-04-이후-첫-착지>..origin/main); do
+  git diff --name-only "$c^1" "$c" | /usr/bin/grep -q '^docs/worklog/' || echo "$c no-worklog"; done
+# ⒝ 열린 카드 수: proposals 총합 − (adopted + declined)
+python3 -c "import json,glob;p=a=0
+for f in glob.glob('docs/worklog/*.json'):
+    d=json.load(open(f));p+=len(d.get('proposals',[]));a+=len(d.get('adoptedProposals',[]))+len(d.get('declinedProposals',[]))
+print('open cards:',p-a)"
+```
+
+- ⒜ **≥ 2 (>20%)** ⇒ DoD 에 적어도 안 지켜진다는 뜻이다. 문안을 **빼거나** 기계 강제로 올려라 —
+  문서에만 둔 채로 유지하지 마라(그 상태가 가장 나쁘다: 규칙은 있고 효력은 없다).
+- ⒝ **< 5** ⇒ 의무화해도 카드가 늘지 않았다는 뜻이므로 **의무 자체를 재검토**하라.
+  Baseline measured 2026-09-04: 9 proposals − 4 disposed = **5 open**. So ⒝ means "fewer than today".
 ## Testing Boundaries
 - Keep `java_runtime/tests/classes` limited to Java standard library class and API behavior.
 - Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test_data/src` and expected output under `test_data`, executed by `tests/test_class.rs`.
