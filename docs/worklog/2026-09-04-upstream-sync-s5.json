@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "upstream 동기 S5 — 컷 c4665b0(Java 1.2 API 확장) 머지 · 충돌 3 해소 · merge-base 3296139c → c4665b0",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-s5-with-remeasured-conflicts",
+  "summary": "upstream c4665b0(#190 · 6커밋 · 171파일 +33,138/−1,058)을 --merge 로 흡수하고 재측정된 충돌 3건을 해소했다. 착수 시 재측정(base = 당시 main 1983d9f · merge-base 3296139c)이 §5 재측정 표와 일치했다(그 사이 PR #19·#20 이 착지했으나 둘 다 문서 회차라 수가 안 바뀌었다). 처분: Cargo.lock 재생성 · string.rs 설계 판단 · test_timer.rs upstream 채택. ★예측 3건 중 2건 적중 1건 반증. string.rs 의 진짜 판단은 「어느 쪽을 취하나」가 아니라 「upstream 이 되살린 것을 버릴 것인가」였다 — upstream 이 copyValueOf 2종을 신설하며 decode_str/encode_str 하드코딩 charset 표를 되살렸는데 그 표를 쓰던 4개 호출부는 충돌 없이 자동병합돼 우리 Charset 라우팅을 유지했다 ⇒ 신규 API 는 취하고 표는 버렸다(통째로 취했으면 dead code 로 남아 S3 완료조건 「charset.rs 배선으로 dead code 0」을 깼다). test_timer.rs 는 「되얹기」 예측이 반증됐다 — upstream 이 우리 벽시계 테스트 2건을 manual clock + queued spawn + monitor notification 기반 결정성 스위트 12건으로 대체했고 Thread.sleep 기반 단정이 0건이라 S4 의 500→2000ms 여백은 되얹을 자리가 사라졌다(그 근거는 원장에 인용으로 보존). 그리고 §4 가 경고한 「충돌 목록에 없는 파일이 더 위험하다」가 실제로 났다: upstream 신규 io 테스트 3파일 5곳이 System.setProperty 를 )Ljava/lang/Object; 로 부르는데 우리는 PR #5 에서 JDK 규격대로 )Ljava/lang/String; 이라 충돌 마커 0줄인데 NoSuchMethodError 3건이 났고, 서술자만 String 으로 맞췄다.",
+  "changes": [
+    "git merge c4665b0 --no-ff — 머지커밋 부모 2개. merge-base origin/main upstream/main 3296139c → c4665b0 · behind 30 → 24. -s ours 는 쓰지 않았다(merge-base 가 이미 3296139c 로 서 있어 복원할 것이 없었다).",
+    "Cargo.lock — 재생성(손 머지 0 · upstream 판본 취한 뒤 cargo build · +22/−15).",
+    "java_runtime/src/classes/java/lang/string.rs — upstream 의 copy_value_of·copy_value_of_range(Java 1.2 신규 API) 채택 + upstream 이 되살린 decode_str/encode_str 하드코딩 charset 표 폐기. 4개 호출부(:240 :414 Charset::from_name · :744 :784 Charset::resolve)는 자동병합으로 우리 라우팅 유지.",
+    "java_runtime/tests/classes/java/util/test_timer.rs — upstream 채택(결정성 스위트 12건). 우리 벽시계 테스트 2건은 그 부분집합이다.",
+    "java_runtime/tests/classes/java/io/{test_print_writer,test_buffered_streams,test_print_stream}.rs — System.setProperty 서술자 5곳을 )Ljava/lang/Object; → )Ljava/lang/String; (우리 PR #5 자산에 맞춤 · 값은 `_` 로 버려져 바인딩 타입 무접촉 · Properties.setProperty 는 JDK 규격상 Object 라 무접촉).",
+    "docs/upstream-sync-approach.md §5 — 「[2026-09-04] S5 착지 기록」 절 신설(예측 3건 중 2 적중 1 반증 · union 자동병합 실례 · 2000ms 근거 인용 보존 · setProperty 파손 기록). 재측정 표는 재작성하지 않고 test_timer.rs 예측 칸만 취소선 + 착지 기록 안내.",
+    "STATE.md · REPORT.md · docs/worklog/2026-09-04-upstream-sync-s5.{md,json} 갱신·신설."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "착수 실측: base = 당시 origin/main 1983d9f · merge-base origin/main upstream/main = 3296139cc7ce63822941db5180bd19a8545367e4 · behind 30 · 열린 PR 0. 착수 시 충돌 재측정 git merge-tree --write-tree --name-only origin/main c4665b0 = 3건(Cargo.lock · string.rs · test_timer.rs)으로 §5 재측정 표와 일치. 착수 baseline cargo test --all = 261 passed / 0 failed / 1 ignored. 착지 후: merge-base = c4665b0620bae7b8859b22589b76c205f924ce3c · behind 24 · git log -1 --format=%p = 1983d9f c4665b0(부모 2개). green 4종 전건 rc=0 — cargo fmt --all -- --check / cargo clippy --all -- -D warnings / cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings / cargo test --all = ★427 passed / 0 failed / 1 ignored(S1 169 → S2 191 → S3 216 → S4 261 → S5 427 · 새 red 0). 「해소분 0」 증명 = c4665b0 대비 삭제 파일 0건 · 다른 파일 47건 전수가 우리 fork 고유 자산. 우리 자산 생존 실측: charset.rs 실재(표 항목 4) · Charset 호출부 4 · test_string.rs 우리 전용 2건(test_get_bytes_unsupported_charset_throws · test_new_string_unsupported_charset_throws) 각 1건 · 픽스처 TimeApi·UnsupportedCharset 4파일 · tracing::instrument 실사용 0(thread.rs:267 주석 1건뿐이고 수동 span 은 info_span!(:269) + .instrument(span)(:320) 로 생존) · tracing-attributes 0(Cargo.lock·Cargo.toml·java_runtime/Cargo.toml) · tests/test_class_format.rs 4/4. upstream 에 charset 모듈 부재 확인: git ls-tree c4665b0 -r --name-only | grep -i charset → 0건. upstream 에 decode_str/encode_str 잔존 확인: c4665b0:string.rs :1078 · :1087. python3 scripts/check-worklog-json.py rc=0.",
+  "issues": [
+    "★§5·티켓이 test_timer.rs 를 「되얹기(기계 작업)」로 예측했으나 반증됐다 — upstream 이 벽시계 의존 자체를 없애 되얹을 자리가 사라졌다. 예측이 파일 «이름»에서 나왔고 «내용»을 안 봤기 때문이다. 다음 회차의 성격 예측도 같은 한계를 갖는다.",
+    "★★S4 가 「남는 별 축」으로 지목한 «우리 테스트의 시간 의존»은 이 착지로 소멸했다 — 그 축으로 발권하지 마라. 다만 왜 2000ms 였는지의 근거는 코드에서 사라졌으므로 docs/upstream-sync-approach.md §5 착지 기록과 이 워크로그에 인용으로 보존했다.",
+    "★★충돌 «목록에 없던» 파손 1건이 실제로 났다(§4 가 경고한 형태) — upstream 신규 io 테스트 3파일 5곳의 System.setProperty 서술자가 우리 PR #5 자산과 어긋나 충돌 마커 0줄인데 NoSuchMethodError 3건. merge-tree 는 충돌만 보고하므로 이 부류는 «스위트를 돌려야» 드러난다.",
+    "★string.rs 의 dead code 함정: 충돌면은 「표」에 났는데 의미가 갈린 곳은 「충돌하지 않은 4개 호출부」였다. 충돌면만 보고 한쪽을 통째로 고르면 그 둘이 어긋난다 — 이 estate 가 반복해 밟은 자리다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③이 --squash 면 merge-base 전진(3296139c → c4665b0)이 통째로 사라진다: <id>-merge 티켓에 merge_strategy: merge 필수(bin/queue-lint 검사22).",
+    "S6·S7 은 손대지 않았다(이 회차는 S5 하나). upstream 발신 0."
+  ],
+  "proposals": [
+    {
+      "title": "S6(컷 95ebc5c)를 발권하라 — 「새 충돌 0」 예측의 전제가 이제 실제로 섰다",
+      "plainSummary": "원본 저장소의 변경을 받아오는 다음 회차다. 이번 회차가 걸림돌 3개를 치웠기 때문에 다음 구간은 부딪힐 것이 없다고 예측된다 — 다만 원본이 계속 움직이므로 착수할 때 다시 재야 한다.",
+      "userBenefit": "원본과의 격차가 24커밋에서 13커밋으로 줄어든다. 격차가 작을수록 다음 회차가 만나는 충돌도 작아지고, 우리 고유 자산(charset·오류 분류·픽스처)이 원본 변경에 삼켜질 위험도 줄어든다.",
+      "why": "§5 「[2026-09-03 재측정]」이 S6 를 「새 충돌 +0」으로 재측정했고, 그 예측은 「S5 를 닫으면 남는 게 없다」를 전제로 했다. 이번 회차가 정확히 그 S5 를 닫았으므로 전제가 실제로 섰다. 구간 커밋 수는 c4665b0..95ebc5c 11커밋이다.",
+      "tradeoff": "⑴바로 발권하면 격차가 빨리 줄지만, 착수 시 재측정에서 수가 달라질 수 있다(upstream 헤드가 bd42427 로 계속 전진 중이다). ⑵S8(개명 스윕)을 먼저 설계하고 S6·S7 을 그 뒤로 미루면 개명 대응표를 한 번에 잡을 수 있으나, 그동안 격차가 더 벌어진다. ⑶건너뛰고 S7 로 바로 가면 S6 구간 11커밋이 S7 충돌에 섞여 회차가 커진다.",
+      "effort": "M — §5 예측상 충돌 0 이나 11커밋 구간이라 스위트 확인과 「해소분 0」 증명이 본체다.",
+      "target": "docs/upstream-sync-approach.md §5 · rustjava-upstream-sync-s6 티켓"
+    },
+    {
+      "title": "충돌 목록에 «없는» 파손을 잡는 축을 회차 계약에 넣을지 판정하라",
+      "plainSummary": "합칠 때 충돌 표시가 뜨는 파일만 확인하면, 표시 없이 조용히 깨지는 곳을 놓친다. 이번 회차에서 실제로 그런 곳이 세 군데 나왔다 — 테스트를 전부 돌려서야 발견했다.",
+      "userBenefit": "동기화 회차가 「충돌 다 풀었다」로 끝났는데 실제로는 깨진 채 넘어가는 일이 사라진다. 이번엔 스위트가 잡았지만, 스위트가 덮지 않는 자리였다면 착지한 뒤에 드러났을 것이다.",
+      "why": "§4 가 「충돌 목록에 없는 파일이 더 위험하다」를 이미 적었고 S3 에서 test_class_format.rs 3건으로 한 번 실현됐는데, 이번에 System.setProperty 서술자 축에서 또 났다(upstream 신규 테스트 3파일 5곳 · NoSuchMethodError 3건 · 충돌 마커 0줄). 두 번 다 「우리가 JDK 규격에 맞춰 고친 것」과 「upstream 이 그 규격을 안 따르는 것」의 어긋남이었고, merge-tree 는 원리적으로 이것을 못 본다.",
+      "tradeoff": "⑴회차 계약에 「우리 고유 서술자·시그니처 변경 목록을 머지 후 grep 으로 재확인」을 넣으면 싸지만(명령 몇 줄) 목록을 사람이 유지해야 한다. ⑵스위트에 맡기면 공짜지만 스위트가 덮지 않는 자리는 못 잡는다(지금 상태). ⑶기계 잠금(우리 자산 서술자를 고정하는 테스트)을 만들면 확실하나 새 도구이고 upstream 이 그 자리를 만질 때마다 손이 간다.",
+      "effort": "S — ⑴이면 계약 문안 + 자산 목록 한 곳. 판정 자체는 XS.",
+      "target": "docs/upstream-sync-approach.md §4 · 회차 티켓 템플릿"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [],
+  "declinedProposals": []
+}

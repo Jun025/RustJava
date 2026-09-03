@@ -1,6 +1,22 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-s5-with-remeasured-conflicts] ★**upstream 컷 `c4665b0`(#190 Java 1.2 API 확장) 머지 —
+  충돌 3 해소.** ★**`merge-base` `3296139c` → `c4665b0` · behind 30 → 24 · 머지커밋 부모 2개**(계보 보존).
+  `cargo test --all` **427 passed / 0 failed / 1 ignored**(S4 261 → **+166**) · green 4종 rc=0.
+  ★**착수 시 재측정**(§5 상시 규칙 · base 당시 main `1983d9f` · merge-base `3296139c`)이 재측정 표와 **일치**.
+  ★★**예측 3건 중 2건 적중 · 1건 반증**:
+  ⑴`Cargo.lock` **재생성** ⑵`string.rs` **설계 판단이 맞았으나 «형태»가 달랐다** — upstream 이 `copyValueOf` 2종을
+  신설하며 `decode_str`/`encode_str` 표를 «되살렸는데» **4개 호출부는 자동병합으로 우리 `Charset` 라우팅을 유지**했다
+  ⇒ 신규 API 는 취하고 표는 버렸다(안 그러면 dead code — S3 완료조건 위반).
+  ⑶`test_timer.rs` ★**「되얹기」 예측이 반증됐다** — upstream 이 벽시계 테스트 2건을 **manual clock + monitor
+  notification 기반 결정성 스위트 12건**으로 대체했다 ⇒ `upstream 채택`.
+  ★★**S4 가 남긴 「우리 테스트의 시간 의존」 별 축은 소멸했다 — 발권하지 마라**(2000ms 근거는 §5 착지 기록에 보존).
+  ★★**충돌 «목록에 없던» 파손 1건 — §4 가 경고한 형태가 실제로 났다**: upstream 신규 io 테스트 **3파일 5곳**이
+  `System.setProperty` 를 `)Ljava/lang/Object;` 로 부르는데 우리는 PR #5 에서 JDK 규격대로 `)Ljava/lang/String;` 이라
+  ★**충돌 마커 0줄인데 `NoSuchMethodError` 3건**. 서술자만 맞췄다(★`test_boolean`·`test_integer`·`test_long` 이
+  **앞 회차에 이미 같은 처분**을 받았다 · `Properties.setProperty` 의 Object 반환은 JDK 규격상 옳아 무접촉).
+  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
