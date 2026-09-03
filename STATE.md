@@ -9,7 +9,11 @@
   그 3건은 `Cargo.lock`(재생성) · `string.rs`(★**설계 판단**) · `test_timer.rs`(**S4 가 넣은 2000ms 여백**)이고
   ★★**전부 upstream 이 아니라 «우리가 앞 회차에 남긴 로컬 분기»가 만든다.**
   ★**「예측은 하한」이 S7 에서 처음 깨졌다**(예측 +3 ↔ ⓐ+2 · ⓒ+1) — `Cargo.lock` 이중 계상 ·
-  `class_format_error.rs` 경로 오기 · `throwable.rs` 는 우리 쪽이 `3296139` 와 **바이트 동일**(S3 가 수렴시켰다).
+  `class_format_error.rs` 경로 오기 · ★**그 파일과 `throwable.rs` 둘 다 «우리 쪽»이 `3296139` 와 바이트 동일**이라
+  upstream 변경(**+4/−3** · **+81/−29**)이 깨끗이 적용된다(S3 가 수렴시켰다).
+  ★★**[2026-09-04 정정] 초판이 `class_format_error.rs` 를 「upstream 변경 0」으로 적은 것은 «거짓»이고 «0 인 쪽이 반대»였다** —
+  `diff 3296139 ba5797b` = **+4/−3** · `diff 3296139 origin/main` = **0줄**(블롭 `0dbd369a`).
+  ⇒ ★**「upstream 이 안 건드린다」가 아니라 «우리가 손대는 순간 충돌한다»** 이다.
   ★**부수 발견 — S8 이 필요하고 남은 것 중 제일 크다**: `ba5797b..upstream/main` **12커밋** · ⓒ 누적 **11**(+7) ·
   `java_runtime/`→`rustjava-runtime/` · `test_data/`→`test-data/` **개명 스윕**이라 우리 픽스처에 꽂힌다.
   **PR 대기 — 게이트③ 미착지.**
@@ -90,7 +94,8 @@
 
 ★**다음은 S5(`c4665b0` · Java 1.2 API 확장). 단 「충돌 0 물량」이 «아니다»** — 2026-09-03 재측정(base = 현 `main`
 `8c1238b` · `merge-base 3296139c`)으로 **새 충돌 3건**: `Cargo.lock`(재생성) ·
-`java_runtime/src/classes/java/lang/string.rs`(★**설계 판단** · upstream +285/−31 ↔ 우리 +28/−8) ·
+`java_runtime/src/classes/java/lang/string.rs`(★**설계 판단** · upstream `3296139`→`c4665b0` **+285/−31** ↔
+우리 `3296139`→`origin/main` **+8/−28**) ·
 `java_runtime/tests/classes/java/util/test_timer.rs`(**S4 가 넣은 500→2000ms 여백을 다시 얹는 기계 작업**).
 **S6 새 충돌 0 · S7 새 충돌 1**(`thread.rs`). ★상세·근거·세 base 대조표 = `docs/upstream-sync-approach.md` §5 「[2026-09-03 재측정]」.
 ★★**충돌 수를 적을 때는 base 를 반드시 병기하라 — §5 상시 규칙이다.**

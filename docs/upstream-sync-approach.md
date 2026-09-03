@@ -267,6 +267,16 @@ upstream 은 여기서만 `UTF-8`/`EUC-KR` 하드코딩을 유지한다 ⇒ 그�
 
 **형식**: `<수>(base <sha> · merge-base <sha>)`. ★**병기 없는 충돌 수는 문서·회신·티켓 어디에도 쓰지 않는다.**
 
+★★**[2026-09-04 보강 — 게이트② 지적] `diff` 를 인용할 때는 «방향»도 못박는다.**
+초판은 base 만 못박고 **방향을 안 못박았다** — 그래서 같은 표 안에서 「우리」 열이 역순
+(`diff <ours> <merge-base>`)으로 실려 **부호가 뒤집혔다**(★이 리니지의 반려 근인 「기준을 섞었다」와 **같은 종**이다).
+⇒ **정본 방향을 하나로 고정한다**:
+- **우리 쪽 분기** = `git diff --numstat <merge-base> <ours>` (예: `3296139` → `origin/main`)
+- **upstream 변경** = `git diff --numstat <merge-base> <cut>` (예: `3296139` → `c4665b0`)
+
+★**둘 다 «왼쪽이 merge-base»** 다 — 그래야 `+`/`−` 가 「그 쪽이 base 에 무엇을 더했나」로 **같은 뜻**을 갖는다.
+★`--numstat` 열 순서는 `추가 삭제 경로` 다.
+
 ★**근거는 「좋은 습관」이 아니라 실측이다** — 같은 컷 `ba5797b` 가 base 에 따라 이렇게 갈린다:
 
 | base | merge-base | `ba5797b` 누적 충돌 |
@@ -311,7 +321,8 @@ fork 시점) ⑵**복원 후** = 계보 기록 뒤(`merge-base` 가 직전 컷).
 > **S6** (S5 와 동일 3건 · 신규 0) **S7** +`java_runtime/src/classes/java/lang/thread.rs`
 >
 > ★★**ⓒ 의 새 충돌은 «upstream 이 만드는 것»이 아니라 «우리가 앞 회차에 남긴 로컬 분기»가 만든다** — 이번 재측정의 핵심이다:
-> `string.rs`(우리 +28/−8 vs `3296139`) · `test_timer.rs`(우리 +1/−8 = **S4 가 넣은 500→2000ms 여백**).
+> `string.rs`(우리 **+8/−28** vs `3296139`) · `test_timer.rs`(우리 **+8/−1** = **S4 가 넣은 500→2000ms 여백**).
+> ★**방향은 위 상시 규칙대로 `diff <merge-base> <ours>` 다**(초판의 `+28/−8`·`+1/−8` 은 역순 출력이라 **폐기**).
 > 둘 다 ⓐ 기준에는 **없던** 파일이다(그때 우리 `main` 은 그 자리가 merge-base 와 동일했다).
 > ⇒ ★**「upstream 물량이 크면 충돌도 크다」가 아니다** — S7 은 diff 가 32만 줄대인데 새 충돌 **1건**이다.
 >
@@ -321,7 +332,12 @@ fork 시점) ⑵**복원 후** = 계보 기록 뒤(`merge-base` 가 직전 컷).
 > S7 이 빗나간 이유는 셋이고 **전부 실측된다**:
 > ⑴`Cargo.lock` 은 **S5 에서 이미 충돌**한다 ⇒ S7 의 «새»가 아니다(표가 **이중 계상**했다).
 > ⑵표가 적은 `classfile/src/class_format_error.rs` 는 ★**경로가 틀렸다** — 실제 파일은
-> `java_runtime/src/classes/java/lang/class_format_error.rs` 이고, `3296139..ba5797b` 에서 **upstream 변경 0** 이다.
+> `java_runtime/src/classes/java/lang/class_format_error.rs` 이고, ★**우리 쪽이 `3296139` 와 바이트 동일**
+> (블롭 `0dbd369a`)이라 upstream 의 **+4/−3** 이 깨끗이 적용된다.
+> ★★**[2026-09-04 정정] 초판이 「`3296139..ba5797b` 에서 upstream 변경 0」이라고 적은 것은 «거짓»이고 «0 인 쪽이 반대»였다** —
+> `git diff --numstat 3296139 ba5797b -- <그 경로>` 는 **`4 3`**(= +4/−3)이고, **0 줄인 것은 `3296139` → `origin/main`**(우리 쪽)이다.
+> ⇒ ★**이 구별이 계획에 직결된다**: 「upstream 이 안 건드리는 파일」로 읽으면 «영구 무충돌»이지만, 참인 술어로 읽으면
+> ★**우리가 그 파일을 손대는 «순간» 충돌한다** — 바로 아래 ⑶ 및 `string.rs`·`test_timer.rs` 가 그 기전의 실례다.
 > ⑶`throwable.rs` 는 upstream 이 **+81/−29** 로 고쳤는데 ★**우리 쪽이 `3296139` 와 바이트 동일**이라 깨끗이 적용된다
 > ⇒ ★**S3 가 upstream 의 오류 분류 축을 «채택»해 수렴시킨 결과다** — 앞 회차의 설계 판단이 뒤 회차의 충돌을 **지웠다**.
 >
@@ -342,11 +358,18 @@ fork 시점) ⑵**복원 후** = 계보 기록 뒤(`merge-base` 가 직전 컷).
 >   아니라 ★**「upstream/main 이 계속 전진하기 때문」**이다(2026-08-16 `ba5797b` 였던 헤드가 지금 `bd42427`, behind **30**).
 >
 > ★★**부수 발견 — 「7회차」는 더 이상 upstream 헤드에 닿지 않는다. S8 이 필요하고, 그것이 남은 회차 중 «제일 크다».**
-> 컷 간 커밋 수 실측: `3296139..c4665b0` **6** · `..95ebc5c` **11** · `..ba5797b` **1** · ★**`ba5797b..upstream/main` 12**(합 30).
+> 컷 간 커밋 수 실측(★**전부 «증분» = 앞 컷을 왼쪽 끝점으로 둔 구간**):
+> `3296139..c4665b0` **6** · `c4665b0..95ebc5c` **11** · `95ebc5c..ba5797b` **1** · ★**`ba5797b..upstream/main` 12**(합 **30** = behind).
+> ★**초판은 뒤 셋을 `..95ebc5c` 처럼 왼쪽 끝점을 생략해 적어 «`3296139..` 누적»으로 오독될 수 있었다**(정정 2026-09-04).
+> 참고로 누적은 `3296139..95ebc5c` **17** · `3296139..ba5797b` **18** 이다 — **증분과 다른 수다**.
 > 그 12커밋 구간의 ⓒ 기준 누적 충돌 = ★**11**(S7 의 4 대비 **+7**)이고, 성격이 앞 회차들과 **다르다**:
 > `java_runtime/` → **`rustjava-runtime/`** · `test_data/` → **`test-data/`** 로 **크레이트·디렉터리가 개명**됐다.
 > ⇒ 새로 걸리는 7건이 ★**우리 고유 산출물에 정확히 꽂힌다**: `rustjava-runtime/src/charset.rs`(PR #5) ·
-> `test-data/UnsupportedCharset.{java,class,txt}`(PR #5 픽스처) · `test-data/TimeApi.{class,txt}`(PR #2 픽스처) · `test_string.rs`.
+> `test-data/UnsupportedCharset.class` · `test-data/UnsupportedCharset.txt` · ★**`test-data/src/UnsupportedCharset.java`**(PR #5 픽스처) ·
+> `test-data/TimeApi.class` · `test-data/TimeApi.txt`(PR #2 픽스처) · `java_runtime/tests/classes/java/lang/test_string.rs`.
+> ★★**[2026-09-04 정정] 초판의 `test-data/UnsupportedCharset.{java,class,txt}` 는 «경로 오기»다** — `.java` 만
+> `test-data/src/` 아래에 있다. ★**S8 의 첫 조치가 `--find-renames` 대응표 고정이라 이 목록의 경로는 정확해야 한다**
+> (★이 회차가 §5 에서 정정한 결함이 정확히 «경로 오기»였다 — 같은 자리를 두 번 밟았다).
 > ★**개명 충돌은 내용 충돌보다 위험하다** — 3-way 가 rename 을 놓치면 우리 픽스처가 «삭제 대 수정»으로 나타나 **조용히 사라질 수 있다.**
 > ⇒ S8 은 「물량」이 아니라 **별도 판정 회차**로 잡아라(발권 전 `--find-renames` 로 대응관계를 먼저 고정).
 
