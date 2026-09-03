@@ -407,6 +407,18 @@ upstream 신규 io 테스트 **3파일 5곳**이 `System.setProperty` 를 **`)Lj
 ★**새 처분이 아니다** — `test_boolean`·`test_integer`·`test_long` 이 **앞 회차에 이미 같은 처분**을 받았고
 그 3파일은 이번에 자동병합으로 통과했다. ★`java/util/Properties.setProperty` 의 `Object` 반환은 **JDK 규격상 옳아 무접촉**이다.
 
+★★**`Cargo.lock` 재생성 함정 1건 — CI beta 셀 3개를 red 로 만들었다(로컬 stable 은 green 이었다).**
+첫 시도는 충돌한 `Cargo.lock` 을 **upstream 판본으로 취한 뒤** `cargo build` 를 돌렸는데, 그 lock 이 이미
+유효해서 cargo 가 **아무것도 올리지 않았다** ⇒ ★**`async-trait` 이 우리 `0.1.92` → upstream `0.1.91` 로 «내려갔다».**
+★**0.1.91 의 매크로가 `#[must_use]` 를 이중으로 달아** beta clippy 의 `double_must_use` 가 `jvm/` 의
+`#[async_trait]` 트레이트 **7자리**를 물었다(`array_class_definition`·`class_definition`·`class_loader`×2·`method`·`lib`).
+★**그 트레이트들은 `main` 과 바이트 동일**이고 `main` 의 beta 셀은 **green** 이었다 ⇒ ★**코드가 아니라 lock 이 원인**이다.
+⇒ **처방**: `main` 의 lock 에서 출발해 다시 `cargo build`(= §2 의 「도구가 다시 만든다」 그대로).
+`async-trait` **0.1.92 유지** · lock 델타는 **`libm` 추가 1건**뿐. ★**`#[allow]` 를 뿌리지 않았다** — PR #14 가
+그 처방을 쓴 자리는 `async_recursion` 매크로였고, 이번 건은 **버전만 되돌리면 사라진다**.
+★**재현·검증은 로컬 beta 툴체인으로 했다**: `cargo +beta clippy --all -- -D warnings` **rc=1 → rc=0** ·
+`cargo +beta test --all` **427 passed / 0 failed / 1 ignored**(stable 과 동수).
+
 **착지 실측**: `merge-base origin/main upstream/main` **`3296139c` → `c4665b0`** · behind **30 → 24** ·
 머지커밋 **부모 2개** · `c4665b0` 대비 **삭제 파일 0** ·
 `cargo test --all` **427 passed / 0 failed / 1 ignored**(S4 261 → **+166**) · green 4종 rc=0 ·
