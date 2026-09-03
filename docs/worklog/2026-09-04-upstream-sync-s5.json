@@ -10,7 +10,6 @@
   "changes": [
     "git merge c4665b0 --no-ff — 머지커밋 부모 2개. merge-base origin/main upstream/main 3296139c → c4665b0 · behind 30 → 24. -s ours 는 쓰지 않았다(merge-base 가 이미 3296139c 로 서 있어 복원할 것이 없었다).",
     "Cargo.lock — ★재생성을 «다시» 했다. upstream 판본을 취하면 async-trait 이 0.1.92 → 0.1.91 로 내려가 beta clippy 가 red 가 된다(실측). main 의 lock 에서 출발해 cargo build ⇒ async-trait 0.1.92 유지 · 델타는 libm 추가 1건.",
-    "Cargo.lock — 재생성(손 머지 0 · upstream 판본 취한 뒤 cargo build · +22/−15).",
     "java_runtime/src/classes/java/lang/string.rs — upstream 의 copy_value_of·copy_value_of_range(Java 1.2 신규 API) 채택 + upstream 이 되살린 decode_str/encode_str 하드코딩 charset 표 폐기. 4개 호출부(:240 :414 Charset::from_name · :744 :784 Charset::resolve)는 자동병합으로 우리 라우팅 유지.",
     "java_runtime/tests/classes/java/util/test_timer.rs — upstream 채택(결정성 스위트 12건). 우리 벽시계 테스트 2건은 그 부분집합이다.",
     "java_runtime/tests/classes/java/io/{test_print_writer,test_buffered_streams,test_print_stream}.rs — System.setProperty 서술자 5곳을 )Ljava/lang/Object; → )Ljava/lang/String; (우리 PR #5 자산에 맞춤 · 값은 `_` 로 버려져 바인딩 타입 무접촉 · Properties.setProperty 는 JDK 규격상 Object 라 무접촉).",
