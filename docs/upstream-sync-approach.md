@@ -411,6 +411,24 @@ gh run list --repo Jun025/RustJava --workflow=rust.yml --status=failure --limit 
 위 비용표를 **다시 재라** — 이 표의 수는 그때의 값이다.
 ※★**「비용이 싸졌다」는 재개 사유가 «아니다»** — 실익이 0 인 동안에는 싸도 넣지 않는다.
 
+### ★[2026-09-04 조사] 형제 repo(`wie`·`qts`)에도 같은 락이 필요한가 — ★**둘 다 «조건부 필요» · 검사기는 «포팅 불가»**
+
+★**다음 RustJava 회차가 같은 조사를 반복하지 않도록 결과만 남긴다** — 전문은
+`docs/worklog/2026-09-04-parity-sibling-repo-survey.{md,json}`. ★**형제 repo 는 다른 레인 소관이라 이 저장소가 고치지 않는다.**
+
+- ★**구조가 같지 않다**: `wie` 의 DoD 정본은 ★**`AGENTS.md`**(우리는 `CLAUDE.md`)이고 CI 의 4번째 게이트
+  (`cargo test`)가 ★**`if:` 로 갈린 2 step + 블록 스칼라**라, 우리 파서의 「조건부 = OS 축 = 제외」 규칙이
+  ★**거짓 red** 를 만든다. `qts` 는 DoD 가 ★**`make` 타깃 이름**(Makefile 간접층)이고 ★**toolchain 매트릭스가 없어
+  축 B 자체가 성립하지 않으며**, `gitleaks` 는 ★**action 이라 어떤 `run:` 파서도 못 본다**.
+- ★**그런데 어긋남은 «둘 다 실재»한다(이력 실측)**: `wie` 는 `rust.yml` 실패 **34건 중 9건(26%)** 이
+  ★**beta 셀에서만** 실패한 clippy 인데 four gates 에 `cargo +beta` 가 **없다**(문자열 `beta` 가 규범 문서에 **0건**) ·
+  `qts` 는 최근 실패 **60건 중 10건(17%)** 이 ★**`uv run ruff format --check .` «만»** 실패인데 `make lint` 는 그것을 **안 친다**.
+- ⇒ ★★**먼저 할 일은 락이 아니라 «각 한 줄»이다** — `wie`: four gates 에 `cargo +beta clippy --all -- -D warnings` ·
+  `qts`: `make lint` 에 `uv run ruff format --check .`. ★**락은 그 «다음»이다**(락은 어긋남을 «막는» 것이지 «고치는» 것이 아니다).
+- ★★**일반 사실 하나** — 세 repo 가 전부 이 어긋남을 갖고 있었고 ★**어긋난 자리가 전부 규범 문서에 «적혀 있지 않았다»**
+  (우리 = wasm32 줄 + beta 축 · `wie` = beta 축 · `qts` = `ruff format --check`).
+  ⇒ ★**「사람이 문서를 최신으로 유지한다」가 세 repo에서 «각각» 실패했다** — 그것이 기계 대조의 일반 근거다.
+
 ## 5. 단계 분할 — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
 
 각 컷 지점에서 `git merge-tree --write-tree --name-only origin/main <cut>` 을 돌린 실측:
