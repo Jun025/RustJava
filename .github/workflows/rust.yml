@@ -51,8 +51,8 @@ jobs:
 
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all -- -D warnings
-      # test_utils requires tokio rt-multi-thread, which does not compile on wasm
-      - run: cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown -- -D warnings
+      # test-utils requires tokio rt-multi-thread, which does not compile on wasm
+      - run: cargo clippy --workspace --exclude test-utils --target wasm32-unknown-unknown -- -D warnings
       - run: cargo test --all
 
   # docs-only lock (AGENTS.md "Round Worklog") — one runner, not the 6-cell matrix

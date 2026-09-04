@@ -5,7 +5,7 @@ use std::{
     sync::Mutex,
 };
 
-use java_runtime::{File, FileOpenOptions, FileSize, FileStat, FileType, IOError, IOResult};
+use rustjava_runtime::{File, FileOpenOptions, FileSize, FileStat, FileType, IOError, IOResult};
 
 pub struct WriteStreamFile<W>
 where

@@ -1,0 +1,10 @@
+[package]
+name = "jvm-types"
+description = "Shared types for JVM implementations"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bitflags = { version = "^2.4", default-features = false }

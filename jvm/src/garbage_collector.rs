@@ -1,5 +1,5 @@
 use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
-use java_constants::FieldAccessFlags;
+use jvm_types::FieldAccessFlags;
 
 use hashbrown::{HashSet, hash_set::Entry};
 

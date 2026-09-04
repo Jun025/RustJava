@@ -1,6 +1,6 @@
 use alloc::collections::BTreeMap;
 
-use java_constants::MethodAccessFlags;
+use jvm_types::MethodAccessFlags;
 
 use crate::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference, constant_pool::ConstantPoolItem};
 

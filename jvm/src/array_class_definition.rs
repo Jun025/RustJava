@@ -6,7 +6,7 @@ use alloc::{
     vec::Vec,
 };
 use dyn_clone::clone_trait_object;
-use java_constants::ClassAccessFlags;
+use jvm_types::ClassAccessFlags;
 
 use crate::{Jvm, Result, class_definition::ClassDefinition, class_instance::ClassInstance, field::Field, method::Method, value::JavaValue};
 

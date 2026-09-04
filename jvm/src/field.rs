@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::fmt::Debug;
 
-use java_constants::FieldAccessFlags;
+use jvm_types::FieldAccessFlags;
 
 use crate::as_any::AsAny;
 

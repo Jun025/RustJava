@@ -7,7 +7,7 @@ use nom::{
     number::complete::be_u16,
 };
 
-use java_constants::MethodAccessFlags;
+use jvm_types::MethodAccessFlags;
 
 use crate::{attribute::AttributeInfo, constant_pool::ConstantPoolItem};
 

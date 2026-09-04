@@ -7,7 +7,7 @@ use nom::{
     number::complete::{be_u16, be_u32},
 };
 
-use java_constants::ClassAccessFlags;
+use jvm_types::ClassAccessFlags;
 
 use crate::{
     ClassFileError, attribute::AttributeInfo, constant_pool::ConstantPoolItem, field::FieldInfo, interface::parse_interface, method::MethodInfo,
