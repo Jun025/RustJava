@@ -35,7 +35,9 @@
   `rust.yml` 의 `strategy.matrix.rust = [stable, beta]` 가 그 차원이고, 이 repo 엔 `rust-toolchain.toml` 이
   **없어** 맨 `cargo` 는 **stable 1개**로만 돈다. ⇒ ★**toolchain 축을 안 적으면 「rust.yml 이 치는 그대로」가 «거짓»이 된다.**
   ★**실측 근거**(2026-09-04): `#[allow(clippy::double_must_use)]` **9곳을 전건 지우면**
-  ★**stable clippy 는 0인데 beta clippy 가 error 7** 이다 ⇒ ★**그 자산의 그물은 «beta 축»에만 있다.**
+  ★**stable clippy 는 0인데 beta clippy 는 RED**(★**rc=101** · `double_must_use` 진단 **6**건 —
+  전건 `jvm/src/jvm.rs:140·404·438·779·791·1016` · cargo 요약 줄이 「due to **6** previous errors」라고 말한다)
+  ⇒ ★**그 자산의 그물은 «beta 축»에만 있다.**
   ★★**축약본도 쓰지 마라 — 그것이 2026-09-04 에 실제로 구멍을 만들었다.** 종전 문안은
   `cargo fmt --check`·`cargo clippy`·`cargo test` 로 줄여 적어 ★**wasm32 줄이 통째로 빠져 있었고**,
   그 줄이 ★**`--exclude <크레이트 이름>` 이 사는 «유일한» 자리**다. ⇒ upstream 이 `test_utils` 를
