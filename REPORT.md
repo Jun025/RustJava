@@ -1,5 +1,26 @@
 # REPORT
 
+## [2026-09-04] 로컬 DoD ↔ CI 매트릭스 «기계 대조» 신설 (rustjava-local-dod-vs-ci-matrix-mechanical-check)
+- 무엇을: `scripts/check-dod-ci-parity.py` 신설 + `rust.yml` job **`dod_parity`** 배선 + DoD 블록에 그 줄 추가.
+  ★**`CLAUDE.md` DoD 코드블록**과 **`.github/workflows/rust.yml`** 을 «각각 파싱해» **대칭차**를 낸다 —
+  축 A(명령 집합) · 축 B(toolchain 집합). 오늘 **둘 다 0** 이라 계약대로 **rc=1(막는다)** 로 켰다.
+- 왜: `…-going-stale` 리니지가 **다섯 회차** 내내 「전건 동기」를 주장했고 **매번 «또 한 자리»**가 나왔다
+  (게이트②에서 6건째). ★**전부 같은 종류** — 「로컬 DoD 가 CI 검사 몇 개를 재현하는가」가 `rust.yml` 과
+  어긋난 채 문서에 굳었다. ⇒ ★**사람 손 대조로는 다섯 번 실패했다.**
+  ★★**그런데 «낡은 문자열 스캐너»는 만들지 않았다** — 게이트② 검수자가 「F1 은 «수»가 아니라 «말»이라
+  문자열 검사기로도 안 잡힌다」를 실측으로 세웠기 때문이다. ⇒ 문서의 문장이 아니라 ★**문서가 틀리는 «원인»**을 잡는다.
+- 사용자 영향: 런타임 동작 **무변경**(`.rs` 변경 0). 회차가 DoD 를 축약하거나 CI 가 검사·매트릭스 차원을
+  늘렸는데 DoD 를 안 고치면 ★**그 PR 이 그 자리에서 red** 다 — 종전엔 «사람이 축을 돌려야» 드러났다.
+- 검증: ★**개악 5건 전건 red · 무개악 green** — ⒜DoD wasm32 줄 제거 ⒝CI `- run: cargo doc --no-deps` 추가
+  ⒞매트릭스 `nightly` 추가 ⒟DoD `+beta` 줄 제거 ⒠`rust-toolchain.toml` 신설(축 B 매핑 붕괴 가드).
+  DoD 7줄 전건 rc=0 · `cargo test --all` **554 / 0 / 1**(새 red 0).
+- ★**한계를 숨기지 않는다 — 검사기가 «그 자리에서 함께» 찍는다**: ⒜**OS 축**(조건부 step)은 로컬 재현 불가라
+  여전히 CI 가 유일한 그물 ⒝두 축을 **«교차곱»으로 보지 않는다** — CI 는 cargo 검사 4종을 stable·beta 둘 다
+  치는데 DoD 는 `clippy` 만 이중이다. ★**이것은 2026-09-04 결정이 «고른 값»**이고(로컬 `cargo +beta test` =
+  두 번째 toolchain 전면 재빌드 · lint 를 지는 축은 clippy 뿐), 넓히는 것은 «새 결정»이다.
+- ★**후속 추천**: ⑴교차곱(모든 검사 × 모든 toolchain)까지 넓힐지 — ★**비용을 먼저 재고** 결정하라.
+  ⑵같은 형태의 파리티 락이 형제 repo(wie·qts)에도 필요한지 판정.
+
 ## [2026-09-04] 「우리 자산이 낡는다」 상시 조항 판정 — 넣지 않고 «구멍 하나»를 막았다 (rustjava-sync-contract-standing-clause-for-our-assets-going-stale)
 - 무엇을: 운영자 채택 제안 ★**셋**(`2026-09-04-upstream-sync-s6#p1` · `…-s7#p1` · ★`…-s8#p0`)에 대한 **결정**이다.
   (★**[fix3 정정] 초판은 「둘」** — 같은 제안의 세 번째 판이 도착해 `adoptedProposals` 는 **세 ref** 다.)
@@ -9,6 +30,8 @@
   (`REPORT.md` · `STATE.md` · 워크로그 `.md`/`.json`).
   ★**[게이트② 정정] 초판은 「CI 검사 5종 중 wasm32 clippy 한 줄」이라 적었다** — 계수 «1» 시절 문면이고,
   계수 **2** 정정 후에는 **두 축**(target · toolchain)이라 DoD 도 **6줄**이다.
+  ★★**[후속 정정] 그 «6줄»도 낡았다 — 파리티 검사기가 더해져 «7줄»이다.**
+  ⇒ ★**줄 수는 이제 문장이 아니라 `scripts/check-dod-ci-parity.py` 가 센다**(CI job `dod_parity`).
 - 왜: ★**목록 문서화로 시작하지 않고 «먼저 셌다»**(티켓이 그렇게 요구했다). 우리 자산 **8건**을
   ★**돌연변이로 깨뜨려** 무엇이 잡는지 실측했다 — 경로 문자열·`setProperty` 서술자·charset 라우팅·
   `ClassFormatError` 종류 단정은 **`cargo test` RED**, 수동 span 은 **clippy RED**,

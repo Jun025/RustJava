@@ -200,6 +200,8 @@ wasm32 clippy 한 줄」이었다.** 그것은 ★**계수 «1» 시절의 문�
 빠진 것은 «줄 하나»가 아니라 ★**«두 축»**(② target 축 = wasm32 `- run:` 줄 · ⑦ toolchain 축 = beta)이고,
 둘은 ★**한 근인의 두 얼굴**이다. ⇒ 그래서 DoD 는 **5줄이 아니라 6줄**이다.
 
+★★**[2026-09-04 후속 — `rustjava-local-dod-vs-ci-matrix-mechanical-check`] 위 «6줄»은 «수»이고, 그 수가 이 리니지를 다섯 번 낡게 했다.** DoD 는 그 뒤 `python3 scripts/check-dod-ci-parity.py` 가 더해져 **7줄**이 됐다. ⇒ ★**이제 줄 수를 문장에 적지 않는다** — `scripts/check-dod-ci-parity.py`(CI job `dod_parity`)가 DoD 코드블록과 `rust.yml` 을 **각각 파싱해** 대칭차를 내고, 어긋나면 **red** 다.
+
 ★**왜 조항이 아닌가 — «세고» 정했다**(먼저 목록을 만들지 않았다). 자산 8건을 **돌연변이로 깨뜨려** 무엇이 잡는지 쟀다:
 
 | # | 우리 자산 | 돌연변이 | 무엇이 잡나 |
@@ -276,26 +278,27 @@ sed -n '/^| # | 우리 자산/,/^$/p' docs/upstream-sync-approach.md \
 > ★**CI 가 치는 것 중 로컬 DoD 에 없는 것이 «1건이라도» 생기면 이 결정을 다시 연다.**
 > ★★**«치는 것»은 «줄»만이 아니라 «매트릭스 차원»도 포함한다** — 그래서 축이 둘이다.
 
+★★★**[2026-09-04 후속 — 이 두 축은 이제 «기계»가 센다. 손으로 세지 마라.]**
+종전에는 여기 셸 두 토막이 있었고 ★**회차가 그것을 «돌려야» 했다**(C7⒜ 가 「그 축을 돌리는 것이 사람이다」로 고지한 그 구멍).
+그 손 대조는 이 리니지에서 **다섯 번 실패**했다. ⇒ ★**같은 술어를 코드로 옮겼다**:
+
 ```sh
-cd "$(git rev-parse --show-toplevel)"
-DOD=$(sed -n '/## Definition of Done/,/^- 착수·완료마다/p' CLAUDE.md)
-
-# ★축① — CI 의 `- run:` 줄 ∖ 로컬 DoD   (0 이어야 한다)
-LC_ALL=C /usr/bin/grep -E '^[[:space:]]+- run: ' .github/workflows/rust.yml | sed 's/^[[:space:]]*- run: //' \
-| while IFS= read -r c; do printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "$c" || echo "MISSING-RUN: $c"; done \
-| /usr/bin/grep -c .
-
-# ★축② — CI 의 toolchain 매트릭스 ∖ 로컬 DoD   (0 이어야 한다)
-LC_ALL=C /usr/bin/grep -E '^[[:space:]]+rust: \[' .github/workflows/rust.yml \
-| sed 's/.*\[//; s/\].*//; s/, */\n/g' \
-| while IFS= read -r tc; do
-    [ "$tc" = stable ] && { printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qE 'cargo (fmt|clippy|test)' || echo "MISSING-TC: $tc"; continue; }
-    printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "cargo +$tc " || echo "MISSING-TC: $tc"
-  done | /usr/bin/grep -c .
+python3 scripts/check-dod-ci-parity.py     # rc=0 일치 · rc=1 대칭차 있음(어느 원소인지 찍는다)
 ```
 
-★**오늘의 값**(2026-09-04 정정 후): **축① `0`** · **축② `0`**.
+★**CI 도 이것을 친다** — `rust.yml` job **`dod_parity`** · 로컬 DoD 블록에도 그 줄이 있다.
+⇒ ★**셸 토막을 여기 다시 적지 마라 — 두 벌이 되면 다음 사람이 한쪽만 고친다.** 정본은 그 스크립트다.
+★**정본 위치도 문서가 아니라 «스크립트 안»에 박혀 있다**(`CI_FILE`·`DOD_FILE`·`DOD_SECTION`).
+
+★**오늘의 값**(2026-09-04 · 검사기 착지 후): ★**축 A(명령) 대칭차 `0`** · ★**축 B(toolchain) 대칭차 `0`**
+— 출력은 「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」.
 ※착수 시엔 **축① 5 · 축② 1**(beta 가 DoD 에 없었다) — 축①은 원 회차가, 축②는 정정 회차가 0 으로 만들었다.
+★★**검사기가 «못 보는 것»을 침묵시키지 않는다 — 그 자리에서 함께 찍는다**:
+⒜**OS 축**(조건부 step) — 로컬 재현 불가라 CI 가 유일한 그물이다.
+⒝★**두 축은 «독립»으로 비교한다 — 교차곱이 아니다.** CI 는 cargo 검사 4종을 stable·beta **둘 다** 치는데
+DoD 는 `clippy` 만 이중으로 친다. ★**이것은 결함이 아니라 2026-09-04 결정이 «고른 값»이다**(로컬에서
+`cargo +beta test` 는 두 번째 toolchain 전면 재빌드다 · lint 를 지는 축은 clippy 뿐이고 실측 gap 도 거기였다).
+⇒ ★**교차곱까지 넓히는 것은 «버그 수정»이 아니라 «새 결정»이다.**
 
 ★★**축②를 왜 따로 두는가 — 축① 만으로는 «구조적으로» 못 본다.** 실측(정정 회차):
 
@@ -316,6 +319,12 @@ LC_ALL=C /usr/bin/grep -E '^[[:space:]]+rust: \[' .github/workflows/rust.yml \
 ⒜**DoD 블록 자체의 개악은 자동으로 안 잡힌다** — 누가 그 블록에서 한 줄을 지우면 축①이 **1** 이 되지만,
 ★**그 축을 «돌리는 것»이 사람이다.** 기계 강제(DoD ↔ `rust.yml` 대조 CI job)는 이 회차 범위 밖이고,
 ★**고칠 수 없으면 «고지»가 처방이다.** ⇒ ★**이 절을 읽는 회차는 「축①·축②를 «실제로 돌렸는가»」를 회신에 적어라.**
+★★★**[2026-09-04 후속 — ⒜ 는 «닫혔다». 위 문장은 사료다.]** 그 「범위 밖」을 총괄이 판정해
+**`scripts/check-dod-ci-parity.py` + CI job `dod_parity`** 로 배선했다 ⇒ ★**DoD 블록에서 한 줄을 지우면
+그 자리에서 CI 가 red 다**(개악 대조 실측: DoD wasm32 줄 제거 → rc=1 · CI 에 `- run:` 1줄 추가 → rc=1 ·
+매트릭스에 nightly 추가 → rc=1 · DoD 의 `+beta` 줄 제거 → rc=1 · `rust-toolchain.toml` 신설 → rc=1).
+⇒ ★**「돌렸는가」를 회신에 적는 관례는 이제 «불요»다** — 안 돌리면 CI 가 대신 말한다.
+★**⒝(OS 축)는 그대로 열려 있다** — 검사기도 그것을 «제외»로 찍을 뿐 잡지 못한다.
 ⒝★**OS 축(macos·ubuntu·windows 3종)은 로컬에서 재현할 수 없다** — 그 차원은 ★**CI 가 «유일한» 그물**이고
 대조 대상이 아니다. **결함이 아니라 «알고 두는» 값이다.**
 

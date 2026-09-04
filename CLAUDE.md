@@ -22,7 +22,7 @@
     **검증기로 막을 수 없다.** ⇒ 이 조항은 **1차 방어**이며 **최종 방어는 diff 검토**다.
 
 ## Definition of Done
-- ★**`.github/workflows/rust.yml` 이 «치는 그대로» 전부 green** — 축약하지 말고 이 여섯 줄을 그대로 쳐라:
+- ★**`.github/workflows/rust.yml` 이 «치는 그대로» 전부 green** — 축약하지 말고 이 블록을 그대로 쳐라:
   ```
   cargo fmt --all -- --check
   cargo clippy --all -- -D warnings
@@ -30,7 +30,13 @@
   cargo clippy --workspace --exclude test-utils --target wasm32-unknown-unknown -- -D warnings
   cargo test --all
   python3 scripts/check-worklog-json.py
+  python3 scripts/check-dod-ci-parity.py
   ```
+  ★★**이 블록은 이제 «기계가 지킨다» — `scripts/check-dod-ci-parity.py`(CI job `dod_parity`)가
+  이 코드블록과 `rust.yml` 을 «각각 파싱해» 대칭차를 낸다.** 어긋나면 그 자리에서 red 다.
+  ⇒ ★**줄 수를 세어 문장에 적지 마라**(이 리니지가 그 수로 다섯 번 낡았다) — 세는 것은 검사기 몫이다:
+  `python3 scripts/check-dod-ci-parity.py` 가 「명령 N개 · toolchain N개로 «둘 다 일치»」를 찍는다.
+  ★**그 검사기가 «못 보는 것»도 그 자리에서 함께 찍는다**(조건부 step = OS 축) — 침묵하지 않는다.
   ★★**`+beta` 줄을 빼지 마라 — CI 는 이 검사들을 «6셀»(toolchain 2 × OS 3)로 친다.**
   `rust.yml` 의 `strategy.matrix.rust = [stable, beta]` 가 그 차원이고, 이 repo 엔 `rust-toolchain.toml` 이
   **없어** 맨 `cargo` 는 **stable 1개**로만 돈다. ⇒ ★**toolchain 축을 안 적으면 「rust.yml 이 치는 그대로」가 «거짓»이 된다.**
