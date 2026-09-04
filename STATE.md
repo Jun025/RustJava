@@ -23,6 +23,23 @@
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-upstream-behind-measure-scheduled-workflow] ★★**`behind` 를 «재는» 자리 신설 — `.github/workflows/upstream-behind.yml`.**
+  채택 제안 `2026-09-04-upstream-sync-cadence-decision#p0`. ★임계는 정해졌는데(**`behind ≥ 20`** · PR #29 착지) ★**재는 주체가 없었다**
+  (`git grep -lI 'rev-list --count' origin/main -- .github/ scripts/` → **0건**).
+  ★**주기 = 주 1회**(`cron: "17 6 * * 1"`) — 선례(`rust-audit` 일간)를 **베끼지 않고** 임계 도달 속도로 정당화했다:
+  behind 20 도달 **중앙 44일 · ★최소 9일** ⇒ ★**7 < 9 라 한 주기 넘게 못 놓친다** · 일간은 7배 비용에 판단 가치 0.
+  ★★**알림 = ⒝ Job Summary + annotation · «항상 green»** — ★**취향이 아니라 실측으로 골랐다**:
+  ⒜red 는 여기서 **안 듣는다**(선례 `rust-audit` 최근 **20 run 중 19 failure** 인데 ★**대응 티켓 0건**) ·
+  예약 red 는 ★**main tip check-run 에 붙어**(실측 `8c1238b5` 에 `audit` failure **7건**) 게이트③의 「착지본 green」 읽기를 **흐린다**
+  (★단 **PR 은 막지 않는다** — PR head 와 sha 가 다르다) · ⒞이슈는 ★**이 fork 가 issues 비활성이라 «불가»**.
+  ⇒ ★**⒝ 가 «남은 것»이고 그 «수동성»을 알고 골랐다** — ★**재개 조건이 그 대가를 «잰다»**
+  (「`behind ≥ 20` 이 7일 이상인데 회차 미개시」 · 세는 명령·오늘의 값을 §5-B ⒠ 에 박았다).
+  ★**한 번 돌려 오늘의 값**: ★**behind `0`** · `merge-base` `bd42427` = upstream HEAD ⇒ 임계 미만.
+  ★**upstream 발신 0**(remote 추가 + fetch 뿐 · `permissions: contents: read`) · ★**자동 발권 0** · ★**임계 20 무접촉** ·
+  ★`bin/healthcheck`·orchestrator 무접촉 · `scripts/` 무접촉(파리티 rc=0) · `.rs` **0줄** · S9 미개시.
+  ★게이트③ 완료: PR #31 — ★★**`--merge` 착지**(★`--squash` 아님 · 등재 repo). 머지커밋 sha 는 회신 `merged:` 참조.
+  ★**착지 후 «워크플로를 실제로 돌려» 확인했다** — 구현 회차가 「본문 명령만 태웠고 워크플로 자체는 못 돌렸다」고 자인한 그 구멍이다.
+  결과는 회신 참조. ★**게이트② 1회차 approve** — 반려 0.
 - [rustjava-worklog-absence-machine-enforcement-decision] ★★**워크로그 «부재»를 기계로 잡을지 «판정» — 결론: 지금은 «넣지 않는다».**
   채택 제안 `2026-09-04-worklog-mandate-and-local-gate#p0`. ★**`scripts/check-worklog-json.py` 무접촉**(6축 무회귀 · rc=0) ·
   `.rs` **0줄** · 과거 backfill **0** · qts 잠금·upstream 리니지·파리티 검사기 **무접촉**.

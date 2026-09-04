@@ -1,0 +1,81 @@
+# Measures how far this fork is behind upstream (dlunch/RustJava) and reports the number.
+#
+# Why this exists: the 2026-09-04 cadence decision (docs/upstream-sync-approach.md §5-B, landed
+# in PR #29) fixed the trigger at `behind >= 20` but left nothing that *measures* it — the number
+# was only ever read when a human remembered to ask. This job asks on a schedule.
+#
+# ── Why it never fails ────────────────────────────────────────────────────────
+# A red run was considered and rejected on evidence from this repo, not taste:
+# `rust-audit.yaml` (the scheduled-workflow precedent) has been `failure` in 19 of its last 20
+# runs and produced zero response tickets, and the `coverage` lineage already resolved a
+# chronically-red workflow by making it green rather than by acting on the red. A scheduled
+# failure also attaches check-runs to main's tip (measured on 8c1238b5: 7 `audit` failures),
+# which muddies the "landed main is green" read that every gate3 round performs. So the number
+# is reported, not raised as an error. Issues were not an option either: this fork has issues
+# disabled (`hasIssuesEnabled: false`).
+#
+# ── Reading it ────────────────────────────────────────────────────────────────
+# The canonical read stays local and costs nothing:
+#     git fetch -q upstream && git rev-list --count origin/main..upstream/main
+# This workflow does not replace that; it makes the number appear when nobody asked.
+#
+# ── Boundaries ────────────────────────────────────────────────────────────────
+# Read-only toward upstream: it adds a remote and fetches. No push, no PR, no issue, no comment.
+# It does not open a sync round — issuance stays with a person (the cadence decision says so).
+# The threshold below is the landed decision's value; changing it is a new decision, not an edit.
+
+name: upstream behind
+
+on:
+  schedule:
+    # Weekly, Mondays 06:17 UTC. Weekly rather than daily because the measured time to
+    # accumulate 20 commits upstream is a median of 44 days and a minimum of 9 (12-month
+    # window, 144 commits / 51 weeks) — a 7-day period is shorter than the fastest observed
+    # crossing, so it cannot miss one by more than a period, while daily would cost 7x the
+    # runs for a decision nobody can act on faster than one sync round. The offset avoids
+    # the top of the hour (GitHub queues those hardest) and `rust-audit.yaml`'s 00:00 slot.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  behind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Measure behind
+        env:
+          THRESHOLD: "20" # docs/upstream-sync-approach.md §5-B — landed in PR #29
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/dlunch/RustJava.git
+          git fetch -q --no-tags upstream
+          behind=$(git rev-list --count HEAD..upstream/main)
+          base=$(git merge-base HEAD upstream/main)
+          {
+            echo "## upstream behind"
+            echo
+            echo "| axis | value |"
+            echo "| --- | --- |"
+            echo "| behind | **$behind** |"
+            echo "| threshold | $THRESHOLD |"
+            echo "| merge-base | \`$base\` |"
+            echo "| upstream HEAD | \`$(git rev-parse --short upstream/main)\` |"
+            echo
+            if [ "$behind" -ge "$THRESHOLD" ]; then
+              echo "**At or over the threshold — a sync round is due.** Issuance stays with a person;"
+              echo "this job does not open one. See docs/upstream-sync-approach.md §5-B."
+            else
+              echo "Under the threshold — nothing to do."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$behind" -ge "$THRESHOLD" ]; then
+            echo "::warning title=upstream behind $behind::at or over the threshold ($THRESHOLD) — a sync round is due"
+          else
+            echo "::notice title=upstream behind $behind::under the threshold ($THRESHOLD)"
+          fi
