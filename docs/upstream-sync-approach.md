@@ -347,6 +347,88 @@ DoD 는 `clippy` 만 이중으로 친다. ★**이것은 결함이 아니라 202
    ★**먼저 «필터 없이» 총계를 내고 «그다음» 한 건씩 «정정 기록인가 잔존인가»를 눈으로 갈라라.**
    ★**필터는 세는 단계가 아니라 «읽는» 단계에 붙인다** — 세는 단계에 붙이면 그 필터가 잔존을 함께 지운다.
 
+### ★★★[2026-09-04 판정] 파리티 락을 «교차곱»까지 넓히는가 — ★**넓히지 «않는다»**
+
+채택 제안 `2026-09-04-dod-ci-parity-lock#p0` 에 대한 **결정**이다. ★**비용을 «먼저» 쟀다.**
+
+**결정문**:
+> ★**`scripts/check-dod-ci-parity.py` 의 두 축(A=명령 · B=toolchain)은 «독립»으로 비교한다 — 교차곱으로 넓히지 않는다.**
+> ★**부분 확장(`fmt@beta` 만)도 지금은 채택하지 않는다.**
+
+★**근거는 «둘 다 실측»이다 — 어느 쪽도 추정이 아니다.**
+
+**⒜ 비용** — ★**제안 문면의 「두 배」는 «무변경 재실행»에서만 참이다**:
+
+| 시나리오 | 현행 | 교차곱 | 배수 |
+|---|---|---|---|
+| 무변경 재실행(warm) | **19s** | **38s** | 2.00× |
+| ★**소스 1줄 편집 후**(코어 크레이트 `jvm` · **회차가 실제로 겪는 케이스**) | **89s** | ★**326s** | ★**3.66×** |
+| 콜드 1회(beta 산출물 최초 생성) | — | +**171s** | — |
+
+★**지배항 = `cargo +beta test --all` 215s**(같은 편집에서 stable `cargo test --all` 66s 의 **3.3배**).
+★**전제 비용 1건**: `rustfmt` 가 beta 에 **설치돼 있지 않다** — `cargo +beta fmt` 는 오늘 그대로 **rc=1**
+(`'cargo-fmt' is not installed for the toolchain 'beta-…'`). 넣으면 **모든 머신·에이전트**가 먼저 갖춰야 한다.
+★**시간을 서로 뺏지는 않는다 — 대신 디스크를 쓴다**: beta 3줄 직후 stable clippy **2s** · stable test **25s**
+⇒ 툴체인 교대 축출 **0**(두 벌 공존). `target/` **46G** · 이 측정 45분 산출물 **5.43 GiB**.
+
+**⒝ 실익** — ★**«CI 에만 있는 조합»은 «3»개이고, 그 3개가 이력에서 잡았을 사건은 «0»건이다.**
+
+CI 조합(OS 축 제외): `rust_ci` 4명령 × toolchain 2 = 8 + `worklog_json` 1 + `dod_parity` 1 = **10** ↔ DoD **7** ⇒ 빠진 **3**:
+①`cargo fmt --all -- --check` @beta ②`cargo clippy --workspace --exclude test-utils --target wasm32-…` @beta ③`cargo test --all` @beta.
+※OS 축까지 세면 CI 실행은 **26**(6셀 × 4 + 2)이고 로컬은 7 이다 — 그 축은 선언상 범위 밖이다.
+
+★**`rust.yml` 이력 전수**(76 run = 성공 73 · **실패 3**) 분해:
+
+| run | sha | 실패 셀 | 실패 step | beta 전용? |
+|---|---|---|---|---|
+| 33824237441 | `0a2992a7` | ★**6셀 전건** | `cargo fmt --all -- --check` | ✗ — **stable 도 실패** ⇒ 현행 DoD 가 잡는다 |
+| 33798515798 | `d8af846d` | beta 3셀 | `cargo clippy --all -- -D warnings` | ✓ — ★**DoD 가 이미 `+beta` 로 덮는 줄** |
+| 32674170282 | `eaa56689` | ubuntu beta | `cargo clippy --all -- -D warnings` | ✓ — ★**같음** |
+
+⇒ ★★**이 저장소의 「beta 전용 실패」는 «전건 `cargo clippy --all`» 이고, 그 한 줄은 DoD 가 이미 이중으로 친다.**
+⇒ ★**교차곱이 «새로» 잡았을 사건 = 0건 / 76 run.** ⇒ **+237s/회차를 지불해 얻는 것이 0 이다.**
+
+**⒞ 부분 확장(`fmt@beta` 만 · +3s)도 기각한다** — 싸지만 ⑴이력 **0건** ⑵beta `rustfmt` 미설치가 기본이라
+DoD 가 **즉시 rc=1** 이 된다(회차마다 `rustup component add` 가 선행돼야 한다) ⑶검사기가 축을 «독립»으로
+비교하므로 «부분» 교차곱을 표현하려면 **모델 자체를 바꿔야 한다**(= 로직 변경).
+★**단 아래 재개 조건이 «fmt» 에서 발화하면 이것이 «첫 후보»다.**
+
+★★★**재개 조건 — «세는 명령»과 «오늘의 값»**:
+> ★**`rust.yml` 실패 이력에 「`cargo clippy --all` «이외»의 step 이 beta 셀에서만 실패한 run」이 «1건이라도» 생기면 이 판정을 다시 연다.**
+
+```sh
+gh run list --repo Jun025/RustJava --workflow=rust.yml --status=failure --limit 200 \
+  --json databaseId --jq '.[].databaseId' \
+| while read -r id; do
+    gh api "repos/Jun025/RustJava/actions/runs/$id/jobs" \
+      --jq '[.jobs[]|select(.conclusion=="failure")] as $f
+            | ($f|map(select(.name|test("beta")))|length) as $b
+            | ($f|length) as $t
+            | [$b, $t, ($f[0].steps//[]|map(select(.conclusion=="failure"))|map(.name)|join(","))] | @tsv'
+  done | awk -F'\t' '$1==$2 && $3 !~ /clippy --all/ {n++} END{print n+0}'
+```
+★**오늘의 값 = `0`**(2026-09-04). ★**1 이상이면**: 그 step 을 교차곱에 «그것만» 넣고(전부 넣지 마라)
+위 비용표를 **다시 재라** — 이 표의 수는 그때의 값이다.
+※★**「비용이 싸졌다」는 재개 사유가 «아니다»** — 실익이 0 인 동안에는 싸도 넣지 않는다.
+
+### ★[2026-09-04 조사] 형제 repo(`wie`·`qts`)에도 같은 락이 필요한가 — ★**둘 다 «조건부 필요» · 검사기는 «포팅 불가»**
+
+★**다음 RustJava 회차가 같은 조사를 반복하지 않도록 결과만 남긴다** — 전문은
+`docs/worklog/2026-09-04-parity-sibling-repo-survey.{md,json}`. ★**형제 repo 는 다른 레인 소관이라 이 저장소가 고치지 않는다.**
+
+- ★**구조가 같지 않다**: `wie` 의 DoD 정본은 ★**`AGENTS.md`**(우리는 `CLAUDE.md`)이고 CI 의 4번째 게이트
+  (`cargo test`)가 ★**`if:` 로 갈린 2 step + 블록 스칼라**라, 우리 파서의 「조건부 = OS 축 = 제외」 규칙이
+  ★**거짓 red** 를 만든다. `qts` 는 DoD 가 ★**`make` 타깃 이름**(Makefile 간접층)이고 ★**toolchain 매트릭스가 없어
+  축 B 자체가 성립하지 않으며**, `gitleaks` 는 ★**action 이라 어떤 `run:` 파서도 못 본다**.
+- ★**그런데 어긋남은 «둘 다 실재»한다(이력 실측)**: `wie` 는 `rust.yml` 실패 **34건 중 9건(26%)** 이
+  ★**beta 셀에서만** 실패한 clippy 인데 four gates 에 `cargo +beta` 가 **없다**(문자열 `beta` 가 규범 문서에 **0건**) ·
+  `qts` 는 최근 실패 **60건 중 10건(17%)** 이 ★**`uv run ruff format --check .` «만»** 실패인데 `make lint` 는 그것을 **안 친다**.
+- ⇒ ★★**먼저 할 일은 락이 아니라 «각 한 줄»이다** — `wie`: four gates 에 `cargo +beta clippy --all -- -D warnings` ·
+  `qts`: `make lint` 에 `uv run ruff format --check .`. ★**락은 그 «다음»이다**(락은 어긋남을 «막는» 것이지 «고치는» 것이 아니다).
+- ★★**일반 사실 하나** — 세 repo 가 전부 이 어긋남을 갖고 있었고 ★**어긋난 자리가 전부 규범 문서에 «적혀 있지 않았다»**
+  (우리 = wasm32 줄 + beta 축 · `wie` = beta 축 · `qts` = `ruff format --check`).
+  ⇒ ★**「사람이 문서를 최신으로 유지한다」가 세 repo에서 «각각» 실패했다** — 그것이 기계 대조의 일반 근거다.
+
 ## 5. 단계 분할 — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
 
 각 컷 지점에서 `git merge-tree --write-tree --name-only origin/main <cut>` 을 돌린 실측:
@@ -832,7 +914,10 @@ base 를 반드시 병기한다」)을 «이 표가» 어겼고, 실제로 기�
 ⇒ ★**정본 열을 «누적»으로 통일하고 base·기준을 병기한다.**
 
 ★**정본 = «누적»**(그 회차의 base 에서 «실제로 열린」 파일 수 = 「이번 회차가 푼 것」) —
-★**착지 커밋 제목이 그 값의 1차 사료**다(`git log --first-parent`):
+★**착지 커밋 제목이 그 값의 1차 사료**다(`git log --first-parent`) — ★**단 «S1~S7» 에 한한다.**
+★★**[2026-09-04 정정 · 게이트②] `S8` 은 예외다** — 착지 커밋 `a76b305` 의 제목·본문에 ★**충돌 수가 «0건»** 이다.
+그 칸의 값 **8** 의 출처는 ★**직접 재측정**이고(`git merge-tree --write-tree --name-only 3fb08a8 bd42427` —
+`Cargo.lock` 1 + 개명 유발 file-location 6 + `thread.rs` 1), ★**값은 옳다. 좁힌 것은 «사료 출처의 범위»뿐이다.**
 
 | 회차 | 커밋 | ★**누적**(정본) | 델타(§5 제안표) | base · merge-base | 성격 |
 |---|---|---|---|---|---|
