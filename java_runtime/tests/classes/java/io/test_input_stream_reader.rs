@@ -131,7 +131,9 @@ async fn test_isr_iso_8859_1() -> Result<()> {
     let isr = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (is,)).await?;
 
     let buf = jvm.instantiate_array("C", 10).await?;
-    let read: i32 = jvm.invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf.clone(), 0, 4)).await?;
+    let read: i32 = jvm
+        .invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf.clone(), 0, 4))
+        .await?;
 
     assert_eq!(read, 4);
     let buf_data: Vec<JavaChar> = jvm.load_array(&buf, 0, 4).await?;
@@ -154,7 +156,9 @@ async fn test_isr_unsupported_charset_throws() -> Result<()> {
     let isr = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (is,)).await?;
 
     let buf = jvm.instantiate_array("C", 10).await?;
-    let result: Result<i32> = jvm.invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf, 0, 2)).await;
+    let result: Result<i32> = jvm
+        .invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf, 0, 2))
+        .await;
     let Err(JavaError::JavaException(exception)) = result else {
         panic!("Expected JavaException, got {:?}", result);
     };

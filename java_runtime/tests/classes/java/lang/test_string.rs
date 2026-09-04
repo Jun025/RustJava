@@ -1032,14 +1032,18 @@ async fn test_get_bytes_unsupported_charset_throws() -> Result<()> {
     let string = JavaLangString::from_rust_string(&jvm, "hi").await?;
     let charset = JavaLangString::from_rust_string(&jvm, "UTF-16").await?;
 
-    let result: Result<ClassInstanceRef<jvm::Array<i8>>> = jvm.invoke_virtual(&string, "java/lang/String", "getBytes", "(Ljava/lang/String;)[B", (charset,)).await;
+    let result: Result<ClassInstanceRef<jvm::Array<i8>>> = jvm
+        .invoke_virtual(&string, "java/lang/String", "getBytes", "(Ljava/lang/String;)[B", (charset,))
+        .await;
     let Err(JavaError::JavaException(exception)) = result else {
         panic!("Expected JavaException, got {:?}", result);
     };
     assert!(jvm.is_instance(&*exception, "java/io/UnsupportedEncodingException"));
     assert!(jvm.is_instance(&*exception, "java/io/IOException"));
 
-    let message: ClassInstanceRef<JavaString> = jvm.invoke_virtual(&exception, &exception.class_definition().name(), "getMessage", "()Ljava/lang/String;", ()).await?;
+    let message: ClassInstanceRef<JavaString> = jvm
+        .invoke_virtual(&exception, &exception.class_definition().name(), "getMessage", "()Ljava/lang/String;", ())
+        .await?;
     assert_eq!(JavaLangString::to_rust_string(&jvm, &message).await?, "UTF-16");
 
     Ok(())
@@ -1114,7 +1118,9 @@ async fn test_new_string_unsupported_charset_throws() -> Result<()> {
     };
     assert!(jvm.is_instance(&*exception, "java/io/UnsupportedEncodingException"));
 
-    let message: ClassInstanceRef<JavaString> = jvm.invoke_virtual(&exception, &exception.class_definition().name(), "getMessage", "()Ljava/lang/String;", ()).await?;
+    let message: ClassInstanceRef<JavaString> = jvm
+        .invoke_virtual(&exception, &exception.class_definition().name(), "getMessage", "()Ljava/lang/String;", ())
+        .await?;
     assert_eq!(JavaLangString::to_rust_string(&jvm, &message).await?, "Shift_JIS");
 
     Ok(())
