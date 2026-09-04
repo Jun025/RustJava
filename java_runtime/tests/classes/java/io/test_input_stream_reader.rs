@@ -1,6 +1,7 @@
 use alloc::{boxed::Box, collections::BTreeMap, vec, vec::Vec};
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use java_runtime::classes::java::lang::Object;
 use java_runtime::{RuntimeClassProto, RuntimeContext};
 use jvm::{Array, ClassInstanceRef, JavaChar, JavaError, Jvm, Result, runtime::JavaLangString};
@@ -17,15 +18,15 @@ impl OneByteInputStream {
             parent_class: Some("java/io/InputStream"),
             interfaces: vec![],
             methods: vec![
-                JavaMethodProto::new("<init>", "([B)V", Self::init, Default::default()),
-                JavaMethodProto::new("read", "()I", Self::read, Default::default()),
-                JavaMethodProto::new("read", "([BII)I", Self::read_offset_length, Default::default()),
+                JavaMethodProto::new("<init>", "([B)V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("read", "()I", Self::read, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("read", "([BII)I", Self::read_offset_length, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![
-                JavaFieldProto::new("data", "[B", Default::default()),
-                JavaFieldProto::new("position", "I", Default::default()),
+                JavaFieldProto::new("data", "[B", FieldAccessFlags::PRIVATE),
+                JavaFieldProto::new("position", "I", FieldAccessFlags::PRIVATE),
             ],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -62,7 +63,7 @@ impl OneByteInputStream {
             return Ok(0);
         }
 
-        let value: i32 = jvm.invoke_virtual(&this, "read", "()I", ()).await?;
+        let value: i32 = jvm.invoke_virtual(&this, "OneByteInputStream", "read", "()I", ()).await?;
         if value == -1 {
             return Ok(-1);
         }
@@ -83,13 +84,17 @@ async fn test_isr() -> Result<()> {
     let isr = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (is,)).await?;
 
     let buf = jvm.instantiate_array("C", 10).await?;
-    let read: i32 = jvm.invoke_virtual(&isr, "read", "([CII)I", (buf.clone(), 0, 5)).await?;
+    let read: i32 = jvm
+        .invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf.clone(), 0, 5))
+        .await?;
 
     assert_eq!(read, 5);
     let buf_data: Vec<JavaChar> = jvm.load_array(&buf, 0, 5).await?;
     assert_eq!(buf_data, vec![72, 101, 108, 108, 111]);
 
-    let read: i32 = jvm.invoke_virtual(&isr, "read", "([CII)I", (buf.clone(), 0, 6)).await?;
+    let read: i32 = jvm
+        .invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf.clone(), 0, 6))
+        .await?;
 
     assert_eq!(read, 6);
     let buf_data: Vec<JavaChar> = jvm.load_array(&buf, 0, 6).await?;
@@ -126,7 +131,7 @@ async fn test_isr_iso_8859_1() -> Result<()> {
     let isr = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (is,)).await?;
 
     let buf = jvm.instantiate_array("C", 10).await?;
-    let read: i32 = jvm.invoke_virtual(&isr, "read", "([CII)I", (buf.clone(), 0, 4)).await?;
+    let read: i32 = jvm.invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf.clone(), 0, 4)).await?;
 
     assert_eq!(read, 4);
     let buf_data: Vec<JavaChar> = jvm.load_array(&buf, 0, 4).await?;
@@ -149,7 +154,7 @@ async fn test_isr_unsupported_charset_throws() -> Result<()> {
     let isr = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (is,)).await?;
 
     let buf = jvm.instantiate_array("C", 10).await?;
-    let result: Result<i32> = jvm.invoke_virtual(&isr, "read", "([CII)I", (buf, 0, 2)).await;
+    let result: Result<i32> = jvm.invoke_virtual(&isr, &isr.class_definition().name(), "read", "([CII)I", (buf, 0, 2)).await;
     let Err(JavaError::JavaException(exception)) = result else {
         panic!("Expected JavaException, got {:?}", result);
     };
@@ -169,12 +174,22 @@ async fn test_input_stream_reader_preserves_split_multibyte_and_buffered_eof() -
     let reader = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (input,)).await?;
     let chars = jvm.instantiate_array("C", 16).await?;
 
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([CII)I", (chars.clone(), 0, 1)).await?, 1);
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([CII)I", (chars.clone(), 1, 15)).await?, 9);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([CII)I", (chars.clone(), 0, 1))
+            .await?,
+        1
+    );
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([CII)I", (chars.clone(), 1, 15))
+            .await?,
+        9
+    );
     let decoded: Vec<JavaChar> = jvm.load_array(&chars, 0, 10).await?;
     assert_eq!(alloc::string::String::from_utf16(&decoded).unwrap(), value);
 
-    let invalid: Result<i32> = jvm.invoke_virtual(&reader, "read", "([CII)I", (chars, -1, 1)).await;
+    let invalid: Result<i32> = jvm
+        .invoke_virtual(&reader, &reader.class_definition().name(), "read", "([CII)I", (chars, -1, 1))
+        .await;
     let Err(JavaError::JavaException(exception)) = invalid else {
         panic!("invalid range must throw IndexOutOfBoundsException");
     };
@@ -203,9 +218,17 @@ async fn test_input_stream_reader_does_not_return_zero_for_split_multibyte_input
     let reader = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (input,)).await?;
     let chars = jvm.instantiate_array("C", 1).await?;
 
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([CII)I", (chars.clone(), 0, 1)).await?, 1);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([CII)I", (chars.clone(), 0, 1))
+            .await?,
+        1
+    );
     assert_eq!(jvm.load_array::<JavaChar>(&chars, 0, 1).await?, ['한' as JavaChar]);
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([CII)I", (chars, 0, 1)).await?, -1);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([CII)I", (chars, 0, 1))
+            .await?,
+        -1
+    );
 
     Ok(())
 }
@@ -242,32 +265,56 @@ async fn test_reader_default_contract_and_lifecycle() -> Result<()> {
     let input = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (bytes,)).await?;
     let reader = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (input,)).await?;
 
-    assert!(jvm.invoke_virtual::<_, bool>(&reader, "ready", "()Z", ()).await?);
+    assert!(
+        jvm.invoke_virtual::<_, bool>(&reader, &reader.class_definition().name(), "ready", "()Z", ())
+            .await?
+    );
     assert!(!jvm.invoke_special::<_, bool>(&reader, "java/io/Reader", "ready", "()Z", ()).await?);
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "()I", ()).await?, 'a' as i32);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "()I", ())
+            .await?,
+        'a' as i32
+    );
 
     let chars = jvm.instantiate_array("C", 2).await?;
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([C)I", (chars.clone(),)).await?, 2);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([C)I", (chars.clone(),))
+            .await?,
+        2
+    );
     assert_eq!(jvm.load_array::<JavaChar>(&chars, 0, 2).await?, ['b' as JavaChar, 'c' as JavaChar]);
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "()I", ()).await?, -1);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "()I", ())
+            .await?,
+        -1
+    );
 
     let empty = jvm.instantiate_array("C", 0).await?;
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "([CII)I", (empty, 0, 0)).await?, 0);
-    assert!(!jvm.invoke_virtual::<_, bool>(&reader, "markSupported", "()Z", ()).await?);
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "([CII)I", (empty, 0, 0))
+            .await?,
+        0
+    );
+    assert!(
+        !jvm.invoke_virtual::<_, bool>(&reader, &reader.class_definition().name(), "markSupported", "()Z", ())
+            .await?
+    );
 
-    let mark: Result<()> = jvm.invoke_virtual(&reader, "mark", "(I)V", (1,)).await;
+    let mark: Result<()> = jvm.invoke_virtual(&reader, &reader.class_definition().name(), "mark", "(I)V", (1,)).await;
     let Err(JavaError::JavaException(exception)) = mark else {
         panic!("default mark must throw IOException");
     };
     assert!(jvm.is_instance(&*exception, "java/io/IOException"));
 
-    let reset: Result<()> = jvm.invoke_virtual(&reader, "reset", "()V", ()).await;
+    let reset: Result<()> = jvm.invoke_virtual(&reader, &reader.class_definition().name(), "reset", "()V", ()).await;
     let Err(JavaError::JavaException(exception)) = reset else {
         panic!("default reset must throw IOException");
     };
     assert!(jvm.is_instance(&*exception, "java/io/IOException"));
 
-    let negative_skip: Result<i64> = jvm.invoke_virtual(&reader, "skip", "(J)J", (-1i64,)).await;
+    let negative_skip: Result<i64> = jvm
+        .invoke_virtual(&reader, &reader.class_definition().name(), "skip", "(J)J", (-1i64,))
+        .await;
     let Err(JavaError::JavaException(exception)) = negative_skip else {
         panic!("negative skip must throw IllegalArgumentException");
     };
@@ -277,10 +324,22 @@ async fn test_reader_default_contract_and_lifecycle() -> Result<()> {
     jvm.store_array(&mut bytes, 0, [b'x' as i8, b'y' as i8, b'z' as i8]).await?;
     let input = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (bytes,)).await?;
     let reader = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (input,)).await?;
-    assert_eq!(jvm.invoke_virtual::<_, i64>(&reader, "skip", "(J)J", (2i64,)).await?, 2);
-    assert_eq!(jvm.invoke_virtual::<_, i32>(&reader, "read", "()I", ()).await?, 'z' as i32);
-    assert_eq!(jvm.invoke_virtual::<_, i64>(&reader, "skip", "(J)J", (2i64,)).await?, 0);
-    let _: () = jvm.invoke_virtual(&reader, "close", "()V", ()).await?;
+    assert_eq!(
+        jvm.invoke_virtual::<_, i64>(&reader, &reader.class_definition().name(), "skip", "(J)J", (2i64,))
+            .await?,
+        2
+    );
+    assert_eq!(
+        jvm.invoke_virtual::<_, i32>(&reader, &reader.class_definition().name(), "read", "()I", ())
+            .await?,
+        'z' as i32
+    );
+    assert_eq!(
+        jvm.invoke_virtual::<_, i64>(&reader, &reader.class_definition().name(), "skip", "(J)J", (2i64,))
+            .await?,
+        0
+    );
+    let _: () = jvm.invoke_virtual(&reader, &reader.class_definition().name(), "close", "()V", ()).await?;
 
     let null_lock: ClassInstanceRef<Object> = None.into();
     let result: Result<()> = jvm

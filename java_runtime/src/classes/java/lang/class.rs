@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{
     ClassInstanceRef, JavaType, Jvm, Result,
     runtime::{JavaLangClass, JavaLangClassLoader, JavaLangString},
@@ -25,13 +25,18 @@ impl Class {
             parent_class: Some("java/lang/Object"),
             interfaces: vec!["java/io/Serializable"],
             methods: vec![
-                JavaMethodProto::new("<init>", "()V", Self::init, Default::default()),
-                JavaMethodProto::new("getName", "()Ljava/lang/String;", Self::get_name, Default::default()),
+                JavaMethodProto::new("<init>", "()V", Self::init, MethodAccessFlags::PRIVATE),
+                JavaMethodProto::new("getName", "()Ljava/lang/String;", Self::get_name, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("isPrimitive", "()Z", Self::is_primitive, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("isArray", "()Z", Self::is_array, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("isInterface", "()Z", Self::is_interface, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("isInstance", "(Ljava/lang/Object;)Z", Self::is_instance, MethodAccessFlags::PUBLIC),
-                JavaMethodProto::new("isAssignableFrom", "(Ljava/lang/Class;)Z", Self::is_assignable_from, Default::default()),
+                JavaMethodProto::new(
+                    "isAssignableFrom",
+                    "(Ljava/lang/Class;)Z",
+                    Self::is_assignable_from,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::NATIVE,
+                ),
                 JavaMethodProto::new("newInstance", "()Ljava/lang/Object;", Self::new_instance, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("getSuperclass", "()Ljava/lang/Class;", Self::get_superclass, MethodAccessFlags::PUBLIC),
@@ -52,7 +57,7 @@ impl Class {
                     "getResourceAsStream",
                     "(Ljava/lang/String;)Ljava/io/InputStream;",
                     Self::get_resource_as_stream,
-                    Default::default(),
+                    MethodAccessFlags::PUBLIC,
                 ),
                 JavaMethodProto::new(
                     "forName",
@@ -64,10 +69,14 @@ impl Class {
             fields: vec![
                 // Stored as raw bytes instead of java/lang/String to avoid circular dependency:
                 // from_rust_class -> JavaLangString::from_rust_string -> new_class("java/lang/String") -> from_rust_class -> stack overflow
-                JavaFieldProto::new("nameBytes", "[B", Default::default()),
-                JavaFieldProto::new("classLoader", "Ljava/lang/ClassLoader;", Default::default()),
+                JavaFieldProto::new("nameBytes", "[B", FieldAccessFlags::PRIVATE | FieldAccessFlags::FINAL),
+                JavaFieldProto::new(
+                    "classLoader",
+                    "Ljava/lang/ClassLoader;",
+                    FieldAccessFlags::PRIVATE | FieldAccessFlags::FINAL,
+                ),
             ],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::PUBLIC | ClassAccessFlags::FINAL,
         }
     }
 
@@ -252,8 +261,14 @@ impl Class {
         }
 
         let component_name = JavaLangString::from_rust_string(jvm, component_name).await?;
-        jvm.invoke_virtual(&defining_loader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", (component_name,))
-            .await
+        jvm.invoke_virtual(
+            &defining_loader,
+            "java/lang/ClassLoader",
+            "loadClass",
+            "(Ljava/lang/String;)Ljava/lang/Class;",
+            (component_name,),
+        )
+        .await
     }
 
     async fn get_interfaces(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<jvm::Array<Self>>> {
@@ -295,8 +310,14 @@ impl Class {
             class_loader.into()
         };
 
-        jvm.invoke_virtual(&class_loader, "getResourceAsStream", "(Ljava/lang/String;)Ljava/io/InputStream;", (name,))
-            .await
+        jvm.invoke_virtual(
+            &class_loader,
+            "java/lang/ClassLoader",
+            "getResourceAsStream",
+            "(Ljava/lang/String;)Ljava/io/InputStream;",
+            (name,),
+        )
+        .await
     }
 
     async fn for_name(jvm: &Jvm, _context: &mut RuntimeContext, name: ClassInstanceRef<String>) -> Result<ClassInstanceRef<Class>> {

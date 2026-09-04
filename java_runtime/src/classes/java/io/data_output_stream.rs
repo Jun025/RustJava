@@ -3,6 +3,7 @@ use alloc::{vec, vec::Vec};
 use bytemuck::cast_vec;
 
 use java_class_proto::JavaMethodProto;
+use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, Jvm, Result};
 
 use crate::{
@@ -20,24 +21,74 @@ impl DataOutputStream {
             parent_class: Some("java/io/FilterOutputStream"),
             interfaces: vec!["java/io/DataOutput"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/io/OutputStream;)V", Self::init, Default::default()),
-                JavaMethodProto::new("write", "(I)V", Self::write, Default::default()),
-                JavaMethodProto::new("writeByte", "(I)V", Self::write_byte, Default::default()),
-                JavaMethodProto::new("writeBoolean", "(Z)V", Self::write_boolean, Default::default()),
-                JavaMethodProto::new("writeInt", "(I)V", Self::write_int, Default::default()),
-                JavaMethodProto::new("writeShort", "(I)V", Self::write_short, Default::default()),
-                JavaMethodProto::new("writeChar", "(I)V", Self::write_char, Default::default()),
-                JavaMethodProto::new("writeLong", "(J)V", Self::write_long, Default::default()),
-                JavaMethodProto::new("writeFloat", "(F)V", Self::write_float, Default::default()),
-                JavaMethodProto::new("writeDouble", "(D)V", Self::write_double, Default::default()),
-                JavaMethodProto::new("writeBytes", "(Ljava/lang/String;)V", Self::write_bytes, Default::default()),
-                JavaMethodProto::new("writeChars", "(Ljava/lang/String;)V", Self::write_chars, Default::default()),
-                JavaMethodProto::new("writeUTF", "(Ljava/lang/String;)V", Self::write_utf, Default::default()),
-                JavaMethodProto::new("close", "()V", Self::close, Default::default()),
-                JavaMethodProto::new("flush", "()V", Self::flush, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/io/OutputStream;)V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("write", "(I)V", Self::write, MethodAccessFlags::PUBLIC | MethodAccessFlags::SYNCHRONIZED),
+                JavaMethodProto::new(
+                    "writeByte",
+                    "(I)V",
+                    Self::write_byte,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeBoolean",
+                    "(Z)V",
+                    Self::write_boolean,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new("writeInt", "(I)V", Self::write_int, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new(
+                    "writeShort",
+                    "(I)V",
+                    Self::write_short,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeChar",
+                    "(I)V",
+                    Self::write_char,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeLong",
+                    "(J)V",
+                    Self::write_long,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeFloat",
+                    "(F)V",
+                    Self::write_float,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeDouble",
+                    "(D)V",
+                    Self::write_double,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeBytes",
+                    "(Ljava/lang/String;)V",
+                    Self::write_bytes,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeChars",
+                    "(Ljava/lang/String;)V",
+                    Self::write_chars,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "writeUTF",
+                    "(Ljava/lang/String;)V",
+                    Self::write_utf,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new("close", "()V", Self::close, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("flush", "()V", Self::flush, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::PUBLIC,
         }
     }
 
@@ -55,7 +106,7 @@ impl DataOutputStream {
         tracing::debug!("java.io.DataOutputStream::write({this:?}, {b:?})");
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "write", "(I)V", (b,)).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "(I)V", (b,)).await?;
 
         Ok(())
     }
@@ -64,7 +115,7 @@ impl DataOutputStream {
         tracing::debug!("java.io.DataOutputStream::writeByte({this:?}, {v:?})");
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "write", "(I)V", (v,)).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "(I)V", (v,)).await?;
 
         Ok(())
     }
@@ -72,7 +123,9 @@ impl DataOutputStream {
     async fn write_boolean(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, v: bool) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeBoolean({this:?}, {v:?})");
 
-        let _: () = jvm.invoke_virtual(&this, "writeByte", "(I)V", (v as i32,)).await?;
+        let _: () = jvm
+            .invoke_virtual(&this, "java/io/DataOutputStream", "writeByte", "(I)V", (v as i32,))
+            .await?;
 
         Ok(())
     }
@@ -85,14 +138,15 @@ impl DataOutputStream {
         jvm.store_array(&mut byte_array, 0, cast_vec::<u8, i8>(bytes.to_vec())).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "write", "([B)V", (byte_array,)).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (byte_array,)).await?;
 
         Ok(())
     }
 
     async fn write_char(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, value: i32) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeChar({this:?}, {value:?})");
-        jvm.invoke_virtual(&this, "writeShort", "(I)V", (value & 0xffff,)).await
+        jvm.invoke_virtual(&this, "java/io/DataOutputStream", "writeShort", "(I)V", (value & 0xffff,))
+            .await
     }
 
     async fn write_int(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, i: i32) -> Result<()> {
@@ -103,7 +157,7 @@ impl DataOutputStream {
         jvm.store_array(&mut byte_array, 0, cast_vec::<u8, i8>(bytes.to_vec())).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "write", "([B)V", (byte_array,)).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (byte_array,)).await?;
 
         Ok(())
     }
@@ -116,38 +170,40 @@ impl DataOutputStream {
         jvm.store_array(&mut byte_array, 0, cast_vec::<u8, i8>(bytes.to_vec())).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "write", "([B)V", (byte_array,)).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (byte_array,)).await?;
 
         Ok(())
     }
 
     async fn write_float(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, value: f32) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeFloat({this:?}, {value:?})");
-        jvm.invoke_virtual(&this, "writeInt", "(I)V", (value.to_bits() as i32,)).await
+        jvm.invoke_virtual(&this, "java/io/DataOutputStream", "writeInt", "(I)V", (value.to_bits() as i32,))
+            .await
     }
 
     async fn write_double(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, value: f64) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeDouble({this:?}, {value:?})");
-        jvm.invoke_virtual(&this, "writeLong", "(J)V", (value.to_bits() as i64,)).await
+        jvm.invoke_virtual(&this, "java/io/DataOutputStream", "writeLong", "(J)V", (value.to_bits() as i64,))
+            .await
     }
 
     async fn write_bytes(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeBytes({this:?}, {s:?})");
 
-        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "toCharArray", "()[C", ()).await?;
+        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
         let chars: Vec<JavaChar> = jvm.load_array(&chars, 0, length).await?;
         let mut bytes = jvm.instantiate_array("B", chars.len()).await?;
         jvm.store_array(&mut bytes, 0, chars.into_iter().map(|value| value as i8)).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        jvm.invoke_virtual(&out, "write", "([B)V", (bytes,)).await
+        jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (bytes,)).await
     }
 
     async fn write_chars(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeChars({this:?}, {s:?})");
 
-        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "toCharArray", "()[C", ()).await?;
+        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
         let chars: Vec<JavaChar> = jvm.load_array(&chars, 0, length).await?;
         let mut data = Vec::with_capacity(chars.len() * 2);
@@ -160,13 +216,13 @@ impl DataOutputStream {
         jvm.store_array(&mut bytes, 0, data).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        jvm.invoke_virtual(&out, "write", "([B)V", (bytes,)).await
+        jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (bytes,)).await
     }
 
     async fn write_utf(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeUTF({this:?}, {s:?})");
 
-        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "toCharArray", "()[C", ()).await?;
+        let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
         let chars: Vec<JavaChar> = jvm.load_array(&chars, 0, length).await?;
         let mut data = Vec::new();
@@ -187,20 +243,22 @@ impl DataOutputStream {
             return Err(jvm.exception("java/io/UTFDataFormatException", "encoded string is too long").await);
         }
 
-        let _: () = jvm.invoke_virtual(&this, "writeShort", "(I)V", (data.len() as i32,)).await?;
+        let _: () = jvm
+            .invoke_virtual(&this, "java/io/DataOutputStream", "writeShort", "(I)V", (data.len() as i32,))
+            .await?;
 
         let mut bytes = jvm.instantiate_array("B", data.len()).await?;
         jvm.store_array(&mut bytes, 0, data).await?;
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        jvm.invoke_virtual(&out, "write", "([B)V", (bytes,)).await
+        jvm.invoke_virtual(&out, "java/io/OutputStream", "write", "([B)V", (bytes,)).await
     }
 
     async fn close(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::close({this:?})");
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "close", "()V", []).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "close", "()V", []).await?;
 
         Ok(())
     }
@@ -209,7 +267,7 @@ impl DataOutputStream {
         tracing::debug!("java.io.DataOutputStream::flush({this:?})");
 
         let out = jvm.get_field(&this, "out", "Ljava/io/OutputStream;").await?;
-        let _: () = jvm.invoke_virtual(&out, "flush", "()V", []).await?;
+        let _: () = jvm.invoke_virtual(&out, "java/io/OutputStream", "flush", "()V", []).await?;
 
         Ok(())
     }
