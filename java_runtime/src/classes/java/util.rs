@@ -1,4 +1,6 @@
 pub mod jar;
+pub mod logging;
+pub mod regex;
 pub mod zip;
 
 mod abstract_collection;
@@ -32,8 +34,15 @@ mod comparator;
 mod concurrent_modification_exception;
 mod date;
 mod dictionary;
+mod duplicate_format_flags_exception;
 mod empty_stack_exception;
 mod enumeration;
+mod format_flags_conversion_mismatch_exception;
+mod formattable;
+mod formattable_flags;
+mod formatter;
+mod formatter_big_decimal_layout_form;
+mod formatter_closed_exception;
 mod gregorian_calendar;
 mod hash_map;
 mod hash_map_entry;
@@ -51,7 +60,19 @@ mod hashtable_entry_set;
 mod hashtable_enumerator;
 mod hashtable_key_set;
 mod hashtable_values;
+mod illegal_format_code_point_exception;
+mod illegal_format_conversion_exception;
+mod illegal_format_exception;
+mod illegal_format_flags_exception;
+mod illegal_format_precision_exception;
+mod illegal_format_width_exception;
 mod iterator;
+mod linked_hash_map;
+mod linked_hash_map_entry;
+mod linked_hash_map_entry_iterator;
+mod linked_hash_map_key_iterator;
+mod linked_hash_map_linked_hash_iterator;
+mod linked_hash_map_value_iterator;
 mod linked_list;
 mod linked_list_entry;
 mod linked_list_itr;
@@ -60,6 +81,8 @@ mod list_iterator;
 mod locale;
 mod map;
 mod map_entry;
+mod missing_format_argument_exception;
+mod missing_format_width_exception;
 mod no_such_element_exception;
 mod properties;
 mod random;
@@ -85,6 +108,8 @@ mod tree_map_sub_map;
 mod tree_map_value_iterator;
 mod tree_map_values;
 mod tree_set;
+mod unknown_format_conversion_exception;
+mod unknown_format_flags_exception;
 mod vector;
 mod vector_itr;
 
@@ -120,8 +145,15 @@ pub use self::{
     concurrent_modification_exception::ConcurrentModificationException,
     date::Date,
     dictionary::Dictionary,
+    duplicate_format_flags_exception::DuplicateFormatFlagsException,
     empty_stack_exception::EmptyStackException,
     enumeration::Enumeration,
+    format_flags_conversion_mismatch_exception::FormatFlagsConversionMismatchException,
+    formattable::Formattable,
+    formattable_flags::FormattableFlags,
+    formatter::Formatter,
+    formatter_big_decimal_layout_form::FormatterBigDecimalLayoutForm,
+    formatter_closed_exception::FormatterClosedException,
     gregorian_calendar::GregorianCalendar,
     hash_map::HashMap,
     hash_map_entry::HashMapEntry,
@@ -139,7 +171,19 @@ pub use self::{
     hashtable_enumerator::HashtableEnumerator,
     hashtable_key_set::HashtableKeySet,
     hashtable_values::HashtableValues,
+    illegal_format_code_point_exception::IllegalFormatCodePointException,
+    illegal_format_conversion_exception::IllegalFormatConversionException,
+    illegal_format_exception::IllegalFormatException,
+    illegal_format_flags_exception::IllegalFormatFlagsException,
+    illegal_format_precision_exception::IllegalFormatPrecisionException,
+    illegal_format_width_exception::IllegalFormatWidthException,
     iterator::Iterator,
+    linked_hash_map::LinkedHashMap,
+    linked_hash_map_entry::LinkedHashMapEntry,
+    linked_hash_map_entry_iterator::LinkedHashMapEntryIterator,
+    linked_hash_map_key_iterator::LinkedHashMapKeyIterator,
+    linked_hash_map_linked_hash_iterator::LinkedHashMapLinkedHashIterator,
+    linked_hash_map_value_iterator::LinkedHashMapValueIterator,
     linked_list::LinkedList,
     linked_list_entry::LinkedListEntry,
     linked_list_itr::LinkedListItr,
@@ -148,6 +192,8 @@ pub use self::{
     locale::Locale,
     map::Map,
     map_entry::MapEntry,
+    missing_format_argument_exception::MissingFormatArgumentException,
+    missing_format_width_exception::MissingFormatWidthException,
     no_such_element_exception::NoSuchElementException,
     properties::Properties,
     random::Random,
@@ -173,6 +219,8 @@ pub use self::{
     tree_map_value_iterator::TreeMapValueIterator,
     tree_map_values::TreeMapValues,
     tree_set::TreeSet,
+    unknown_format_conversion_exception::UnknownFormatConversionException,
+    unknown_format_flags_exception::UnknownFormatFlagsException,
     vector::Vector,
     vector_itr::VectorItr,
 };

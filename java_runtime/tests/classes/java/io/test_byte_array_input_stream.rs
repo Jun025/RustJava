@@ -1,6 +1,41 @@
-use jvm::{JavaError, Result};
+use jvm::{Array, ClassInstance, ClassInstanceRef, JavaError, Result};
 
 use test_utils::test_jvm;
+
+#[tokio::test]
+async fn null_byte_arrays_throw_null_pointer_exception() -> Result<()> {
+    let jvm = test_jvm().await?;
+    let null: ClassInstanceRef<Array<i8>> = None.into();
+
+    let result: Result<Box<dyn ClassInstance>> = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (null.clone(),)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null constructor buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    let result: Result<Box<dyn ClassInstance>> = jvm.new_class("java/io/ByteArrayInputStream", "([BII)V", (null.clone(), 0, 0)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null ranged constructor buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    let data = jvm.instantiate_array("B", 1).await?;
+    let stream = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (data,)).await?;
+
+    let result: Result<i32> = jvm.invoke_virtual(&stream, "read", "([B)I", (null.clone(),)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null read buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    let result: Result<i32> = jvm.invoke_virtual(&stream, "read", "([BII)I", (null, 0, 0)).await;
+    let Err(JavaError::JavaException(exception)) = result else {
+        panic!("null ranged read buffer must throw NullPointerException");
+    };
+    assert!(jvm.is_instance(&*exception, "java/lang/NullPointerException"));
+
+    Ok(())
+}
 
 #[tokio::test]
 async fn test_mark_reset() -> Result<()> {

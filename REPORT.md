@@ -1,5 +1,34 @@
 # REPORT
 
+## [2026-09-04] upstream 동기 S6 — 컷 `95ebc5c` 머지 (rustjava-upstream-sync-s6-cut-95ebc5c)
+- 무엇을: upstream `95ebc5c`(**11커밋** · 142파일 +17,593/−483)을 `--merge` 로 흡수하고 충돌 **1건**을 해소했다.
+  ★**`merge-base origin/main upstream/main` `c4665b0` → `95ebc5c`** · behind **24 → 13** · 머지커밋 **부모 2개**.
+- 왜: 운영자 채택 제안 `2026-09-04-upstream-sync-s5#p0`. ★**「새 충돌 0」을 «전제»로 쓰지 않고 다시 쟀다.**
+  ★★**그 0 은 «델타»였다 — 「풀 것이 없다」가 아니다.** 옛 base `8c1238b` 에서 누적 3 → 3(새로 나타난 파일 0)이고,
+  새 base `a0b5d3c`(merge-base `c4665b0`)에서 **누적 1**이다. 둘 다 참이다.
+  `string.rs` 는 S5 의 설계 판단으로 우리 분기(**+8/−28**)가 남아 upstream 이 그 파일을 만지는 한
+  (이 구간 **+402/−121**) 계속 열린다. ⇒ ★**§5 에 한 줄 보탰다: base 와 «함께» «델타/누적»도 밝혀라.**
+- 사용자 영향: **`java.util.regex`(Pattern·Matcher)·`Formatter`·`Locale`** 이 들어온다 —
+  `String.format`·정규식 API 가 처음으로 동작한다. ★**우리 자산 변경 0**(charset 4종 · `setProperty` 서술자 ·
+  수동 span · `ClassFormatError` 분류 · 픽스처 전건 생존).
+- 검증: stable 4종 rc=0 · ★**beta 2종 rc=0**(S5 가 물린 자리를 미리 확인) ·
+  `cargo test --all` ★**554 passed / 0 failed / 1 ignored**(S5 427 → **+127** · 새 red 0) · beta 도 **554 동수** ·
+  「해소분 0」 = **`95ebc5c` 대비 삭제 파일 0** · 다른 파일 **50건 전수가 우리 fork 고유 자산**.
+- ★**해소**: `string.rs` 충돌면은 **import 한 곳**뿐이라 **합집합**으로 풀었다 —
+  우리 `charset::Charset` + upstream 의 재구조화 `classes::java::{lang, util::{Formatter, Locale, regex}}`.
+  `Charset` 라우팅 **4곳 생존** · ★**S5 가 버린 `decode_str`/`encode_str` 재유입 0**.
+- ★★**계약4⒝ 정독이 「충돌 0으로 들어온」 파손 1건을 «테스트를 돌리기 전에» 잡았다 — 이 형태 «세 번째»다.**
+  upstream 이 이 구간에 **새로** 넣은 `java/util/regex/test_pattern_syntax_exception.rs` 가
+  `System.setProperty` 를 `)Ljava/lang/Object;` 로 **3곳** 부른다(우리는 PR #5 에서 JDK 규격대로 `String`).
+  ★**신규 파일이라 충돌이 «날 수가 없다»** — `merge-tree` 가 원리적으로 못 보는 자리다.
+  서술자만 맞췄다(S5 가 5곳에 적용한 확립된 처분). ★**전례: S3 3건 → S5 5곳 → S6 3곳.**
+- ★**`Cargo.lock`**: S5 를 문 자리를 먼저 봤다 — ★**내려간 크레이트 0건**(`async-trait` **0.1.92 유지**) ·
+  올라간 3 · 추가 `regex` · 제거 2.
+- 후속 추천: ⑴**게이트③은 반드시 `--merge`**(`merge_strategy: merge` 필수 — 등재 repo).
+  ⑵**S7**(컷 `ba5797b` · `95ebc5c..ba5797b` **1커밋**) — 같은 base 에서 누적 **2건**(`string.rs`·`thread.rs`)이나
+  ★**S6 착지로 base 가 또 바뀌므로 착수 시 다시 재라.**
+  ⑶★**「충돌 목록에 없는 파손」 축을 계약에 넣을지 판정하라 — 이제 3회째다**(S5 워크로그 `proposals[1]`).
+
 ## [2026-09-04] upstream 동기 S5 — 컷 `c4665b0` 머지 (rustjava-upstream-sync-s5-with-remeasured-conflicts)
 - 무엇을: upstream `c4665b0`(#190 Java 1.2 runtime API 확장) 까지 **6커밋**(171파일 +33,138/−1,058)을 머지했다.
   재측정된 충돌 **3** 해소 — `Cargo.lock` **재생성** · `string.rs` ★**설계 판단** · `test_timer.rs` **upstream 채택**.

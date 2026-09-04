@@ -39,6 +39,9 @@ impl ByteArrayInputStream {
     async fn init(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, data: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.io.ByteArrayInputStream::<init>({this:?}, {data:?})");
 
+        if data.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let count = jvm.array_length(&data).await?;
 
         let _: () = jvm
@@ -58,6 +61,9 @@ impl ByteArrayInputStream {
     ) -> Result<()> {
         tracing::debug!("java.io.ByteArrayInputStream::<init>({this:?}, {data:?}, {offset}, {length})");
 
+        if data.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let data_length = jvm.array_length(&data).await? as i32;
         if offset < 0 || length < 0 || offset > data_length {
             return Err(jvm.exception("java/lang/IndexOutOfBoundsException", "Invalid offset or length").await);
@@ -92,6 +98,9 @@ impl ByteArrayInputStream {
     ) -> Result<i32> {
         tracing::debug!("java.io.ByteArrayInputStream::read({this:?}, {b:?}, {off}, {len})");
 
+        if b.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let buf: ClassInstanceRef<Array<i8>> = jvm.get_field(&this, "buf", "[B").await?;
         let count: i32 = jvm.get_field(&this, "count", "I").await?;
         let pos: i32 = jvm.get_field(&this, "pos", "I").await?;

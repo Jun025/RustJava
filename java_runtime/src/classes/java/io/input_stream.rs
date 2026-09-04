@@ -43,6 +43,9 @@ impl InputStream {
     async fn read(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, b: ClassInstanceRef<Array<i8>>) -> Result<i32> {
         tracing::debug!("java.io.InputStream::read({this:?}, {b:?})");
 
+        if b.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let array_length = jvm.array_length(&b).await? as i32;
 
         jvm.invoke_virtual(&this, "read", "([BII)I", (b, 0, array_length)).await
@@ -58,6 +61,9 @@ impl InputStream {
     ) -> Result<i32> {
         tracing::debug!("java.io.InputStream::read({this:?}, {b:?}, {off}, {len})");
 
+        if b.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buffer is null").await);
+        }
         let array_length = jvm.array_length(&b).await? as i32;
         if off < 0 || len < 0 || off > array_length - len {
             return Err(jvm.exception("java/lang/IndexOutOfBoundsException", "Invalid offset or length").await);
