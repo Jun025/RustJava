@@ -1,5 +1,25 @@
 # REPORT
 
+## [2026-09-04] 형제 repo 파리티 락 필요성 조사 — 둘 다 «조건부 필요», 검사기는 포팅 불가 (rustjava-dod-ci-parity-sibling-repo-survey)
+- 무엇을: 채택 제안 `2026-09-04-dod-ci-parity-lock#p1` 에 대한 ★**읽기 전용 조사 + 판정**이다.
+  `wie`·`qts` 의 **DoD 정본 위치 · CI 검사 집합 · 대칭차**를 각각 실측하고, ★**이력으로 실익까지** 쟀다.
+  ★**형제 repo 변경 0**(`git`·PR·파일 수정 전부 0 — `gh api /contents` 로만 읽었다) · 구현 **0**.
+- 왜: ★**같은 처방이 그대로 맞는지 «먼저» 재라**는 것이 제안 문면이었고, 재보니 ★**맞지 않았다.**
+  `wie` 는 DoD 정본이 **`AGENTS.md`** 이고 CI 의 4번째 게이트(`cargo test`)가 ★**`if:` 로 갈린 2 step + 블록 스칼라**라
+  우리 파서의 「조건부 = OS 축 = 제외」 규칙이 ★**거짓 red** 를 만든다. `qts` 는 DoD 가 ★**`make` 타깃 이름**이라
+  Makefile 간접층이 있고, ★**toolchain 매트릭스가 없어 축 B 가 성립하지 않으며**, `gitleaks` 는 ★**action 이라 못 본다**.
+- 사용자 영향: **없다**(이 repo 무변경). ★**형제 repo 에 «측정된» 개선 경로 둘이 생겼다** —
+  `wie` 이력 **9/34(26%)** · `qts` 이력 **10/60(17%)** 이 각각 «한 줄»로 로컬에 들어온다.
+- 검증: `wie` `rust.yml` 최근 200 run(성공 166 · 실패 34) **실패 전수 분해** — stable-only clippy 24 ·
+  ★**beta-only clippy 9** · windows test 1. `qts` `ci.yml` 최근 실패 **60건 전수 분해** —
+  `ruff format --check` 포함 38 · ★**그것만 10** · `ruff check` 7 · phase0-only 0.
+  ★문서 실측: 문자열 `beta` 가 `wie` 규범 문서에 **0건** · 문자열 `format` 이 `qts` 규범 문서에 **0건**.
+- ★★**일반 사실 하나**: 세 repo 가 **전부** 이 어긋남을 갖고 있었고 ★**어긋난 자리가 전부 규범 문서에 «적혀 있지 않았다»**
+  ⇒ ★**「사람이 문서를 최신으로 유지한다」가 세 repo에서 «각각» 실패했다** — 기계 대조의 일반 근거다.
+- ★**후속 추천**: ⑴`wie` four gates 에 `cargo +beta clippy --all -- -D warnings` ⑵`qts` `make lint` 에
+  `uv run ruff format --check .` ⑶★**락 포팅은 그 «뒤»**(락은 어긋남을 «막는» 것이지 «고치는» 것이 아니다).
+  ★셋 다 **그 repo 레인 소관**이라 여기서 고치지 않았다 — 축과 합격선만 워크로그에 적었다.
+
 ## [2026-09-04] 파리티 락 «교차곱» 확장 판정 — 넓히지 않는다 (rustjava-dod-ci-parity-cross-product-decision)
 - 무엇을: 채택 제안 `2026-09-04-dod-ci-parity-lock#p0` 에 대한 **판정**이다. ★**결론: 교차곱으로 넓히지 «않는다»**
   (부분 확장 `fmt@beta` 만도 기각). ★**검사기 로직 변경 0 · `.rs` 0줄 · `rust.yml` 무접촉 · DoD 블록 무접촉** —

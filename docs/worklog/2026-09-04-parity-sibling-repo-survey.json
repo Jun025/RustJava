@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "형제 repo(wie·qts) 파리티 락 필요성 조사 — 둘 다 «조건부 필요» · 그러나 검사기는 포팅 불가",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-dod-ci-parity-sibling-repo-survey",
+  "summary": "채택 제안 2026-09-04-dod-ci-parity-lock#p1 에 대한 읽기 전용 조사 + 판정이다. 형제 repo 는 GitHub API(gh api repos/<slug>/contents/...)로만 읽었고 워킹트리·.git 을 건드리지 않았다 — 쓰기 0. ★구조 판정: RustJava(CLAUDE.md DoD 코드블록 ↔ rust.yml 단일 파일)와 wie 는 «비슷하나 같지 않고», qts 는 «다르다». wie 의 DoD 정본은 AGENTS.md 이고 CI 의 4번째 게이트(cargo test)가 if: 로 갈린 2 step + 블록 스칼라라 RustJava 파서를 그대로 적용하면 «거짓 red» 가 난다. qts 는 DoD 가 make 타깃 이름(산문)이라 Makefile 간접층이 있고, toolchain 매트릭스가 아예 없어 축 B 가 성립하지 않으며, gitleaks 는 action 이라 어떤 run: 파서도 못 본다. ★대칭차는 두 repo 다 0 이 아니고 «이력으로도» 실재를 확인했다: wie 는 rust.yml 최근 200 run 중 실패 34건 전수 분해에서 beta 셀에서만 실패한 clippy 가 9건(26%)인데 DoD 4 gates 에 cargo +beta 가 없다(문자열 beta 가 AGENTS.md·CLAUDE.md 에 0건). qts 는 ci.yml 최근 실패 60건 전수 분해에서 uv run ruff format --check . 가 38건에 포함되고 그중 10건(17%)은 그것이 «유일한» 실패였다 — make lint 는 그 명령을 치지 않으므로 로컬 DoD 를 전부 돌려도 green 이었다(문자열 format 이 규범 문서에 0건). ★판정: 둘 다 ⒞ 조건부 필요. 그러나 먼저 할 일은 파리티 락이 아니라 각 한 줄이다 — wie 는 four gates 에 cargo +beta clippy --all -- -D warnings, qts 는 make lint 에 uv run ruff format --check . 다. 락 포팅은 그 뒤이고, wie 는 파서 3군데(조건부 게이트 판별·env 접두 정규화·다중 워크플로), qts 는 Makefile 전개·축 B 부재·action 검사 명시를 각각 요구한다. 구현 0 — 형제 repo 는 다른 레인 소관이라 축과 합격선만 적었다.",
+  "changes": [
+    "docs/worklog/2026-09-04-parity-sibling-repo-survey.{md,json} 신설 — 정본 위치 실측표 · 대칭차 원소 나열 · 이력 전수 분해 · repo 별 판정 · 다음 티켓 3건(T1·T2·T3)의 축과 합격선.",
+    "docs/upstream-sync-approach.md §4 — 조사 결과 요약 3줄(다음 RustJava 회차가 같은 조사를 반복하지 않도록).",
+    "STATE.md · REPORT.md — 회차 기록.",
+    "★형제 repo(wie·qts) 변경 0 — git 명령 0 · PR 0 · 파일 수정 0. 이 repo 의 검사기·rust.yml·DoD 블록도 무접촉."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "★읽기 방법: gh api repos/Jun025/{wie,qts}/contents/... (origin/main 내용) — 형제 워킹트리·.git 무접촉. ⒜wie 정본 실측: CLAUDE.md 에는 §Definition of Done 이 «없고»(헤딩 = 착수 규율/완주 규율/에이전트 개발환경) 정본은 AGENTS.md §Definition of Done → 「The four gates (what rust.yml actually runs)」 ```sh 블록 4줄(cargo fmt --all -- --check · cargo clippy --all -- -D warnings · cargo clippy --target wasm32-unknown-unknown -- -D warnings · RUST_MIN_STACK=4194304 cargo test --all). rust.yml: 비조건부 - run: 3개 + 조건부 4개(ubuntu apt · windows choco · windows test 블록 · 비-windows test 블록) · matrix os 3 × rust [stable, beta]. ⇒ 축 A 대칭차 1(DoD 에만 RUST_MIN_STACK cargo test — ★거짓 양성: CI 는 조건부 2 step 으로 정말 친다) · 축 B 대칭차 1(CI 에만 beta — ★진짜). 워크플로 8개이고 coverage·engine-contract·web 이 추가 검사를 친다. ⒝qts 정본 실측: CLAUDE.md §Definition of Done = make lint · make guardrail · make test (+ make sync) 산문. Makefile 전개 — sync: uv sync --all-packages / lint: uv run ruff check . + go vet(조건부) / test: uv run pytest + go test(조건부) / guardrail: uv run pytest -m guardrail / fmt: uv run ruff format .(★고치는 것 — 게이트 아님). ci.yml job 7(gitleaks·lint·test·guardrail·phase0·go-watchdog·build) · toolchain 매트릭스 없음(python 3.12 단일). ⇒ CI 에만 있는 것 최소 3종(uv run ruff format --check . · pytest -m phase0 · gitleaks action). ★이력 실측: wie rust.yml 최근 200 run = 성공 166 · 실패 34, 실패 34건 전수 분해 → stable-only clippy 24 · ★beta-only clippy 9 · windows RUST_MIN_STACK test 1. qts ci.yml 최근 실패 60건(2026-07-18~2026-09-03) 전수 분해 → ruff format --check 포함 38 · ★그것이 유일한 실패 10 · ruff check 포함 7 · phase0-only 0. ※같은 도구의 최근 200 run 창은 성공 188 · 실패 2 · 취소 9 로 모집단이 다르다(전자는 실패만 60건까지 거슬러 올라간 창) — 비율은 그 창 안에서만 읽어야 한다. ★문서 실측: 문자열 beta 가 wie AGENTS.md·CLAUDE.md 에 0건 · 문자열 format 이 qts CLAUDE.md·AGENTS.md 에 0건(ruff 는 AGENTS.md 에 1회). ★이 repo 상태: python3 scripts/check-dod-ci-parity.py rc=0 · check-worklog-json.py rc=0 · .rs 변경 0 · rust.yml·CLAUDE.md DoD 블록 무접촉.",
+  "issues": [
+    "★★RustJava 검사기를 «복사»하면 두 repo 다 틀린다. wie 에서는 조건부 step 이 «진짜 게이트»(cargo test)라 「조건부 = OS 축 = 제외」 규칙이 거짓 red 를 만들고, qts 에서는 Makefile 간접층 때문에 「DoD 줄 ↔ CI run 줄」 문자열 대조가 원리적으로 성립하지 않는다. ⇒ 제안 문면의 「복사하지 마라 — 먼저 그 repo 의 DoD 정본이 무엇인가를 실측해야 한다」가 실측으로 확인됐다.",
+    "★★세 repo 가 전부 「로컬 체크리스트 ↔ CI」 어긋남을 갖고 있었고, 어긋난 자리가 전부 규범 문서에 «적혀 있지 않았다» — RustJava = wasm32 줄 + beta 축 · wie = beta 축(문자열 beta 0건) · qts = ruff format --check(문자열 format 0건). 「사람이 문서를 최신으로 유지한다」가 세 repo에서 각각 실패했다. 이것이 기계 대조의 일반 근거다.",
+    "★먼저 할 일은 락이 아니라 «한 줄»이다 — wie 는 cargo +beta clippy --all -- -D warnings(이력 9/34 를 로컬로), qts 는 uv run ruff format --check .(이력 10/60 을 로컬로). ★락을 그 앞에 두지 마라: 락은 «어긋남을 막는» 것이지 «이미 난 어긋남을 고치는» 것이 아니다.",
+    "★wie 에서 교차곱(+beta fmt·+beta test)까지 넓히지 마라 — RustJava 가 이력 0건을 근거로 기각했다(…-cross-product-decision). wie 에서 넣으려면 wie 이력으로 다시 재라. wie 의 windows test 실패 1건은 OS 축이지 toolchain 축이 아니다.",
+    "★qts 의 go vet/go test 는 조건부 skip 이고 그 사실이 qts CLAUDE.md 에 이미 적혀 있다(「Go 는 이 맥북에 미설치라 watchdog 검증이 조용히 skip 된다 — 로컬 green 을 근거로 삼지 말고 PR CI 결과를 봐라」). ⇒ 그 축은 «몰라서 난 구멍»이 아니라 «알고 두는 값»이다. ruff format --check 와 같은 칸에 넣지 마라.",
+    "★모집단 주의: qts 의 「10/60」과 「최근 200 run 중 실패 2」는 «다른 창»이다. 전자는 실패만 60건까지 거슬러 올라간 창(2026-07-18~09-03)이고 후자는 최근 200 run 창이다. 비율을 창 밖으로 옮겨 인용하지 마라.",
+    "★형제 repo 는 다른 레인 소관이라 이 회차가 «고칠 수 없다» — T1·T2·T3 의 축과 합격선만 적었다. 발권은 총괄 몫이다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수."
+  ],
+  "proposals": [
+    {
+      "title": "wie 의 four gates 에 beta 축 한 줄을 더하라 — 이력 9/34(26%)가 로컬로 들어온다",
+      "plainSummary": "wie 의 CI 는 두 가지 컴파일러 버전으로 검사하는데, 개발자가 로컬에서 돌리라고 적힌 목록에는 한 가지만 있다. 그래서 새 버전에서만 나는 경고가 로컬에서 안 보이고 PR 에서만 빨개진다.",
+      "userBenefit": "이력상 실패 34건 중 9건이 정확히 그 형태였다. 한 줄을 더하면 그 9건이 커밋 전에 잡힌다 — PR 을 열고 CI 를 기다린 뒤 고치는 왕복이 사라진다.",
+      "why": "wie AGENTS.md §Definition of Done 의 four gates 에 cargo +beta 가 없고, 문자열 beta 가 AGENTS.md·CLAUDE.md 어디에도 0건이다(rust.yml 주석에만 있다). RustJava 는 같은 구멍을 이력 2건에서 발견해 고쳤는데 wie 는 9건이 났는데도 열려 있다.",
+      "tradeoff": "⑴한 줄을 더하면 회차마다 beta clippy 가 붙는다(RustJava 실측: 편집 후 +6s — 재빌드가 아니라 lint 라 싸다). ⑵rustup component add --toolchain beta clippy 가 전제다(RustJava 에서는 beta 에 rustfmt 가 없었다 — 같은 함정). ⑶안 하면 26%의 실패가 계속 CI 에서만 드러난다.",
+      "effort": "XS — 문서 1줄 + 전제 명시. 이력 재인용이 대부분이다.",
+      "target": "wie · AGENTS.md §Definition of Done"
+    },
+    {
+      "title": "qts 의 make lint 에 ruff format --check 를 더하라 — 이력 10/60(17%)의 «로컬 green ↔ CI red» 가 사라진다",
+      "plainSummary": "qts 의 CI 는 코드 서식을 검사하는데 로컬에서 돌리는 make lint 는 그것을 안 친다. 서식만 어긋난 상태로 PR 을 열면 로컬은 통과인데 CI 만 빨개진다.",
+      "userBenefit": "이력상 최근 실패 60건 중 10건이 «서식 검사만» 실패였다 — 전부 로컬에서 잡을 수 있었던 것이다. 38건은 서식 검사가 실패 목록에 포함돼 있었다.",
+      "why": "Makefile 의 lint 타깃은 uv run ruff check . 만 치고, fmt 타깃은 «고치는» 것이라 게이트가 아니다. CI lint job 은 ruff check 와 ruff format --check 를 «둘 다» 친다. 문자열 format 이 qts CLAUDE.md·AGENTS.md 어디에도 없다.",
+      "tradeoff": "⑴make lint 가 느려진다(ruff format --check 는 밀리초 단위라 실질 0). ⑵서식 위반이 로컬에서 커밋을 막게 되므로 make fmt 를 먼저 돌리는 습관이 필요하다. ⑶안 하면 17%의 실패가 계속 CI 왕복을 만든다.",
+      "effort": "XS — Makefile 1줄 + CLAUDE.md DoD 한 줄 명시(make fmt 와 혼동 방지).",
+      "target": "qts · Makefile lint 타깃 · CLAUDE.md §Definition of Done"
+    },
+    {
+      "title": "파리티 락 포팅은 T1·T2 «뒤»에 · repo 별 파서 축을 먼저 정하라",
+      "plainSummary": "RustJava 가 만든 «로컬 목록 ↔ CI 자동 대조» 장치를 형제 저장소에도 두는 일이다. 다만 저장소마다 구조가 달라 그대로 복사하면 오히려 잘못된 빨간불이 난다.",
+      "userBenefit": "한 번 넣으면 그 저장소의 로컬 목록이 CI 와 어긋나는 순간 PR 이 빨개진다 — 문서가 조용히 낡아 다음 회차가 그것을 근거로 인용하는 연쇄가 끊긴다.",
+      "why": "wie 는 조건부 step 이 «진짜 게이트»(cargo test 가 windows/비-windows 2갈래)라 RustJava 의 「조건부 = 제외」가 거짓 red 를 만들고, env 접두 정규화와 다중 워크플로 스캔도 필요하다. qts 는 Makefile 간접층·축 B 부재·action 기반 검사 때문에 문자열 대조 자체가 성립하지 않는다.",
+      "tradeoff": "⑴repo 마다 파서를 만들면 세 벌이 된다(이 저장소가 규탄한 «두 벌» 형태의 확대). ⑵공용 도구로 빼면 정본 위치 설정 파일이 필요하고 그것이 다시 낡을 수 있다. ⑶안 하면 형제 repo 는 사람 손 대조로 남는다 — RustJava 에서 다섯 번 실패한 방식이다.",
+      "effort": "S~M(repo 당). 합격선: 정본 위치를 코드에 박을 것 · 성공에도 원소를 찍을 것 · 못 보는 것을 함께 찍을 것 · 개악 대조 ≥3건 red + 무개악 green.",
+      "target": "wie · qts · 총괄 발권 정책"
+    }
+  ],
+  "resolvedIssues": [
+    "2026-09-04-dod-ci-parity-lock#p1 — 「같은 파리티 락이 형제 repo(wie·qts)에도 필요한지 판정하라」. repo 당 정본을 실측하고 대칭차를 «지금» 재고 이력으로 실익까지 확인해 «둘 다 ⒞ 조건부 필요» 로 판정했다. 검사기 포팅은 불가(구조 상이)이고, 먼저 할 일은 각 repo 의 한 줄이라는 것이 판정의 요지다."
+  ],
+  "adoptedProposals": [
+    "2026-09-04-dod-ci-parity-lock#p1"
+  ],
+  "declinedProposals": []
+}
