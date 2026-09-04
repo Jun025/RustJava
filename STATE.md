@@ -15,22 +15,6 @@
   ★★**일반 사실**: 세 repo 가 전부 이 어긋남을 갖고 있었고 **어긋난 자리가 전부 규범 문서에 없었다** —
   「사람이 문서를 최신으로 유지한다」가 **세 repo에서 각각 실패**했다.
   ★이 repo 검사기·`rust.yml`·DoD 블록 **무접촉** · `.rs` **0줄**. **PR 대기 — 게이트③ 미착지.**
-- [rustjava-dod-ci-parity-cross-product-decision] ★★**파리티 락 «교차곱» 확장 «판정» — 결론: 넓히지 «않는다».**
-  채택 제안 `2026-09-04-dod-ci-parity-lock#p0`. ★**검사기 로직 변경 0 · `.rs` 0줄 · `rust.yml` 무접촉 · DoD 블록 무접촉.**
-  ★**비용을 «먼저» 쟀다(추정 0)**: 무변경 재실행 **19s → 38s = 2.00×** ↔ ★**소스 1줄 편집 후 89s → 326s = 3.66×**.
-  ⇒ ★**제안 문면의 「두 배」는 «무변경»에서만 참**이고 회차가 겪는 케이스는 3.66배다. 지배항 =
-  `cargo +beta test --all` **215s**(같은 편집에서 stable test 66s 의 3.3배) · 콜드 1회 +171s.
-  ★**돈이 아닌 비용 둘**: ⑴`rustfmt` 가 **beta 에 미설치**라 `cargo +beta fmt` 는 오늘 그대로 **rc=1**
-  ⑵★**툴체인 교대 축출은 «없다»**(beta 3줄 직후 stable clippy 2s · test 25s) — 시간이 아니라 **디스크**를 쓴다(`target` 46G).
-  ★**실익은 «따로» 쟀다**: CI 에만 있는 조합 **3개**(`fmt@beta` · `wasm32 clippy@beta` · `test@beta`)로 비어 있지 않지만,
-  ★★**`rust.yml` 이력 76 run(성공 73 · 실패 3) 전수 분해에서 그 3개가 «새로» 잡았을 사건은 «0건»** 이다 —
-  이 저장소의 beta 전용 실패는 **전건 `cargo clippy --all`** 이고 그 줄은 DoD 가 이미 `+beta` 로 덮는다
-  (나머지 1건은 fmt 인데 **6셀 전건** 실패라 stable 이 잡는다). ⇒ ★**+237s/회차를 내고 얻는 것이 0.**
-  ★**부분 확장(`fmt@beta` 만 · +3s)도 기각** — 이력 0건 · beta rustfmt 미설치가 기본 · 부분 교차곱은 모델 변경 요구.
-  ★**재개 조건 + 세는 명령 + 오늘의 값 `0`** 을 `docs/upstream-sync-approach.md` §4 에 박았다
-  (「`cargo clippy --all` «이외» step 이 beta 셀에서만 실패한 run 이 1건이라도 생기면 다시 연다」).
-  ★검사기 **docstring 에만** 결정 포인터 1블록(그 파일이 「Widening … is a decision」이라 적고 결정 결과를 몰랐다).
-  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
@@ -53,6 +37,26 @@
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-dod-ci-parity-cross-product-decision] ★★**파리티 락 «교차곱» 확장 «판정» — 결론: 넓히지 «않는다».**
+  채택 제안 `2026-09-04-dod-ci-parity-lock#p0`. ★**검사기 로직 변경 0 · `.rs` 0줄 · `rust.yml` 무접촉 · DoD 블록 무접촉.**
+  ★**비용을 «먼저» 쟀다(추정 0)**: 무변경 재실행 **19s → 38s = 2.00×** ↔ ★**소스 1줄 편집 후 89s → 326s = 3.66×**.
+  ⇒ ★**제안 문면의 「두 배」는 «무변경»에서만 참**이고 회차가 겪는 케이스는 3.66배다. 지배항 =
+  `cargo +beta test --all` **215s**(같은 편집에서 stable test 66s 의 3.3배) · 콜드 1회 +171s.
+  ★**돈이 아닌 비용 둘**: ⑴`rustfmt` 가 **beta 에 미설치**라 `cargo +beta fmt` 는 오늘 그대로 **rc=1**
+  ⑵★**툴체인 교대 축출은 «없다»**(beta 3줄 직후 stable clippy 2s · test 25s) — 시간이 아니라 **디스크**를 쓴다(`target` 46G).
+  ★**실익은 «따로» 쟀다**: CI 에만 있는 조합 **3개**(`fmt@beta` · `wasm32 clippy@beta` · `test@beta`)로 비어 있지 않지만,
+  ★★**`rust.yml` 이력 76 run(성공 73 · 실패 3) 전수 분해에서 그 3개가 «새로» 잡았을 사건은 «0건»** 이다 —
+  이 저장소의 beta 전용 실패는 **전건 `cargo clippy --all`** 이고 그 줄은 DoD 가 이미 `+beta` 로 덮는다
+  (나머지 1건은 fmt 인데 **6셀 전건** 실패라 stable 이 잡는다). ⇒ ★**+237s/회차를 내고 얻는 것이 0.**
+  ★**부분 확장(`fmt@beta` 만 · +3s)도 기각** — 이력 0건 · beta rustfmt 미설치가 기본 · 부분 교차곱은 모델 변경 요구.
+  ★**재개 조건 + 세는 명령 + 오늘의 값 `0`** 을 `docs/upstream-sync-approach.md` §4 에 박았다
+  (「`cargo clippy --all` «이외» step 이 beta 셀에서만 실패한 run 이 1건이라도 생기면 다시 연다」).
+  ★검사기 **docstring 에만** 결정 포인터 1블록(그 파일이 「Widening … is a decision」이라 적고 결정 결과를 몰랐다).
+  ★게이트③ 완료: PR #27 — ★★**`--merge` 착지**(★`--squash` 아님). ★**이번엔 «두 겹»으로 강제됐다**:
+  ⑴등재 repo(`contracts/upstream-sync-repos.conf:22`) ⑵★**자식 PR #28 이 이 브랜치 «위에» 얹혀 있다**
+  (`git merge-base --is-ancestor 204f98be <#28 브랜치>` = **YES**) ⇒ 스쿼시하면 그 커밋들이 재작성돼 #28 이 깨진다.
+  ★**단 #28 의 base 는 `main`** 이라 브랜치 소멸로 닫히지는 않는다(`ripple` 형 사고와 다른 형상).
+  머지커밋 sha 는 회신 `merged:` 참조. ★**착지 후 반사실**: `origin/main..upstream/main` = **0 유지**.
 - [rustjava-local-dod-vs-ci-matrix-mechanical-check] ★★**로컬 DoD ↔ `rust.yml` «기계 대조» 신설 —
   `scripts/check-dod-ci-parity.py` + CI job `dod_parity`.** ★**5회차 리니지의 상수를 «사람 손»에서 뺐다.**
   ★★**설계 제약을 먼저 지켰다 — «낡은 문자열 스캐너»를 만들지 «않았다».** 게이트② 검수자가 실측으로
