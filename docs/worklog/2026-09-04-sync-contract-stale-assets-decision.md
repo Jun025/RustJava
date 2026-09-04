@@ -75,12 +75,18 @@ error: could not compile `tokio` (lib) due to 1 previous error      ← rc≠0
 ★**S8 이 ⑶을 더해 «셋»이 됐다.**
 
 ⒞ ★★**같은 형태인가 → «아니다».** 잡는 그물이 각각 다르다(테스트 · 컴파일 · CI).
-⇒ ★**조항 하나로 못 덮는다** — 덮으려 하면 **이미 그물이 있는 다섯 자리에까지 사람 확인을 얹는다**. 그것이 비용이다.
+⇒ ★**조항 하나로 못 덮는다** — 덮으려 하면 **이미 그물이 있는 여섯 자리에까지 사람 확인을 얹는다**. 그것이 비용이다.
+★**세는 법**(수리 전 기준): §1 돌연변이 표 **8행** − 그물이 「CI 만」인 **2행**(② · ⑦) = ★**6**.
+★**[게이트② 정정] 초판의 「다섯」은 계수 «1» 시절의 파생 수다** — 계수가 **2**로 정정되며 **6**이 맞다.
+(`:93` 의 「여섯 자리는 이미 기계가 지킨다」와 이제 **같은 수**다.)
 
 ## 4. ★★결정문 · 적은 «자리» · 이유 (계약 3)
 
 > ★**동기 회차 계약에 「우리 자산 서술자 목록을 문서화하고 머지 후 재확인한다」 상시 조항을 «넣지 않는다».**
-> ★**대신 «그물이 없던 자리 하나»를 막는다 — `CLAUDE.md` §Definition of Done 이 CI 명령 5줄을 «축약 없이 그대로» 싣는다.**
+> ★**대신 «구멍 하나»를 막는다 — `CLAUDE.md` §Definition of Done 이 CI 명령 5줄 + toolchain 축 1줄 = «6줄»을 축약 없이 싣는다.**
+
+★**[2026-09-04 정정 — 게이트②] 초판 결정문은 「그물이 없던 자리 «하나» … CI 명령 5줄」이었다** —
+계수 «1» 시절 문면이다. 계수가 **2**가 되며 빠진 것은 «줄 하나»가 아니라 **두 축**(target · toolchain)이고 DoD 는 **6줄**이다.
 
 **⒜ ★계수가 «2»인데도 왜 여전히 조항이 아닌가**(★초판 논거 「1개니까」는 계수 정정으로 **무효** — 결론은 같고 이유가 다르다):
 - ★★**② 와 ⑦ 은 «다른 자산»이 아니라 «한 근인의 두 얼굴»이다 — «로컬 DoD 가 CI 매트릭스를 재현하지 않는다».**
@@ -95,7 +101,7 @@ error: could not compile `tokio` (lib) due to 1 previous error      ← rc≠0
 **⒞ 적은 자리 — 워크로그에만 적지 않았다**:
 | 자리 | 무엇을 | 왜 그 자리인가 |
 |---|---|---|
-| ★`CLAUDE.md` §Definition of Done | **CI 5줄 verbatim** + 「축약하지 마라」와 그 이유(S8 실사고) | ★**모든 회차가 반드시 읽는다**(DoD) |
+| ★`CLAUDE.md` §Definition of Done | ★**6줄 verbatim**(CI `- run:` 5줄 + `cargo +beta` 1줄) + 「축약하지 마라」·「toolchain 축을 빼지 마라」와 그 이유(S8 실사고 · beta 실측) | ★**모든 회차가 반드시 읽는다**(DoD) |
 | ★`docs/upstream-sync-approach.md` §4 뒤 | **결정문 · 돌연변이 표 · 사료 표 · 재개 조건과 세는 명령** | ★**동기 회차가 반드시 읽는 계약 파일** |
 
 ## 5. ★★재개 조건 + 세는 명령 + 오늘의 값 (계약 4)
@@ -105,10 +111,23 @@ error: could not compile `tokio` (lib) due to 1 previous error      ← rc≠0
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 DOD=$(sed -n '/## Definition of Done/,/^- 착수·완료마다/p' CLAUDE.md)
+
+# ★축① — CI 의 `- run:` 줄 ∖ 로컬 DoD   (0 이어야 한다)
 LC_ALL=C /usr/bin/grep -E '^[[:space:]]+- run: ' .github/workflows/rust.yml | sed 's/^[[:space:]]*- run: //' \
-| while IFS= read -r c; do printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "$c" || echo "MISSING: $c"; done \
+| while IFS= read -r c; do printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "$c" || echo "MISSING-RUN: $c"; done \
 | /usr/bin/grep -c .
+
+# ★축② — CI 의 toolchain 매트릭스 ∖ 로컬 DoD   (0 이어야 한다)
+LC_ALL=C /usr/bin/grep -E '^[[:space:]]+rust: \[' .github/workflows/rust.yml \
+| sed 's/.*\[//; s/\].*//; s/, */\n/g' \
+| while IFS= read -r tc; do
+    [ "$tc" = stable ] && { printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qE 'cargo (fmt|clippy|test)' || echo "MISSING-TC: $tc"; continue; }
+    printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "cargo +$tc " || echo "MISSING-TC: $tc"
+  done | /usr/bin/grep -c .
 ```
+
+★**[2026-09-04 정정 — 게이트②] 초판은 이 블록에 «축① 만» 실어 놓고 아래 표에서는 두 축을 말했다.**
+★**정본은 `docs/upstream-sync-approach.md` §4 이고, 이제 두 파일이 같은 명령을 싣는다.**
 
 | | 값 |
 |---|---|
@@ -130,12 +149,13 @@ LC_ALL=C /usr/bin/grep -E '^[[:space:]]+- run: ' .github/workflows/rust.yml | se
 
 ## 7. 계약 6 — 기존 스위트 전건 · 새 red 0
 
-★**CI 5줄을 «워크플로 문면 그대로»** 실행:
+★**정정 후 DoD «6줄»을 «문면 그대로»** 실행(★초판은 **5줄**이었다 — `+beta` 가 빠져 있었다):
 
 | 명령 | rc |
 |---|---|
 | `cargo fmt --all -- --check` | **0** |
 | `cargo clippy --all -- -D warnings` | **0** |
+| ★`cargo +beta clippy --all -- -D warnings` | ★**0** |
 | `cargo clippy --workspace --exclude test-utils --target wasm32-unknown-unknown -- -D warnings` | **0** |
 | `cargo test --all` | **0** — ★**554 / 0 / 1** |
 | `python3 scripts/check-worklog-json.py` | **0** |
