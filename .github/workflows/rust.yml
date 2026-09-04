@@ -61,3 +61,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-worklog-json.py
+
+  # parity lock: the CLAUDE.md DoD block must reproduce this file's checks (see the script's
+  # docstring — hand comparison failed five rounds in a row). One runner, not the matrix.
+  dod_parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-dod-ci-parity.py
