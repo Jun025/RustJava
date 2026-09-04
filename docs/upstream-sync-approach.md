@@ -545,6 +545,91 @@ upstream 이 `invoke_virtual` 시그니처를 바꾸자 ★**«우리 고유 테
 그것은 **S8**(총괄 보류분 `2026-09-03-upstream-sync-s5-s7-remeasure#p0`)의 몫이다 — 이 회차는 **집행하지 않았다**.
 
 
+### ★★★[2026-09-04] S8 착지 기록 — **개명 스윕** · ★**behind 12 → 0**(upstream 완전 따라잡음)
+
+**착수 재측정**(신 서식): 컷 `bd42427` = ★**누적 8 · 델타 +8**(base `3fb08a8` · merge-base `ba5797b`).
+★**「재서 8 이었다」** — 그 12커밋은 전부 **crates.io 공개 준비**(크레이트 개명) 스윕이다.
+
+### 개명 대응표 — ★upstream 이력에서 «떴다»(추측 0)
+
+`git diff --find-renames --name-status ba5797b upstream/main` ⇒ 상태 분포 ★**R 642 · M 22 · A/D 0**.
+
+| 전 | 후 | 건수 | 최소 유사도 |
+|---|---|---|---|
+| `java_runtime/` | ★**`rustjava-runtime/`** | 379 | R079 |
+| `test_data/` | ★**`test-data/`** | 243 | R083 |
+| `jvm_rust/` | `jvm-bytecode/` | 12 | R066 |
+| `java_class_proto/` | `jvm-class-proto/` | 4 | R056 |
+| `java_constants/` | `jvm-types/` | 2 | R061 |
+| `test_utils/` | `test-utils/` | 2 | R061 |
+
+★**`java_runtime` 은 «2홉»이다**: `7b966e7`(→`java-runtime` · R100 399/399) → `653f543`(→`rustjava-runtime`).
+★**미확인 0** — 상태 분포에 **A/D 가 0** 이므로 「표에 없는 경로」가 없다(upstream 은 **아무것도 지우지 않았다**).
+★**유사도가 낮은 셋**(R056·R061)은 `Cargo.toml`·`lib.rs` 처럼 **패키지명 자체가 본문에 든 파일**이라 낮게 나온 것이고,
+같은 디렉터리의 나머지가 R100 이라 «삭제+신규»가 아니다.
+
+### ★★픽스처 판정 — modify/delete 가 **«0건»이었다**(위험 예측이 «좋은 쪽»으로 빗나갔다)
+
+★**이 회차가 두려워한 형태는 나오지 않았다.** git 이 `CONFLICT (file location)` + **`AU`** 로 처리해
+우리 고유 파일을 **새 경로로 «이미 옮겨» 두고 «이동 확인»만 요구**했다. ⇒ **`DU`/`UD`/`DD` 0건.**
+
+| # | 파일(새 경로) | 기원 | 처분 | 근거 |
+|---|---|---|---|---|
+| 1 | `rustjava-runtime/src/charset.rs` | ★**우리**(PR #5 `7fd0ad8`) | ★**간다** | upstream 에 대응물 **없음** — 대체되지 않았다 |
+| 2 | `test-data/TimeApi.class` | ★**우리**(PR #2 `13ab950`) | ★**간다** | 〃 |
+| 3 | `test-data/TimeApi.txt` | ★**우리**(PR #2) | ★**간다** | 〃 |
+| 4 | `test-data/UnsupportedCharset.class` | ★**우리**(PR #5) | ★**간다** | 〃 |
+| 5 | `test-data/UnsupportedCharset.txt` | ★**우리**(PR #5) | ★**간다** | 〃 |
+| 6 | `test-data/src/UnsupportedCharset.java` | ★**우리**(PR #5) | ★**간다** | 〃 |
+
+★**「남는다/버린다」는 하나도 없다** — 여섯 다 **우리 것**이고 upstream 판본으로 **대체된 것이 없다**
+(「우리 것이면 지우지 마라」가 기본값이고, 지울 근거가 나오지 않았다).
+★★**보존 증명은 «블롭»으로 했다** — `origin/main:<옛 경로>` 블롭 ↔ 새 경로 `hash-object` 가 **6건 전부 동일**.
+★**픽스처 수 5 → 5** · 옛 디렉터리 **6개 전부 소멸**(개명 완료).
+
+### ★★개명이 «우리 자산 2건»을 낡게 만들었다 — 「우리 자산이 낡는」 **5회째**
+
+★**축은 S7 과 같은 방향**(upstream 변경 → 우리 파일이 낡음)인데 **대상이 처음**이다 — **CI 설정과 경로 문자열**:
+
+| 자산 | 무엇이 낡았나 | 처분 |
+|---|---|---|
+| `.github/workflows/rust.yml:55` | `--exclude test_utils` 가 **옛 크레이트 이름** ⇒ wasm32 셀이 깨진다(★실측: 옛 이름 **rc=101** ↔ 새 이름 **rc=0**) | `test-utils` 로 |
+| `tests/test_class_format.rs`(PR #3) | `"test_data/Hello.class"` **경로 문자열 4곳** | `test-data/` 로 |
+
+★**둘 다 «우리 파일»이라 충돌이 «날 수가 없다»** — 개명 대응표를 그대로 적용했을 뿐이고 **upstream 코드는 안 건드렸다**.
+★**전례**: S3 3건 → S5 5곳 → S6 3곳 → S7 5곳(공용 API) → ★**S8 2건(CI·경로)**.
+⇒ ★**이제 방향이 셋이다**: ⑴upstream 신규 파일 ⑵upstream 공용 API 변경 ⑶★**upstream 개명**.
+★**⑶은 컴파일이 «절반만» 잡는다** — `test_class_format.rs` 는 런타임 실패이고 `rust.yml` 은 **CI 에서만** 드러난다.
+
+### ★`Cargo.lock` — 계약6⒞ 가 «또» 잡았다(S5 와 같은 형태)
+
+`--theirs` + `cargo build` 가 ★**3개를 «내렸다»**: `tracing` **0.1.44 → 0.1.41** ·
+`tracing-subscriber` 0.3.23 → 0.3.20 · `syn` 3.0.4 → 3.0.2.
+★★**`tracing` 하강은 PR #4 를 되돌리는 것이다** — 그 PR 의 산출물이 정확히
+「`tracing-attributes` 상한 핀 제거 ⇒ tracing **0.1.41 → 0.1.44 언프리즈**」였다(upstream `bd42427` 의 lock 은 **0.1.41**).
+⇒ **처방은 S5 와 같다**: `origin/main` 의 lock 에서 출발해 다시 `cargo build`
+⇒ ★**내려간 것 0** · `tracing` **0.1.44 유지** · `tracing-attributes` **부재 유지**.
+남는 변화는 **워크스페이스 멤버 개명**(6 제거 / 6 추가)과 `classfile`·`jvm` **0.0.1 → 0.1.1**(upstream 이 올린 판 번호)뿐이다.
+
+### `thread.rs` — 유일 내용 충돌 · «직교» 합집합
+
+upstream 은 크레이트 개명 import(`java_class_proto`→`jvm_class_proto` · `java_constants`→`jvm_types`),
+우리는 PR #4 의 `use tracing::Instrument;` ⇒ ★**의미가 겹치지 않는다** ⇒ 합집합. 수동 span 2요소 **생존**.
+
+### green · 착지 실측
+
+stable 4종 + ★beta 2종 **전건 rc=0** · `cargo test --all` ★**554 / 0 / 1** · beta 도 **554 동수**.
+★**증감 0 이고 그것이 맞다** — upstream 테스트 함수도 `ba5797b` **547** → `bd42427` **547**(개명 스윕이라 추가 0).
+★약화 0: `#[ignore]` **1 → 1** · 우리 테스트 함수 **558 → 558**.
+우리 자산 전수 생존: `charset.rs` 1 · `Charset::` 4곳 · 수동 span 2 · `tracing-attributes` **0** ·
+`setProperty` `String` 6곳 · `double_must_use` allow **9곳** · 픽스처 **5** · `test_class_format.rs` **4/4**.
+
+★★**계보**: `merge-base origin/main upstream/main` ★**`ba5797b` → `bd42427`** ·
+behind ★**12 → 0** · 머지커밋 **부모 2개**(`3fb08a8` + `bd42427`).
+⇒ ★★★**upstream 을 «완전히» 따라잡았다.** ★`--squash` 였다면 부모가 접히며 `merge-base` 가 `ba5797b` 로
+되돌아가고 behind 가 **0 → 12** 였다.
+
+
 ★**S1~S3 이 이 동기화의 «전부»다** — 세 회차가 판단을 다 쓰고, 각각 **한 축씩만** 다룬다.
 검수자가 한 회차에서 읽어야 하는 것은 **우리 해소분**이지 upstream 원본 diff 가 아니다:
 

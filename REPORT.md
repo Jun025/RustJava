@@ -1,5 +1,34 @@
 # REPORT
 
+## [2026-09-04] upstream 동기 S8 — 컷 `bd42427` 개명 스윕 · ★**behind 0** (rustjava-upstream-sync-s8-rename-sweep-decision)
+- 무엇을: upstream `bd42427` 까지 **12커밋**(crates.io 공개 준비 개명 스윕)을 `--merge` 로 흡수하고 충돌 **8건**을 해소했다.
+  ★★**`merge-base` `ba5797b` → `bd42427` · behind `12` → ★`0`** · 부모 **2개**
+  ⇒ ★★★**upstream 을 «완전히» 따라잡았다**(2026-08-16 계획 착수 시 behind 33 → 오늘 0).
+- 왜: 운영자 채택 제안 `2026-09-03-upstream-sync-s5-s7-remeasure#p0` — 「개명이 우리 픽스처를 **조용히 지울 수 있다**」.
+  ★**이 회차의 산출은 코드가 아니라 «판정»**이었다: 어느 픽스처가 어디로 가는가.
+- 사용자 영향: **크레이트 이름이 공개용으로 바뀐다**(`java_runtime`→`rustjava-runtime` · `jvm_rust`→`jvm-bytecode` ·
+  `java_class_proto`→`jvm-class-proto` · `java_constants`→`jvm-types` · `test_utils`→`test-utils` ·
+  `test_data/`→`test-data/`). ★**런타임 동작 변경 0** · 우리 자산 전수 생존.
+- 검증: stable 4종 + ★beta 2종 rc=0 · `cargo test --all` **554 / 0 / 1** · beta 도 **554 동수** ·
+  ★증감 0 이고 그것이 맞다(upstream 테스트 함수도 **547 → 547** — 개명 스윕이라 추가 0) ·
+  `#[ignore]` **1 → 1** · 우리 테스트 함수 **558 → 558**.
+- ★★**두려워한 형태(modify/delete)가 «0건»이었다.** git 이 `CONFLICT (file location)` + `AU` 로 처리해
+  우리 고유 **6건**을 새 경로로 **이미 옮겨** 두고 «이동 확인»만 요구했다 ⇒ 처분은 **「간다」 전건**이고
+  ★**`origin/main` 블롭 ↔ 새 경로 해시가 6건 전부 동일**(바이트 보존) · ★**픽스처 수 5 → 5**.
+  ★「남는다/버린다」는 **0** — 여섯 다 우리 것이고 upstream 판본으로 **대체된 것이 없다**.
+- ★★**대신 개명이 «우리 자산 2건»을 낡게 만들었다 — 「우리 자산이 낡는」 5회째이고 «대상»이 처음이다**:
+  ⑴`.github/workflows/rust.yml` 의 `--exclude test_utils` 가 **옛 크레이트 이름**이라 wasm32 셀이 깨진다
+  (★실측: 옛 이름 **rc=101** ↔ 새 이름 **rc=0**) ⑵`tests/test_class_format.rs`(PR #3)의 `"test_data/"` **4곳**.
+  ★**둘 다 «우리 파일»이라 충돌이 «날 수가 없다»** — 개명 대응표를 그대로 적용했고 upstream 코드는 무접촉.
+  ⇒ ★**이제 이 형태의 방향이 셋이다**: ⑴upstream 신규 파일 ⑵공용 API 변경 ⑶★**개명**.
+  ★**⑶은 컴파일이 «절반만» 잡는다** — 경로 문자열은 런타임, CI 설정은 **CI 에서만** 드러난다.
+- ★**`Cargo.lock` 하강을 차단했다**(계약6⒞가 «또» 잡았다): `--theirs`+build 가 `tracing` **0.1.44 → 0.1.41** ·
+  `tracing-subscriber` · `syn` 을 내렸다. ★**`tracing` 하강은 PR #4(언프리즈)를 되돌리는 것**이라
+  S5 와 같은 처방(`origin/main` lock 에서 재생성)으로 ★**내려간 것 0 · `tracing` 0.1.44 유지**.
+- 후속 추천: ⑴**게이트③은 반드시 `--merge`**(등재 repo). ⑵★**behind 0 이 됐으므로 다음 동기 회차는
+  «upstream 이 움직일 때»다** — 정기 축이 필요하면 별건 판정. ⑶★**「우리 자산이 낡는」 축의 계약화**가
+  이제 **다섯 회차 미처분**이고, 이번에 **세 번째 방향(개명)**이 드러났다.
+
 ## [2026-09-04] upstream 동기 S7 — 컷 `ba5797b` 머지 + §5 서식에 «델타/누적» 축 (rustjava-upstream-sync-s7-and-fix-the-conflict-count-format)
 - 무엇을: upstream `ba5797b`(#201 가상 디스패치 해석 · **1커밋** · 319파일 +20,118/−5,729)을 `--merge` 로
   흡수하고 충돌 **1건**을 해소했다. 함께 ★**§5 「충돌 수」 정본 서식을

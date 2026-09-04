@@ -1,6 +1,22 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-s8-rename-sweep-decision] ★★**upstream 컷 `bd42427`(개명 스윕 · 12커밋) 머지 —
+  ★★★`merge-base` `ba5797b` → `bd42427` · behind ★**12 → 0** · 부모 2개 ⇒ ★★**upstream 을 «완전히» 따라잡았다.**
+  착수 재측정(신 서식): **누적 8 · 델타 +8**(base `3fb08a8` · merge-base `ba5797b`) — 「재서 8 이었다」.
+  ★**개명 대응표**(upstream 이력 실측 · A/D **0** · 전건 R): `java_runtime`→**`rustjava-runtime`**(2홉 · 379건 R079) ·
+  `test_data`→**`test-data`**(243 R083) · `jvm_rust`→`jvm-bytecode` · `java_class_proto`→`jvm-class-proto` ·
+  `java_constants`→`jvm-types` · `test_utils`→`test-utils`.
+  ★★**modify/delete = «0건»** — 두려워한 형태가 안 나왔다. git 이 `CONFLICT (file location)`+`AU` 로
+  우리 고유 6건을 새 경로로 **이미 옮겨** 두고 이동 확인만 요구했다 ⇒ 처분 「간다」 전건 ·
+  ★**`origin/main` 블롭 대조로 6건 «바이트 동일» 확인** · ★**픽스처 5 → 5**.
+  ★★**개명이 «우리 자산 2건»을 낡게 만들었다(5회째 · 대상은 처음 — CI·경로)**:
+  `rust.yml` 의 `--exclude test_utils`(옛 크레이트명 ⇒ wasm32 셀 red · 실측 rc=101↔0) → `test-utils` ·
+  `tests/test_class_format.rs` 의 `"test_data/"` 4곳 → `test-data/`. ★둘 다 «우리 파일»이라 충돌이 날 수 없다.
+  ★**`Cargo.lock` 하강 차단**: `--theirs`+build 가 `tracing` **0.1.44 → 0.1.41**(=PR #4 언프리즈 되돌림) ·
+  `tracing-subscriber`·`syn` 도 내렸다 ⇒ S5 처방(main lock 에서 재생성)으로 **내려간 것 0**.
+  green: stable 4종 + beta 2종 rc=0 · **554/0/1**(baseline 554 · 증감 0 이고 맞다 — upstream 도 547→547).
+  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이

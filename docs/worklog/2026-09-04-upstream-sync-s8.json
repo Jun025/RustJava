@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "upstream 동기 S8 — 컷 bd42427 개명 스윕 판정 · 우리 픽스처 5/5 바이트 보존 · behind 12 → 0",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-sync-s8-rename-sweep-decision",
+  "summary": "upstream bd42427 까지 12커밋(crates.io 공개 준비 개명 스윕)을 --merge 로 흡수하고 충돌 8건을 해소했다. merge-base ba5797b → bd42427 · behind 12 → 0 · 부모 2개 ⇒ upstream 을 «완전히» 따라잡았다(2026-08-16 계획 착수 시 behind 33). 착수 재측정(신 서식): 누적 8 · 델타 +8(base 3fb08a8 · merge-base ba5797b) — 「재서 8 이었다」. 개명 대응표는 upstream 이력에서 실측으로 떴다(git diff --find-renames ba5797b upstream/main ⇒ R 642 · M 22 · A/D 0): java_runtime→rustjava-runtime(2홉 · 379건 최소 R079) · test_data→test-data(243 R083) · jvm_rust→jvm-bytecode(12 R066) · java_class_proto→jvm-class-proto(4 R056) · java_constants→jvm-types(2 R061) · test_utils→test-utils(2 R061). A/D 가 0 이므로 표에 없는 경로가 없고 「미확인」 0건이다. ★이 회차가 두려워한 modify/delete 는 0건이었다 — git 이 CONFLICT (file location) + AU 로 우리 고유 6건을 새 경로로 이미 옮겨 두고 이동 확인만 요구했다. 처분은 「간다」 전건이고(여섯 다 우리 것이며 upstream 판본으로 대체된 것이 없다) origin/main 블롭 ↔ 새 경로 hash-object 대조로 6건 전부 바이트 동일을 확인했다. 픽스처 수 5 → 5. 대신 개명이 우리 자산 2건을 낡게 만들었다(「우리 자산이 낡는」 5회째이고 대상은 처음 — CI 설정과 경로 문자열): .github/workflows/rust.yml 의 --exclude test_utils 가 옛 크레이트 이름이라 wasm32 셀이 깨지고(실측 rc=101 ↔ 새 이름 rc=0), tests/test_class_format.rs 의 \"test_data/\" 경로 4곳이 낡았다. 둘 다 우리 파일이라 충돌이 날 수가 없다. 그리고 Cargo.lock 이 --theirs+build 로 tracing 0.1.44 → 0.1.41 을 포함해 3개를 내렸는데, tracing 하강은 PR #4(tracing-attributes 상한 핀 제거 = 언프리즈)를 되돌리는 것이라 S5 처방(origin/main lock 에서 재생성)으로 막았다.",
+  "changes": [
+    "git merge bd42427 --no-ff — 머지커밋 부모 2개. merge-base origin/main upstream/main ba5797b → bd42427 · behind 12 → 0. -s ours 는 쓰지 않았다(S5 이후 4회 연속 불필요).",
+    "우리 고유 6건의 «경로 이전» 확인 — rustjava-runtime/src/charset.rs · test-data/TimeApi.{class,txt} · test-data/UnsupportedCharset.{class,txt} · test-data/src/UnsupportedCharset.java. 내용 무접촉(이동 확인만) · origin/main 블롭과 바이트 동일.",
+    ".github/workflows/rust.yml — --exclude test_utils → test-utils(+ 주석). 개명으로 낡은 «우리 CI 설정»이고, 그대로 두면 wasm32 셀이 red 다(실측 rc=101).",
+    "tests/test_class_format.rs — \"test_data/\" 경로 문자열 4곳을 test-data/ 로(PR #3 픽스처 참조 경로).",
+    "rustjava-runtime/src/classes/java/lang/thread.rs — 유일 내용 충돌(import 블록)을 «직교» 합집합으로 해소. upstream 크레이트 개명 import 2줄 + 우리 tracing::Instrument. 수동 span 2요소 생존.",
+    "Cargo.lock — 재생성을 «다시» 했다. --theirs+build 는 tracing 0.1.44 → 0.1.41(PR #4 언프리즈 되돌림) · tracing-subscriber 0.3.23 → 0.3.20 · syn 3.0.4 → 3.0.2 로 내린다. origin/main lock 에서 출발해 cargo build ⇒ 내려간 것 0 · tracing 0.1.44 유지 · tracing-attributes 부재 유지.",
+    "docs/upstream-sync-approach.md §5 — 「[2026-09-04] S8 착지 기록」 절 신설(개명 대응표 · 픽스처 판정표 · modify/delete 0 · 우리 자산 2건 낡음 · Cargo.lock 하강 차단 · 계보 4축). 과거 기록 소급 수정 0.",
+    "STATE.md · REPORT.md · docs/worklog/2026-09-04-upstream-sync-s8.{md,json} 갱신·신설."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "착수 실측: base = origin/main 3fb08a8 · merge-base ba5797b8eb4cf376fdd63129903d319d1d7acf98 · behind 12 · 열린 PR 0. 착수 재측정(신 서식): git merge-tree --write-tree --name-only origin/main bd42427 = 누적 8 · 직전 컷 ba5797b 누적 0 ⇒ 델타 +8. 착수 baseline cargo test --all = 554 passed / 0 failed / 1 ignored · #[ignore] 1 · 우리 테스트 함수 558 · 우리 픽스처 5. 개명 대응표: git diff --find-renames --name-status ba5797b upstream/main ⇒ 상태 분포 R 642 · M 22 · A/D 0(그래서 「미확인」 0건) · 최상위 대응 6쌍과 각 최소 유사도는 회신 표 그대로. 2홉 확인: 7b966e7 java_runtime→java-runtime(R100 399/399) · 653f543 java-runtime→rustjava-runtime(R100 307/379). 병합 실측: CONFLICT (file location) 6건 + content 2건(thread.rs · Cargo.lock) · ★DU/UD/DD 0건. 픽스처 보존 증명: origin/main:<옛 경로> 블롭 ↔ 새 경로 git hash-object 가 6건 전부 동일(0199513a · 5a394ad6 · b10f2546 · b8748f08 · 89833293 · 4ecd8f4f) · 픽스처 수 5 → 5 · 옛 디렉터리 6개 전부 소멸. 낡은 우리 자산 실측: cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown rc=101 ↔ --exclude test-utils rc=0. Cargo.lock 대조(--theirs 판): 내려간 것 3(tracing 0.1.44→0.1.41 · tracing-subscriber 0.3.23→0.3.20 · syn 3.0.4→3.0.2) ⇒ 재생성 후 내려간 것 0 · tracing 0.1.44 · tracing-attributes 부재. 착지 후: merge-base = bd42427fea794dd3f4ee93194c4d990d1ef693ae · behind 0 · git log -1 --format=%p = 3fb08a8 bd42427(부모 2개). green: stable 4종 rc=0 + beta 2종 rc=0 · cargo test --all = 554 passed / 0 failed / 1 ignored · cargo +beta test --all 도 554 동수. 시험 수 증감 0 의 출처: upstream 테스트 함수도 ba5797b 547 → bd42427 547(개명 스윕이라 추가 0). 약화 0: #[ignore] 1 → 1 · 우리 테스트 함수 558 → 558. 우리 자산 생존: charset.rs 1 · Charset:: 4곳 · 수동 span 2곳 · tracing-attributes 0 · setProperty String 6곳 · double_must_use allow 9곳 · 픽스처 5 · tests/test_class_format.rs 4/4. python3 scripts/check-worklog-json.py rc=0.",
+  "issues": [
+    "★★티켓 계약3 의 전제가 어긋났다 — charset.rs·test_string.rs 의 «내용 충돌»을 요구했으나 실측은 다르다: charset.rs 는 위치 충돌뿐이고(upstream 에 그 파일이 없어 내용이 갈릴 수가 없다) test_string.rs 는 자동 병합됐다. 실제 내용 충돌은 thread.rs 하나였고 그것을 ⒜⒝⒞ 로 답했다.",
+    "★★이 회차가 두려워한 modify/delete 는 0건이었다 — git 의 디렉터리 rename 탐지가 우리 고유 파일을 새 경로로 자동으로 옮기고 CONFLICT (file location) 로 «이동 확인»만 요구했다. 위험 예측이 좋은 쪽으로 빗나간 것이고, 그 사실을 숨기지 않는다. 다만 이것은 «이번 개명이 R079 이상으로 깨끗했기 때문»이고 유사도가 낮은 개명에서는 여전히 modify/delete 가 날 수 있다.",
+    "★★「우리 자산이 낡는」 5회째이고 이번에 세 번째 방향이 드러났다: ⑴upstream 신규 파일(S3·S5·S6) ⑵공용 API 변경(S7) ⑶★개명(S8). ⑶은 컴파일이 절반만 잡는다 — 경로 문자열은 런타임 실패이고 CI 설정은 CI 에서만 드러난다. 이번엔 내가 wasm32 축을 직접 쳐서 잡았지만 그것은 «기억»이지 그물이 아니다.",
+    "★Cargo.lock 하강이 S5 에 이어 두 번째다 — 이번엔 tracing 0.1.44 → 0.1.41 이고 그것은 PR #4 의 언프리즈를 되돌리는 것이었다. 두 번 다 처방이 같다(우리 lock 에서 출발해 재생성) ⇒ 개명·의존 변경이 큰 컷에서는 --theirs 를 쓰지 말고 처음부터 우리 lock 에서 재생성하는 것이 맞다.",
+    "★behind 가 0 이 됐다 — 다음 동기 회차는 「계획된 컷」이 아니라 「upstream 이 움직일 때」다. 정기 축이 필요한지는 별건 판정이고 이 회차가 정하지 않았다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③이 --squash 면 merge-base 가 ba5797b 로 되돌아가고 behind 가 0 → 12 가 된다: <id>-merge 티켓에 merge_strategy: merge 필수(bin/queue-lint 검사22). upstream 발신 0."
+  ],
+  "proposals": [
+    {
+      "title": "「우리 자산이 낡는」 축을 회차 계약에 넣을지 판정하라 — 다섯 회차 미처분이고 방향이 셋으로 늘었다",
+      "plainSummary": "우리가 원본과 다르게 만들어 둔 것들이 원본이 움직일 때마다 조용히 어긋난다. 어긋나는 방식이 이제 세 가지로 확인됐는데, 그중 두 가지는 지금 아무도 자동으로 확인하지 않는다.",
+      "userBenefit": "동기화 회차가 「충돌 다 풀었다」로 끝났는데 실제로는 우리 기능이 깨진 채 넘어가는 일이 사라진다. 지금은 사람이 기억하거나 우연히 테스트·컴파일이 덮을 때만 잡힌다.",
+      "why": "같은 형태가 다섯 번 났고 방향이 셋이다. ⑴upstream 이 신규 파일을 들여와 우리 규격을 안 지킨다(S3 test_class_format.rs 3건 · S5 io 테스트 5곳 · S6 regex 테스트 3곳) — merge-tree 도 교집합 대조도 못 보고 「자산 서술자 전 트리 grep」만 통했다. ⑵upstream 이 공용 API 시그니처를 바꿔 우리 파일이 낡는다(S7 우리 고유 테스트 5곳) — 컴파일이 그물이다. ⑶upstream 이 개명해 우리 CI 설정·경로 문자열이 낡는다(S8 rust.yml · test_class_format.rs) — 컴파일이 절반만 잡는다(경로는 런타임, CI 설정은 CI 에서만). ⇒ 그물이 없는 것은 ⑴과 ⑶의 절반이다. 현재 알려진 자산은 System.setProperty 서술자 · ClassFormatError 종류 단정 · charset 라우팅 · 수동 span · CI 워크플로의 크레이트 이름 · 픽스처 경로 문자열 여섯 축이다.",
+      "tradeoff": "⑴자산 목록 + grep 스니펫을 §4 에 적고 회차 계약에 「머지 후 재확인」을 넣으면 싸지만(명령 몇 줄) 목록을 사람이 유지해야 하고 새 자산이 생길 때 갱신을 잊으면 다시 샌다. ⑵기계 잠금(자산을 고정하는 테스트)을 만들면 확실하나 새 도구이고 upstream 이 그 자리를 만질 때마다 손이 간다. ⑶현상 유지면 ⑴과 ⑶은 계속 사람의 기억에 의존한다 — 다섯 번 다 잡히긴 했으나 S5 는 정독이 아니라 테스트가 잡았고 S8 의 CI 축은 내가 우연히 직접 쳐서 잡았다.",
+      "effort": "S — ⑴이면 §4 에 자산 6축 목록 + grep 스니펫 한 곳. 판정 자체는 XS.",
+      "target": "docs/upstream-sync-approach.md §4 · 회차 티켓 템플릿"
+    },
+    {
+      "title": "behind 0 이 됐다 — upstream 동기를 «정기 축»으로 둘지 판정하라",
+      "plainSummary": "원본 저장소를 완전히 따라잡았다. 이제 다음에 언제 다시 받아올지가 정해져 있지 않아서, 아무도 챙기지 않으면 격차가 다시 벌어진다.",
+      "userBenefit": "격차가 작을 때 받아오면 충돌이 작고 우리 기능이 삼켜질 위험도 작다. 이번 리니지가 behind 33 에서 시작해 여덟 회차가 걸린 것이 그 반대 사례다.",
+      "why": "2026-08-16 계획이 세운 7회차(S1~S7)와 추가된 S8 이 오늘 모두 착지해 behind 가 0 이다. 계획서 §5 는 「어느 컷을 언제」를 정했지만 「따라잡은 뒤」를 정하지 않았다. 그리고 이 리니지의 비용 대부분은 「격차가 커진 뒤 한꺼번에 받은 것」에서 나왔다 — S5 는 설계 판단 1건, S8 은 개명 스윕 판정이 필요했고, 둘 다 격차가 작았으면 훨씬 쌌다.",
+      "tradeoff": "⑴정기 축(예: 월 1회 또는 behind 임계)으로 두면 회차가 작아지지만 발권·검수 비용이 상시로 든다. ⑵필요할 때만 받으면 비용이 0 이지만 격차가 다시 33 이 될 수 있고, 그때는 이번처럼 여덟 회차가 든다. ⑶behind 를 재는 것만 자동화하고 발권은 사람이 하면 중간이지만, 재는 기구가 지금 없다.",
+      "effort": "XS — 판정. 정기 축을 고르면 그 축의 발권 방식은 별건.",
+      "target": "docs/upstream-sync-approach.md · 총괄 발권 정책"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [
+    "2026-09-03-upstream-sync-s5-s7-remeasure#p0"
+  ],
+  "declinedProposals": []
+}
