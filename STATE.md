@@ -1,20 +1,6 @@
 # STATE
 
 ## 진행중
-- [rustjava-upstream-sync-s6-cut-95ebc5c] ★**upstream 컷 `95ebc5c`(regex·Formatter·Locale · 11커밋) 머지 —
-  충돌 1 해소.** ★**`merge-base` `c4665b0` → `95ebc5c` · behind 24 → 13 · 머지커밋 부모 2개**(계보 보존).
-  `cargo test --all` **554 passed / 0 failed / 1 ignored**(S5 427 → **+127**) · stable 4종 + ★**beta 2종** rc=0.
-  ★★**「S6 새 충돌 0」 예측은 «델타»였다 — 「풀 것이 없다」가 아니다.** 그 0 은 옛 base `8c1238b` 에서 잰
-  «새로 나타난 파일 수»(누적 3 → 3)이고, 착수 재측정은 새 base `a0b5d3c`(merge-base `c4665b0`)에서 ★**누적 1**이다.
-  `string.rs` 는 S5 의 설계 판단으로 우리 분기(**+8/−28**)가 남아 upstream 이 만질 때마다(**+402/−121**) 계속 열린다.
-  ⇒ ★**§5 에 한 줄 보탰다: base 와 «함께» «델타인가 누적인가»도 밝혀라.**
-  해소 = import 블록 **합집합**(우리 `charset::Charset` + upstream `Formatter`·`Locale`·`regex`) ·
-  `Charset` 라우팅 4곳 생존 · `decode_str`/`encode_str` 재유입 **0**.
-  ★★**계약4⒝ 정독이 «충돌 0으로 들어온» 파손 1건을 «테스트 전에» 잡았다 — 이 형태 «세 번째»**:
-  upstream 신규 파일 `java/util/regex/test_pattern_syntax_exception.rs` 가 `System.setProperty` 를
-  `)Ljava/lang/Object;` 로 **3곳** 부른다 ⇒ 서술자만 `String` 으로(S5 의 확립된 처분과 동일).
-  ★**전례 S3 3건 → S5 5곳 → S6 3곳** — 매 회차 «새 파일»로 재유입된다.
-  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
@@ -37,6 +23,23 @@
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-upstream-sync-s6-cut-95ebc5c] ★**upstream 컷 `95ebc5c`(regex·Formatter·Locale · 11커밋) 머지 —
+  충돌 1 해소.** ★**`merge-base` `c4665b0` → `95ebc5c` · behind 24 → 13 · 머지커밋 부모 2개**(계보 보존).
+  `cargo test --all` **554 passed / 0 failed / 1 ignored**(S5 427 → **+127**) · stable 4종 + ★**beta 2종** rc=0.
+  ★★**「S6 새 충돌 0」 예측은 «델타»였다 — 「풀 것이 없다」가 아니다.** 그 0 은 옛 base `8c1238b` 에서 잰
+  «새로 나타난 파일 수»(누적 3 → 3)이고, 착수 재측정은 새 base `a0b5d3c`(merge-base `c4665b0`)에서 ★**누적 1**이다.
+  `string.rs` 는 S5 의 설계 판단으로 우리 분기(**+8/−28**)가 남아 upstream 이 만질 때마다(**+402/−121**) 계속 열린다.
+  ⇒ ★**§5 에 한 줄 보탰다: base 와 «함께» «델타인가 누적인가»도 밝혀라.**
+  해소 = import 블록 **합집합**(우리 `charset::Charset` + upstream `Formatter`·`Locale`·`regex`) ·
+  `Charset` 라우팅 4곳 생존 · `decode_str`/`encode_str` 재유입 **0**.
+  ★★**계약4⒝ 정독이 «충돌 0으로 들어온» 파손 1건을 «테스트 전에» 잡았다 — 이 형태 «세 번째»**:
+  upstream 신규 파일 `java/util/regex/test_pattern_syntax_exception.rs` 가 `System.setProperty` 를
+  `)Ljava/lang/Object;` 로 **3곳** 부른다 ⇒ 서술자만 `String` 으로(S5 의 확립된 처분과 동일).
+  ★**전례 S3 3건 → S5 5곳 → S6 3곳** — 매 회차 «새 파일»로 재유입된다.
+  ★게이트③ 완료: PR #22 — ★★**`--merge` 착지**(★`--squash` 아님 · 등재 repo). 머지커밋 sha 는 회신 `merged:` 참조.
+  ★**착지로 base 가 또 바뀌었다 ⇒ §5 의 「S7 새 충돌 1(`thread.rs`)」은 «다시 재야 한다»**(base·델타/누적 병기).
+  ★**남은 구멍(검수자 지적)**: §5 «상시 규칙» 절의 정본 서식(`:268`)은 아직 `<수>(base · merge-base)` 뿐이고,
+  «델타/누적» 축은 S6 착지 기록(`:444`) 안에만 있다 — ★**다음 §5 갱신 회차가 정본 서식에 한 줄 올려야 한다.**
 - [rustjava-upstream-sync-s5-with-remeasured-conflicts] ★**upstream 컷 `c4665b0`(#190 Java 1.2 API 확장) 머지 —
   충돌 3 해소.** ★**`merge-base` `3296139c` → `c4665b0` · behind 30 → 24 · 머지커밋 부모 2개**(계보 보존).
   `cargo test --all` **427 passed / 0 failed / 1 ignored**(S4 261 → **+166**) · green 4종 rc=0.
