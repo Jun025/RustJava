@@ -1,6 +1,28 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
+  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
+  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
+  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
+  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
+  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
+  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
+  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
+  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
+  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
+  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
+- [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
+  충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
+  — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**
+  ★★**계획서의 「S4 새 충돌 0」 예측은 틀렸다 — 실측 2건**이고, `thread.rs` 는 **S1·S3 에 이어 세 번째**다.
+  ★**`test_timer_periodic` 여백을 넓혔다(500→2000ms) — ★«회귀»가 아니라 «만성 경계 테스트»다**(단정 불변).
+  ★**컷 양쪽이 같은 비율로 흔들린다**(조건 맞춘 교대 실측 · ①절) — 전 판본의 「컷이 들여왔다」는 **틀렸다**.
+- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
+  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
+  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
+
+## 완료
 - [rustjava-sync-contract-standing-clause-for-our-assets-going-stale] ★**「우리 자산이 낡는다」 상시 조항
   «판정» — 결론: ★★넣지 «않는다». 대신 «구멍 하나»(로컬 DoD 가 CI 매트릭스를 재현하지 않던 것)를 막았다.**
   ★코드(`.rs`) 변경 0 · 규범 문서 2 + 기록 문서 4.
@@ -32,29 +54,14 @@
   ★**「6」은 «하한»이다** — `jvm-bytecode` 가 `jvm` 에 의존해 jvm 이 깨지면 그 크레이트는 **린트되지 않는다**.
   ⑵잔존 4건(워크로그 「문서 2파일」 2자리 · json `title` · 「채택 제안 둘」 3자리) + ★**PR 제목**까지 동기.
   ⑶★**«5건째»를 스스로 찾았다**(`changes[0]`) — ★**필터 걸린 sweep 이 «거짓 0»을 냈기 때문**이고(zsh 단어분할),
-  그 교훈을 §4 마감 절차 **4번**으로 박았다. **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
-  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
-  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
-  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
-  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
-  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
-  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
-  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
-  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
-  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
-  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
-  충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
-  — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**
-  ★★**계획서의 「S4 새 충돌 0」 예측은 틀렸다 — 실측 2건**이고, `thread.rs` 는 **S1·S3 에 이어 세 번째**다.
-  ★**`test_timer_periodic` 여백을 넓혔다(500→2000ms) — ★«회귀»가 아니라 «만성 경계 테스트»다**(단정 불변).
-  ★**컷 양쪽이 같은 비율로 흔들린다**(조건 맞춘 교대 실측 · ①절) — 전 판본의 「컷이 들여왔다」는 **틀렸다**.
-- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
-  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
-  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
-
-## 완료
+  그 교훈을 §4 마감 절차 **4번**으로 박았다.
+  ★게이트③ 완료: PR #25 — ★★**`--merge` 착지**(★`--squash` 아님 · 등재 repo `contracts/upstream-sync-repos.conf:22`).
+  머지커밋 sha 는 회신 `merged:` 참조. ★**게이트② 5회차 만에 approve**(초판 → fix → fix2 → fix3) —
+  ★★**반려 넷이 전부 «내용»이 아니라 «신고한 것 ↔ 산출물»의 어긋남이었다**(계수 · 수 라벨 · 잔존 자리).
+  ⇒ 그 대가로 `docs/upstream-sync-approach.md` §4 에 ★**마감 절차 4줄**이 남았다(착지본 전문 검색 ·
+  분모 = 파일 × 필드 · 파생 수 · ★**필터 걸린 검색의 «거짓 0»**).
+  ★**남은 minor 하나(F1 · 워크로그 `.md:54` 의 「CI 검사 «한 줄»」)는 이 회차가 «고치지 않았다»** —
+  다음에 그 파일을 만지는 회차가 §4(:90)와 «같은 표지»를 달면 닫힌다.
 - [rustjava-upstream-sync-s8-rename-sweep-decision] ★★**upstream 컷 `bd42427`(개명 스윕 · 12커밋) 머지 —
   ★★★`merge-base` `ba5797b` → `bd42427` · behind ★**12 → 0** · 부모 2개 ⇒ ★★**upstream 을 «완전히» 따라잡았다.**
   착수 재측정(신 서식): **누적 8 · 델타 +8**(base `3fb08a8` · merge-base `ba5797b`) — 「재서 8 이었다」.
