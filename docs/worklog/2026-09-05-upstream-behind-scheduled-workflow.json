@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-09-05",
+  "title": "behind 를 «재는» 자리 신설 — 주 1회 예약 워크플로 · 알림은 Job Summary(항상 green)",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-upstream-behind-measure-scheduled-workflow",
+  "summary": "채택 제안 2026-09-04-upstream-sync-cadence-decision#p0 집행. 2026-09-04 판정(PR #29 · 머지 4b91e8f8)이 트리거를 behind ≥ 20 으로 못박았으나 그 수를 «재는 주체»가 없었다(git grep -lI 'rev-list --count' origin/main -- .github/ scripts/ → 0건). ⇒ .github/workflows/upstream-behind.yml 을 신설했다 — 주 1회(cron 17 6 * * 1) upstream 을 read-only fetch 해 rev-list --count 를 찍고 Job Summary + annotation 으로 보고한다. ★알림 방식이 이 회차 결정의 대부분이고, 취향이 아니라 이 저장소 실측으로 골랐다: ⒜red 는 여기서 안 듣는다(선례 rust-audit.yaml 이 최근 20 run 중 19 failure 인데 대응 티켓 0건 · coverage 리니지도 만성 red 를 «green 으로» 끝냈다) 이고 예약 red 는 main tip 의 check-run 에 붙어(실측 8c1238b5 에 audit failure 7건) 게이트③의 「착지본 green」 읽기를 흐린다(단 PR 은 막지 않는다 — 예약 run 은 main tip sha 에 붙고 PR head 와 다르다). ⒞이슈는 구조적으로 불가하다(이 fork 는 hasIssuesEnabled: false). ⇒ ⒝ 를 채택하고 그 «수동성»을 알고 고른다 — 재개 조건이 그 대가를 잰다. 주기는 선례를 베끼지 않고 임계 도달 속도로 정당화했다: behind 20 도달이 중앙 44일 · 최소 9일이라 7일 주기는 가장 빠른 관측 상승보다 짧아 한 주기 넘게 놓칠 수 없고, 일간은 7배 비용에 판단 가치가 0 이다(회차보다 빨리 움직일 수 없다). ★한 번 돌려 오늘의 값을 남겼다: behind 0 · merge-base bd42427 = upstream HEAD ⇒ 임계 미만.",
+  "changes": [
+    ".github/workflows/upstream-behind.yml 신설 — 주 1회 예약 + workflow_dispatch · permissions: contents: read · upstream remote 추가 후 fetch → rev-list --count → Job Summary 표(behind·threshold·merge-base·upstream HEAD) + 임계 이상이면 ::warning:: 아니면 ::notice:: · ★항상 exit 0. 워크플로 머리 주석에 «왜 red 가 아닌가»를 실측과 함께 박았다.",
+    "docs/upstream-sync-approach.md §5-B ⒠ — 「구현은 별건」 자리에 그 별건의 착지를 기록: 주기 근거 · 알림 방식 3안 비교(실측) · upstream 발신 0 · 자동 발권 0 · 임계 무접촉 · ★알림 방식의 재개 조건(behind ≥ 20 이 7일 이상 지속인데 회차가 안 열리면 다시 연다)과 세는 명령·오늘의 값.",
+    "docs/worklog/2026-09-05-upstream-behind-scheduled-workflow.{md,json} 신설 · STATE.md · REPORT.md 회차 기록.",
+    "★scripts/ 무접촉 · bin/healthcheck·orchestrator 무접촉 · 임계 20 무접촉 · .rs 0줄."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "★전제 재확인: git ls-tree --name-only origin/main .github/workflows/ → coverage.yml · dependabot.yaml · opencode.yml · rust-audit.yaml · rust.yml(schedule 보유 = rust-audit.yaml 뿐) · rev-list --count 를 가진 파일 0건. ★⒜ 실효 실측: gh run list --workflow=rust-audit.yaml --limit 20 → failure 19 · success 1 이고, ls tasks/ | grep -i 'rustjava.*audit' → 0건(대응 티켓 없음). ★⒜ 부작용 실측: gh api repos/Jun025/RustJava/commits/8c1238b5/check-runs → audit failure 7건이 main tip 커밋에 붙어 있다. 단 PR head 에는 붙지 않는다(이 리니지 PR head 조회 전건에서 audit 0건) ⇒ PR 을 막지는 않는다. ★⒞ 실측: gh repo view --json hasIssuesEnabled → false(이 fork 는 이슈 비활성). ★주기 근거: upstream 12개월 144커밋/51주 · behind 20 도달 중앙 44일 · 최소 9일 · 최대 139일 ⇒ 7일 < 9일. ★오늘의 값(워크플로 본문 명령을 신선한 클론에서 그대로 실행): behind 0 · merge-base bd42427 · upstream HEAD bd42427 ⇒ 임계 미만. ★무회귀: python3 scripts/check-dod-ci-parity.py rc=0(새 워크플로에 영향 없음 — 그 검사기는 CI_FILE 을 rust.yml 로 코드에 박아 둔다) · python3 scripts/check-worklog-json.py rc=0 · .rs 변경 0.",
+  "issues": [
+    "★★알림 방식을 «실측으로» 골랐다 — ⒜(red)는 이 저장소에서 관측상 안 듣는다(rust-audit 20 run 중 19 red · 대응 티켓 0건). 그리고 예약 red 는 main tip check-run 에 붙어 게이트③의 「착지본 green」 읽기를 흐린다. ⒞(이슈)는 fork 의 issues 가 비활성이라 불가. ⇒ ⒝ 가 «남은 것»이고, 그 수동성은 재개 조건으로 잰다. ★「⒝ 가 최선이다」가 아니라 「⒜⒞ 가 각각 무실효·불가다」가 근거다.",
+    "★⒜ 가 PR 을 막는지 티켓이 확인하라 했고, 확인 결과 «막지 않는다» — 예약 run 은 main tip sha 에 붙고 PR head 와 다르다. 그럼에도 기각한 이유는 «막느냐»가 아니라 «듣느냐»와 «착지본 읽기를 흐리느냐»였다.",
+    "★⒝ 는 수동적이다 — 그 한계를 안고 골랐고 숨기지 않는다. 재개 조건(behind ≥ 20 이 7일 이상 지속인데 회차 미개시)을 세는 명령·오늘의 값과 함께 §5-B ⒠ 에 박았다.",
+    "★자동 발권 0 · 임계 20 무접촉 — 임계를 넘어도 워크플로는 회차를 열지 않는다(판정이 「발권은 사람이 한다」로 정했다). 임계 변경은 새 결정이지 편집이 아니다.",
+    "★파리티 검사기가 새 워크플로를 «보지 않는다» — CI_FILE 이 rust.yml 로 코드에 박혀 있기 때문이고 그것은 설계다(정본 위치를 코드에 박는다). ⇒ upstream-behind.yml 의 run 줄은 로컬 DoD 대칭차에 들어오지 않는다. 의도된 범위이고 rc=0 으로 확인했다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 --squash 금지 · merge_strategy: merge 필수."
+  ],
+  "proposals": [],
+  "resolvedIssues": [
+    "2026-09-04-upstream-sync-cadence-decision#p0 — 「behind 를 «재는» 자리를 만들어라(발권은 사람이 유지)」. .github/workflows/upstream-behind.yml 로 집행했고, 알림 방식 3안을 실측으로 비교해 ⒝ 를 골랐으며, 주기·오늘의 값·재개 조건을 docs/upstream-sync-approach.md §5-B ⒠ 에 박았다."
+  ],
+  "adoptedProposals": [
+    "2026-09-04-upstream-sync-cadence-decision#p0"
+  ],
+  "declinedProposals": []
+}

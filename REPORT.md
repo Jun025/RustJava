@@ -1,5 +1,21 @@
 # REPORT
 
+## [2026-09-05] `behind` 를 «재는» 예약 워크플로 신설 (rustjava-upstream-behind-measure-scheduled-workflow)
+- 무엇을: `.github/workflows/upstream-behind.yml` **1개 신설**. 주 1회 upstream 을 **read-only fetch** 해
+  `rev-list --count` 를 찍고 **Job Summary + annotation** 으로 보고한다. ★**코드(`.rs`) 0줄 · `scripts/` 무접촉.**
+- 왜: 2026-09-04 판정이 트리거를 **`behind ≥ 20`** 으로 못박았는데 ★**그 수를 «재는 주체»가 없었다**
+  (`rev-list --count` 를 가진 파일 **0건**). 임계만 있고 관측이 없으면 「아무도 안 챙긴다」가 그대로 남는다.
+- 사용자 영향: 런타임·CI 게이트 **무변경**(새 워크플로는 예약 전용이라 PR 검사에 들어가지 않는다).
+  ★**다음 동기 회차의 시점이 «사람 기억»에서 «주간 관측»으로 옮겨졌다.**
+- 검증: ★**한 번 돌려** 오늘의 값을 냈다 — **behind `0`** · `merge-base` `bd42427` = upstream HEAD ⇒ 임계 미만.
+  무회귀: `check-dod-ci-parity.py` **rc=0** · `check-worklog-json.py` **rc=0**.
+- ★★**알림 방식을 «실측으로» 골랐다**(이 회차 결정의 대부분): ⒜red 는 여기서 **안 듣는다**
+  (선례 `rust-audit` 최근 **20 run 중 19 failure** · ★**대응 티켓 0건** · `coverage` 리니지도 만성 red 를 «green 으로» 끝냈다)
+  이고 예약 red 는 **main tip check-run 을 오염**시킨다(★단 **PR 은 막지 않는다** — 확인했다) ·
+  ⒞이슈는 ★**이 fork 가 issues 비활성이라 불가** ⇒ ★**⒝ 가 «남은 것»이고 그 수동성은 재개 조건으로 잰다.**
+- ★**후속 추천**: ⑴`behind ≥ 20` 이 **7일 이상**인데 회차가 안 열리면 **알림 방식을 다시 열어라**(세는 명령은 §5-B ⒠).
+  ⑵★**임계 20 과 「발권은 사람이 한다」는 이 회차가 건드리지 않았다** — 바꾸려면 새 결정이다.
+
 ## [2026-09-05] 워크로그 «부재» 기계 강제 판정 — 넣지 않는다 (rustjava-worklog-absence-machine-enforcement-decision)
 - 무엇을: 채택 제안 `2026-09-04-worklog-mandate-and-local-gate#p0` 에 대한 **판정**이다.
   ★**결론: 워크로그 «부재»를 잡는 기계 강제를 지금은 넣지 않는다** — `check-worklog-json.py` 의
