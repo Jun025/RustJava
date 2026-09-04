@@ -2,7 +2,7 @@ use std::{env, process::Command};
 
 #[test]
 fn cli_classpath_options_load_classes_from_directories_and_jars() {
-    let class_path = env::join_paths(["missing", "test_data"]).unwrap();
+    let class_path = env::join_paths(["missing", "test-data"]).unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env_remove("CLASSPATH")
         .arg("-cp")
@@ -15,7 +15,7 @@ fn cli_classpath_options_load_classes_from_directories_and_jars() {
 
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env_remove("CLASSPATH")
-        .args(["-classpath", "test_data/test.jar", "JarTest"])
+        .args(["-classpath", "test-data/test.jar", "JarTest"])
         .output()
         .unwrap();
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -25,7 +25,7 @@ fn cli_classpath_options_load_classes_from_directories_and_jars() {
 #[test]
 fn cli_classpath_loads_from_absolute_entries() {
     let working_directory = env::current_dir().unwrap();
-    let class_path = working_directory.join("test_data");
+    let class_path = working_directory.join("test-data");
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env_remove("CLASSPATH")
         .arg("-cp")
@@ -36,7 +36,7 @@ fn cli_classpath_loads_from_absolute_entries() {
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(String::from_utf8(output.stdout).unwrap(), "Hello, world!\n");
 
-    let class_path = working_directory.join("test_data/test.jar");
+    let class_path = working_directory.join("test-data/test.jar");
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env_remove("CLASSPATH")
         .arg("-classpath")
@@ -51,7 +51,7 @@ fn cli_classpath_loads_from_absolute_entries() {
 #[test]
 fn cli_classpath_uses_environment_and_cli_override() {
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
-        .env("CLASSPATH", "test_data")
+        .env("CLASSPATH", "test-data")
         .arg("Hello")
         .output()
         .unwrap();
@@ -60,7 +60,7 @@ fn cli_classpath_uses_environment_and_cli_override() {
 
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env("CLASSPATH", "missing")
-        .args(["-cp", "test_data", "Hello"])
+        .args(["-cp", "test-data", "Hello"])
         .output()
         .unwrap();
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -71,7 +71,7 @@ fn cli_classpath_uses_environment_and_cli_override() {
 fn cli_jar_mode_accepts_but_ignores_classpath_options() {
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env("CLASSPATH", "also-ignored")
-        .args(["-cp", "ignored", "-jar", "test_data/test.jar"])
+        .args(["-cp", "ignored", "-jar", "test-data/test.jar"])
         .output()
         .unwrap();
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -82,7 +82,7 @@ fn cli_jar_mode_accepts_but_ignores_classpath_options() {
 fn cli_defaults_classpath_to_current_directory() {
     let output = Command::new(env!("CARGO_BIN_EXE_rust_java"))
         .env_remove("CLASSPATH")
-        .current_dir("test_data")
+        .current_dir("test-data")
         .arg("Hello")
         .output()
         .unwrap();

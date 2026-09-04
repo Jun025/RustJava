@@ -21,11 +21,12 @@
 
 ## Project Structure
 - `jvm/` - Core JVM implementation (`#![no_std]`)
-- `jvm_rust/` - Rust-based JVM interpreter
-- `java_runtime/` - Java standard library implementations
+- `jvm-bytecode/` - JVM class and bytecode implementation
+- `rustjava-runtime/` - Java standard library implementations
 - `classfile/` - Class file parser
-- `java_class_proto/` - Java class prototypes
-- `test_utils/` - Shared test utilities
+- `jvm-class-proto/` - Java class prototypes
+- `jvm-types/` - Shared JVM metadata types
+- `test-utils/` - Shared test utilities
 
 ## Round Worklog `docs/worklog/` — human `.md` + machine `.json`, always a pair
 When a round leaves follow-up proposals or their disposition, drop **two files with the same
@@ -80,9 +81,9 @@ print('open cards:',p-a)"
 - ⒝ **< 5** ⇒ 의무화해도 카드가 늘지 않았다는 뜻이므로 **의무 자체를 재검토**하라.
   Baseline measured 2026-09-04: 9 proposals − 4 disposed = **5 open**. So ⒝ means "fewer than today".
 ## Testing Boundaries
-- Keep `java_runtime/tests/classes` limited to Java standard library class and API behavior.
-- Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test_data/src` and expected output under `test_data`, executed by `tests/test_class.rs`.
-- Do not place JVM core behavior tests in the `java_runtime` standard library test tree.
+- Keep `rustjava-runtime/tests/classes` limited to Java standard library class and API behavior.
+- Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test-data/src` and expected output under `test-data`, executed by `tests/test_class.rs`.
+- Do not place JVM core behavior tests in the `rustjava-runtime` standard library test tree.
 
 ## Compatibility Sources
 - Implement Java compatibility from public specifications, Javadocs, and observable behavior tests. Do not consult or reproduce OpenJDK or other Java runtime implementation source code; keep the implementation independent to avoid licensing and provenance concerns.

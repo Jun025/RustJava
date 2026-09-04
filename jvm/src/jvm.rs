@@ -1,4 +1,5 @@
 #![allow(clippy::borrowed_box)] // We have get parameter by Box<T> to make ergonomic interface
+#![allow(clippy::double_must_use)] // temporary until https://github.com/rust-lang/rust-clippy/issues/17529 fix lands
 
 use alloc::{borrow::ToOwned, boxed::Box, collections::BTreeMap, format, string::String, sync::Arc, vec::Vec};
 use core::{
@@ -15,7 +16,7 @@ use event_listener::Event;
 use hashbrown::HashSet;
 use parking_lot::RwLock;
 
-use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
+use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
 use crate::{
     Result,

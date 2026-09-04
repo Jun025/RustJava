@@ -9,11 +9,11 @@ use std::{
 
 use test_helper::run_class;
 
-// Fixtures are derived deterministically from the committed test_data/Hello.class
+// Fixtures are derived deterministically from the committed test-data/Hello.class
 // by byte manipulation, so corruption scenarios stay reproducible without
 // committing corrupted binaries.
 fn fixture(name: &str, bytes: &[u8]) -> (PathBuf, PathBuf) {
-    // relative path with trailing slash, like "./test_data/": classpath entries are
+    // relative path with trailing slash, like "./test-data/": classpath entries are
     // turned into URLs and joined with the class file name
     let dir = PathBuf::from(format!("./target/class_format_fixtures_{}/", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
@@ -25,7 +25,7 @@ fn fixture(name: &str, bytes: &[u8]) -> (PathBuf, PathBuf) {
 }
 
 fn hello_class() -> Vec<u8> {
-    fs::read("test_data/Hello.class").unwrap()
+    fs::read("test-data/Hello.class").unwrap()
 }
 
 // Only the exception *kind* is asserted, not the message: upstream `ClassFileError`
@@ -43,7 +43,7 @@ async fn test_truncated_class_raises_class_format_error() {
 async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
     let mut bytes = hello_class();
     // offset 10 is the first constant pool tag; 10 (Methodref) in the committed fixture
-    assert_eq!(bytes[10], 10, "test_data/Hello.class layout changed; adjust the mutation offset");
+    assert_eq!(bytes[10], 10, "test-data/Hello.class layout changed; adjust the mutation offset");
     bytes[10] = 18; // CONSTANT_InvokeDynamic, unsupported
     let (dir, path) = fixture("BadTagHello.class", &bytes);
 

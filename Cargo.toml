@@ -1,10 +1,11 @@
 [workspace]
-members = ["classfile", "java_runtime", "jvm", "jvm_rust", "test_utils"]
+members = ["classfile", "jvm", "jvm-bytecode", "jvm-class-proto", "jvm-types", "rustjava-runtime"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
+repository = "https://github.com/dlunch/RustJava"
 
 [workspace.dependencies]
 anyhow = { version = "^1.0", default-features = false }
@@ -20,22 +21,29 @@ tracing = { version = "^0.1", default-features = false }
 
 tokio = { version = "^1.52", features = ["macros"] }
 
-classfile = { path = "classfile" }
-java_class_proto = { path = "java_class_proto" }
-java_constants = { path = "java_constants" }
-java_runtime = { path = "java_runtime" }
-jvm = { path = "jvm" }
-jvm_rust = { path = "jvm_rust" }
-test_utils = { path = "test_utils" }
+classfile = { path = "classfile", version = "0.1.1" }
+jvm = { path = "jvm", version = "0.1.1" }
+jvm-bytecode = { path = "jvm-bytecode", version = "0.1.1" }
+jvm-class-proto = { path = "jvm-class-proto", version = "0.1.1" }
+jvm-types = { path = "jvm-types", version = "0.1.1" }
+rustjava-runtime = { path = "rustjava-runtime", version = "0.1.1" }
+test-utils = { path = "test-utils" }
 
 [package]
-name = "rust_java"
+name = "RustJava"
+description = "An embeddable JVM and Java runtime implemented in Rust"
+exclude = ["docs"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "rust_java"
 
 [[bin]]
 name = "rust_java"
+path = "src/main.rs"
 
 [dependencies]
 async-trait = { workspace = true }
@@ -46,12 +54,12 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "^0.3", features = ["env-filter"] }
 
 jvm = { workspace = true }
-jvm_rust = { workspace = true }
-java_class_proto = { workspace = true }
-java_runtime = { workspace = true }
+jvm-bytecode = { workspace = true }
+jvm-class-proto = { workspace = true }
+rustjava-runtime = { workspace = true }
 
 [dev-dependencies]
-test_utils = { workspace = true }
+test-utils = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }

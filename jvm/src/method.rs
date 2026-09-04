@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, string::String};
 use core::fmt::Debug;
 
-use java_constants::MethodAccessFlags;
+use jvm_types::MethodAccessFlags;
 
 use crate::{JavaValue, Jvm, Result, as_any::AsAny};
 

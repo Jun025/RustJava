@@ -1,10 +1,12 @@
 [package]
 name = "classfile"
+description = "A no_std parser and validator for Java class files"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 nom = { workspace = true }
 
-java_constants = { workspace = true }
+jvm-types = { workspace = true }
