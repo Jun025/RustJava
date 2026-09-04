@@ -1,6 +1,28 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
+  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
+  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
+  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
+  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
+  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
+  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
+  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
+  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
+  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
+  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
+- [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
+  충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
+  — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**
+  ★★**계획서의 「S4 새 충돌 0」 예측은 틀렸다 — 실측 2건**이고, `thread.rs` 는 **S1·S3 에 이어 세 번째**다.
+  ★**`test_timer_periodic` 여백을 넓혔다(500→2000ms) — ★«회귀»가 아니라 «만성 경계 테스트»다**(단정 불변).
+  ★**컷 양쪽이 같은 비율로 흔들린다**(조건 맞춘 교대 실측 · ①절) — 전 판본의 「컷이 들여왔다」는 **틀렸다**.
+- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
+  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
+  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
+
+## 완료
 - [rustjava-upstream-sync-cadence-decision] ★★**upstream 동기 «정기 축» 판정 — 결론: ⒝ 격차 기반 `behind ≥ 20`.**
   채택 제안 `2026-09-04-sync-contract-stale-assets-decision#p0`. ★**신설 0**(검사기·크론·워크플로) · `.rs` **0줄** · ★**S9 미개시**(behind **0**).
   ★★**제안의 전제(「벌어진 뒤에 받으면 훨씬 비싸다」)를 «먼저 재서» 반증했다**: 회차 커밋 수 ↔ 충돌의 상관계수 ★**부호가 «음»**.
@@ -24,29 +46,12 @@
   대안 `bin/healthcheck` 는 **orchestrator 소관이라 별건**. ★**구현은 이 회차가 하지 않았다.**
   ★**재측정 조건**(3회차 뒤 · 충돌 중앙 ≥5 면 임계 내리고 · 도달 간격 ≤14일이면 올린다)을 §5-B 에 오늘의 값과 함께 박았다.
   ★★**「오래됐다」는 재개 사유가 아니다 — 이 축은 «시간»이 아니라 «격차»로 열린다.**
-  **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
-  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
-  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
-  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
-  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
-  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
-  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
-  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
-  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
-  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
-  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
-  충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
-  — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**
-  ★★**계획서의 「S4 새 충돌 0」 예측은 틀렸다 — 실측 2건**이고, `thread.rs` 는 **S1·S3 에 이어 세 번째**다.
-  ★**`test_timer_periodic` 여백을 넓혔다(500→2000ms) — ★«회귀»가 아니라 «만성 경계 테스트»다**(단정 불변).
-  ★**컷 양쪽이 같은 비율로 흔들린다**(조건 맞춘 교대 실측 · ①절) — 전 판본의 「컷이 들여왔다」는 **틀렸다**.
-- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
-  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
-  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
-
-## 완료
+  ★게이트③ 완료: PR #29 — ★★**`--merge` 착지**(★`--squash` 아님 · 등재 repo `contracts/upstream-sync-repos.conf:22`).
+  머지커밋 sha 는 회신 `merged:` 참조. ★**게이트② 3회차 만에 approve**(초판 → fix → fix2) —
+  ★**반려 둘이 모두 «수를 어떻게 적었는가»였다**: ⑴base·(델타/누적) 병기 없이 기준을 섞었다 ⑵그 정정이 «표»에만 닿고
+  «산문·`summary`»로 전파되지 않았다. ⇒ ★**「표를 고쳤다고 문서가 고쳐진 것이 아니다」**가 이 리니지가 남긴 규율이다.
+  ★**부모 #27·#28 착지로 두 번 `CONFLICTING` 이 됐고 그때마다 머지로 해소**했다(마지막은 `REPORT.md` 1건) —
+  ★**충돌 중에는 `pull_request` 검사가 «구조적으로» 못 돈다**(검사 1건 → 10건으로 확증).
 - [rustjava-dod-ci-parity-sibling-repo-survey] ★★**형제 repo(`wie`·`qts`) 파리티 락 필요성 «조사+판정» — 둘 다 «⒞ 조건부 필요».**
   채택 제안 `2026-09-04-dod-ci-parity-lock#p1`. ★**읽기 전용**(형제 repo `git`·PR·파일 수정 **0** · `gh api /contents` 로만 읽었다) · 구현 **0**.
   ★★**검사기는 «포팅 불가»다** — `wie` 는 DoD 정본이 **`AGENTS.md`** 이고 4번째 게이트(`cargo test`)가
