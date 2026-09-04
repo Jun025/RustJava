@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{ClassAccessFlags, MethodAccessFlags};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
@@ -20,26 +20,26 @@ impl HashSet {
             parent_class: Some("java/util/AbstractSet"),
             interfaces: vec!["java/lang/Cloneable", "java/io/Serializable"],
             methods: vec![
-                JavaMethodProto::new("<init>", "()V", Self::init, Default::default()),
-                JavaMethodProto::new("<init>", "(I)V", Self::init_with_capacity, Default::default()),
+                JavaMethodProto::new("<init>", "()V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("<init>", "(I)V", Self::init_with_capacity, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new(
                     "<init>",
                     "(Ljava/util/Collection;)V",
                     Self::init_from_collection,
                     MethodAccessFlags::PUBLIC,
                 ),
-                JavaMethodProto::new("add", "(Ljava/lang/Object;)Z", Self::add, Default::default()),
-                JavaMethodProto::new("remove", "(Ljava/lang/Object;)Z", Self::remove, Default::default()),
-                JavaMethodProto::new("contains", "(Ljava/lang/Object;)Z", Self::contains, Default::default()),
-                JavaMethodProto::new("size", "()I", Self::size, Default::default()),
-                JavaMethodProto::new("isEmpty", "()Z", Self::is_empty, Default::default()),
-                JavaMethodProto::new("clear", "()V", Self::clear, Default::default()),
-                JavaMethodProto::new("iterator", "()Ljava/util/Iterator;", Self::iterator, Default::default()),
-                JavaMethodProto::new("toArray", "()[Ljava/lang/Object;", Self::to_array, Default::default()),
+                JavaMethodProto::new("add", "(Ljava/lang/Object;)Z", Self::add, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("remove", "(Ljava/lang/Object;)Z", Self::remove, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("contains", "(Ljava/lang/Object;)Z", Self::contains, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("size", "()I", Self::size, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("isEmpty", "()Z", Self::is_empty, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("clear", "()V", Self::clear, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("iterator", "()Ljava/util/Iterator;", Self::iterator, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("toArray", "()[Ljava/lang/Object;", Self::to_array, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![
-                JavaFieldProto::new("map", "Ljava/util/HashMap;", Default::default()),
-                JavaFieldProto::new("present", "Ljava/lang/Object;", Default::default()),
+                JavaFieldProto::new("map", "Ljava/util/HashMap;", FieldAccessFlags::TRANSIENT),
+                JavaFieldProto::new("present", "Ljava/lang/Object;", FieldAccessFlags::PRIVATE | FieldAccessFlags::FINAL),
             ],
             access_flags: ClassAccessFlags::PUBLIC,
         }
@@ -80,10 +80,14 @@ impl HashSet {
         if collection.is_null() {
             return Err(jvm.exception("java/lang/NullPointerException", "collection").await);
         }
-        let size: i32 = jvm.invoke_virtual(&collection, "size", "()I", ()).await?;
+        let size: i32 = jvm
+            .invoke_virtual(&collection, &collection.class_definition().name(), "size", "()I", ())
+            .await?;
         let capacity = size.saturating_mul(2).max(DEFAULT_INITIAL_CAPACITY);
         let _: () = jvm.invoke_special(&this, "java/util/HashSet", "<init>", "(I)V", (capacity,)).await?;
-        let _: bool = jvm.invoke_virtual(&this, "addAll", "(Ljava/util/Collection;)Z", (collection,)).await?;
+        let _: bool = jvm
+            .invoke_virtual(&this, "java/util/HashSet", "addAll", "(Ljava/util/Collection;)Z", (collection,))
+            .await?;
 
         Ok(())
     }
@@ -96,6 +100,7 @@ impl HashSet {
         let old: ClassInstanceRef<Object> = jvm
             .invoke_virtual(
                 &map,
+                "java/util/HashMap",
                 "put",
                 "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
                 (element, present),
@@ -110,7 +115,7 @@ impl HashSet {
 
         let map: ClassInstanceRef<HashMap> = jvm.get_field(&this, "map", "Ljava/util/HashMap;").await?;
         let old: ClassInstanceRef<Object> = jvm
-            .invoke_virtual(&map, "remove", "(Ljava/lang/Object;)Ljava/lang/Object;", (element,))
+            .invoke_virtual(&map, "java/util/HashMap", "remove", "(Ljava/lang/Object;)Ljava/lang/Object;", (element,))
             .await?;
 
         Ok(!old.is_null())
@@ -121,7 +126,8 @@ impl HashSet {
 
         let map: ClassInstanceRef<HashMap> = jvm.get_field(&this, "map", "Ljava/util/HashMap;").await?;
 
-        jvm.invoke_virtual(&map, "containsKey", "(Ljava/lang/Object;)Z", (element,)).await
+        jvm.invoke_virtual(&map, "java/util/HashMap", "containsKey", "(Ljava/lang/Object;)Z", (element,))
+            .await
     }
 
     async fn size(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
@@ -129,7 +135,7 @@ impl HashSet {
 
         let map: ClassInstanceRef<HashMap> = jvm.get_field(&this, "map", "Ljava/util/HashMap;").await?;
 
-        jvm.invoke_virtual(&map, "size", "()I", ()).await
+        jvm.invoke_virtual(&map, "java/util/HashMap", "size", "()I", ()).await
     }
 
     async fn is_empty(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<bool> {
@@ -137,7 +143,7 @@ impl HashSet {
 
         let map: ClassInstanceRef<HashMap> = jvm.get_field(&this, "map", "Ljava/util/HashMap;").await?;
 
-        jvm.invoke_virtual(&map, "isEmpty", "()Z", ()).await
+        jvm.invoke_virtual(&map, "java/util/HashMap", "isEmpty", "()Z", ()).await
     }
 
     async fn clear(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<()> {
@@ -145,7 +151,7 @@ impl HashSet {
 
         let map: ClassInstanceRef<HashMap> = jvm.get_field(&this, "map", "Ljava/util/HashMap;").await?;
 
-        jvm.invoke_virtual(&map, "clear", "()V", ()).await
+        jvm.invoke_virtual(&map, "java/util/HashMap", "clear", "()V", ()).await
     }
 
     async fn iterator(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
@@ -153,7 +159,8 @@ impl HashSet {
 
         let key_set = Self::key_set(jvm, &this).await?;
 
-        jvm.invoke_virtual(&key_set, "iterator", "()Ljava/util/Iterator;", ()).await
+        jvm.invoke_virtual(&key_set, &key_set.class_definition().name(), "iterator", "()Ljava/util/Iterator;", ())
+            .await
     }
 
     async fn to_array(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Array<Object>>> {
@@ -161,12 +168,13 @@ impl HashSet {
 
         let key_set = Self::key_set(jvm, &this).await?;
 
-        jvm.invoke_virtual(&key_set, "toArray", "()[Ljava/lang/Object;", ()).await
+        jvm.invoke_virtual(&key_set, &key_set.class_definition().name(), "toArray", "()[Ljava/lang/Object;", ())
+            .await
     }
 
     async fn key_set(jvm: &Jvm, this: &ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
         let map: ClassInstanceRef<HashMap> = jvm.get_field(this, "map", "Ljava/util/HashMap;").await?;
 
-        jvm.invoke_virtual(&map, "keySet", "()Ljava/util/Set;", ()).await
+        jvm.invoke_virtual(&map, "java/util/HashMap", "keySet", "()Ljava/util/Set;", ()).await
     }
 }

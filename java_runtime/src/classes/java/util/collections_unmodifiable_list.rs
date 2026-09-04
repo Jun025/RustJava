@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
-use java_constants::{FieldAccessFlags, MethodAccessFlags};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
@@ -16,7 +16,7 @@ impl CollectionsUnmodifiableList {
             parent_class: Some("java/util/Collections$UnmodifiableCollection"),
             interfaces: vec!["java/util/List"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/util/List;)V", Self::init, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/util/List;)V", Self::init, MethodAccessFlags::empty()),
                 JavaMethodProto::new("equals", "(Ljava/lang/Object;)Z", Self::equals, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("hashCode", "()I", Self::hash_code, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("get", "(I)Ljava/lang/Object;", Self::get, MethodAccessFlags::PUBLIC),
@@ -41,7 +41,7 @@ impl CollectionsUnmodifiableList {
                 JavaMethodProto::new("remove", "(I)Ljava/lang/Object;", Self::remove, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![JavaFieldProto::new("list", "Ljava/util/List;", FieldAccessFlags::FINAL)],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -63,32 +63,38 @@ impl CollectionsUnmodifiableList {
             return Ok(true);
         }
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        jvm.invoke_virtual(&list, "equals", "(Ljava/lang/Object;)Z", (other,)).await
+        jvm.invoke_virtual(&list, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", (other,))
+            .await
     }
 
     async fn hash_code(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        jvm.invoke_virtual(&list, "hashCode", "()I", ()).await
+        jvm.invoke_virtual(&list, "java/lang/Object", "hashCode", "()I", ()).await
     }
 
     async fn get(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, index: i32) -> Result<ClassInstanceRef<Object>> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        jvm.invoke_virtual(&list, "get", "(I)Ljava/lang/Object;", (index,)).await
+        jvm.invoke_virtual(&list, &list.class_definition().name(), "get", "(I)Ljava/lang/Object;", (index,))
+            .await
     }
 
     async fn index_of(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, element: ClassInstanceRef<Object>) -> Result<i32> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        jvm.invoke_virtual(&list, "indexOf", "(Ljava/lang/Object;)I", (element,)).await
+        jvm.invoke_virtual(&list, &list.class_definition().name(), "indexOf", "(Ljava/lang/Object;)I", (element,))
+            .await
     }
 
     async fn last_index_of(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, element: ClassInstanceRef<Object>) -> Result<i32> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        jvm.invoke_virtual(&list, "lastIndexOf", "(Ljava/lang/Object;)I", (element,)).await
+        jvm.invoke_virtual(&list, &list.class_definition().name(), "lastIndexOf", "(Ljava/lang/Object;)I", (element,))
+            .await
     }
 
     async fn list_iterator(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        let iterator: ClassInstanceRef<Object> = jvm.invoke_virtual(&list, "listIterator", "()Ljava/util/ListIterator;", ()).await?;
+        let iterator: ClassInstanceRef<Object> = jvm
+            .invoke_virtual(&list, &list.class_definition().name(), "listIterator", "()Ljava/util/ListIterator;", ())
+            .await?;
         Ok(jvm
             .new_class("java/util/Collections$UnmodifiableList$1", "(Ljava/util/ListIterator;)V", (iterator,))
             .await?
@@ -97,7 +103,15 @@ impl CollectionsUnmodifiableList {
 
     async fn list_iterator_at(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, index: i32) -> Result<ClassInstanceRef<Object>> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        let iterator: ClassInstanceRef<Object> = jvm.invoke_virtual(&list, "listIterator", "(I)Ljava/util/ListIterator;", (index,)).await?;
+        let iterator: ClassInstanceRef<Object> = jvm
+            .invoke_virtual(
+                &list,
+                &list.class_definition().name(),
+                "listIterator",
+                "(I)Ljava/util/ListIterator;",
+                (index,),
+            )
+            .await?;
         Ok(jvm
             .new_class("java/util/Collections$UnmodifiableList$1", "(Ljava/util/ListIterator;)V", (iterator,))
             .await?
@@ -106,7 +120,9 @@ impl CollectionsUnmodifiableList {
 
     async fn sub_list(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, from: i32, to: i32) -> Result<ClassInstanceRef<Object>> {
         let list: ClassInstanceRef<Object> = jvm.get_field(&this, "list", "Ljava/util/List;").await?;
-        let sub_list: ClassInstanceRef<Object> = jvm.invoke_virtual(&list, "subList", "(II)Ljava/util/List;", (from, to)).await?;
+        let sub_list: ClassInstanceRef<Object> = jvm
+            .invoke_virtual(&list, &list.class_definition().name(), "subList", "(II)Ljava/util/List;", (from, to))
+            .await?;
         Ok(jvm
             .new_class("java/util/Collections$UnmodifiableList", "(Ljava/util/List;)V", (sub_list,))
             .await?

@@ -1,7 +1,7 @@
 use alloc::{vec, vec::Vec};
 
 use java_class_proto::JavaMethodProto;
-use java_constants::MethodAccessFlags;
+use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{Array, ClassInstanceRef, JavaChar, Jvm, Result, runtime::JavaLangString};
 
 use crate::{
@@ -22,30 +22,70 @@ impl DataInputStream {
             parent_class: Some("java/io/FilterInputStream"),
             interfaces: vec!["java/io/DataInput"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/io/InputStream;)V", Self::init, Default::default()),
-                JavaMethodProto::new("readBoolean", "()Z", Self::read_boolean, Default::default()),
-                JavaMethodProto::new("readByte", "()B", Self::read_byte, Default::default()),
-                JavaMethodProto::new("readChar", "()C", Self::read_char, Default::default()),
-                JavaMethodProto::new("readDouble", "()D", Self::read_double, Default::default()),
-                JavaMethodProto::new("readFloat", "()F", Self::read_float, Default::default()),
-                JavaMethodProto::new("readFully", "([B)V", Self::read_fully, Default::default()),
-                JavaMethodProto::new("readFully", "([BII)V", Self::read_fully_offset_length, Default::default()),
-                JavaMethodProto::new("readInt", "()I", Self::read_int, Default::default()),
-                JavaMethodProto::new("readLong", "()J", Self::read_long, Default::default()),
-                JavaMethodProto::new("readShort", "()S", Self::read_short, Default::default()),
-                JavaMethodProto::new("readUnsignedByte", "()I", Self::read_unsigned_byte, Default::default()),
-                JavaMethodProto::new("readUnsignedShort", "()I", Self::read_unsigned_short, Default::default()),
-                JavaMethodProto::new("readUTF", "()Ljava/lang/String;", Self::read_utf, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/io/InputStream;)V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new(
+                    "readBoolean",
+                    "()Z",
+                    Self::read_boolean,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new("readByte", "()B", Self::read_byte, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new("readChar", "()C", Self::read_char, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new(
+                    "readDouble",
+                    "()D",
+                    Self::read_double,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new("readFloat", "()F", Self::read_float, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new(
+                    "readFully",
+                    "([B)V",
+                    Self::read_fully,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "readFully",
+                    "([BII)V",
+                    Self::read_fully_offset_length,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new("readInt", "()I", Self::read_int, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new("readLong", "()J", Self::read_long, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new("readShort", "()S", Self::read_short, MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL),
+                JavaMethodProto::new(
+                    "readUnsignedByte",
+                    "()I",
+                    Self::read_unsigned_byte,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "readUnsignedShort",
+                    "()I",
+                    Self::read_unsigned_short,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
+                JavaMethodProto::new(
+                    "readUTF",
+                    "()Ljava/lang/String;",
+                    Self::read_utf,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
                 JavaMethodProto::new(
                     "readUTF",
                     "(Ljava/io/DataInput;)Ljava/lang/String;",
                     Self::read_utf_from_input,
                     MethodAccessFlags::STATIC,
                 ),
-                JavaMethodProto::new("skipBytes", "(I)I", Self::skip_bytes, Default::default()),
+                JavaMethodProto::new(
+                    "skipBytes",
+                    "(I)I",
+                    Self::skip_bytes,
+                    MethodAccessFlags::PUBLIC | MethodAccessFlags::FINAL,
+                ),
             ],
             fields: vec![],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::PUBLIC,
         }
     }
 
@@ -155,9 +195,13 @@ impl DataInputStream {
     async fn read_utf(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<String>> {
         tracing::debug!("java.io.DataInputStream::readUTF({this:?})");
 
-        let length: i32 = jvm.invoke_virtual(&this, "readUnsignedShort", "()I", ()).await?;
+        let length: i32 = jvm
+            .invoke_virtual(&this, "java/io/DataInputStream", "readUnsignedShort", "()I", ())
+            .await?;
         let java_array = jvm.instantiate_array("B", length as usize).await?;
-        let _: () = jvm.invoke_virtual(&this, "readFully", "([BII)V", (java_array.clone(), 0, length)).await?;
+        let _: () = jvm
+            .invoke_virtual(&this, "java/io/DataInputStream", "readFully", "([BII)V", (java_array.clone(), 0, length))
+            .await?;
         let bytes: Vec<i8> = jvm.load_array(&java_array, 0, length as usize).await?;
         let bytes: Vec<u8> = bytes.into_iter().map(|value| value as u8).collect();
 
@@ -197,7 +241,8 @@ impl DataInputStream {
 
     async fn read_utf_from_input(jvm: &Jvm, _: &mut RuntimeContext, input: ClassInstanceRef<DataInput>) -> Result<ClassInstanceRef<String>> {
         tracing::debug!("java.io.DataInputStream::readUTF({input:?})");
-        jvm.invoke_virtual(&input, "readUTF", "()Ljava/lang/String;", ()).await
+        jvm.invoke_virtual(&input, &input.class_definition().name(), "readUTF", "()Ljava/lang/String;", ())
+            .await
     }
 
     async fn read_fully(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, b: ClassInstanceRef<Array<i8>>) -> Result<()> {
@@ -205,7 +250,9 @@ impl DataInputStream {
 
         let length = jvm.array_length(&b).await?;
 
-        let _: () = jvm.invoke_virtual(&this, "readFully", "([BII)V", (b.clone(), 0, length as i32)).await?;
+        let _: () = jvm
+            .invoke_virtual(&this, "java/io/DataInputStream", "readFully", "([BII)V", (b.clone(), 0, length as i32))
+            .await?;
 
         Ok(())
     }
@@ -222,7 +269,9 @@ impl DataInputStream {
 
         let mut read = 0;
         while read < len {
-            let r: i32 = jvm.invoke_virtual(&this, "read", "([BII)I", (b.clone(), off + read, len - read)).await?;
+            let r: i32 = jvm
+                .invoke_virtual(&this, "java/io/DataInputStream", "read", "([BII)I", (b.clone(), off + read, len - read))
+                .await?;
             if r == -1 {
                 return Err(jvm.exception("java/io/EOFException", "End of stream reached before reading fully").await);
             }
@@ -236,14 +285,14 @@ impl DataInputStream {
         tracing::debug!("java.io.DataInputStream::skipBytes({this:?}, {n:?})");
 
         let r#in = jvm.get_field(&this, "in", "Ljava/io/InputStream;").await?;
-        let skipped: i64 = jvm.invoke_virtual(&r#in, "skip", "(J)J", (n as i64,)).await?;
+        let skipped: i64 = jvm.invoke_virtual(&r#in, "java/io/InputStream", "skip", "(J)J", (n as i64,)).await?;
 
         Ok(skipped as _)
     }
 
     async fn read_required_byte(jvm: &Jvm, this: &ClassInstanceRef<Self>) -> Result<u8> {
         let r#in = jvm.get_field(this, "in", "Ljava/io/InputStream;").await?;
-        let value: i32 = jvm.invoke_virtual(&r#in, "read", "()I", ()).await?;
+        let value: i32 = jvm.invoke_virtual(&r#in, "java/io/InputStream", "read", "()I", ()).await?;
         if value == -1 {
             return Err(jvm.exception("java/io/EOFException", "End of stream").await);
         }

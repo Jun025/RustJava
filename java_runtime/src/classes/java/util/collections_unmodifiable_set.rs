@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::JavaMethodProto;
-use java_constants::MethodAccessFlags;
+use java_constants::{ClassAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, Jvm, Result};
 
 use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::Object};
@@ -16,12 +16,12 @@ impl CollectionsUnmodifiableSet {
             parent_class: Some("java/util/Collections$UnmodifiableCollection"),
             interfaces: vec!["java/util/Set", "java/io/Serializable"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/util/Set;)V", Self::init, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/util/Set;)V", Self::init, MethodAccessFlags::empty()),
                 JavaMethodProto::new("equals", "(Ljava/lang/Object;)Z", Self::equals, MethodAccessFlags::PUBLIC),
                 JavaMethodProto::new("hashCode", "()I", Self::hash_code, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![],
-            access_flags: Default::default(),
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -41,11 +41,12 @@ impl CollectionsUnmodifiableSet {
             return Ok(true);
         }
         let set: ClassInstanceRef<Object> = jvm.get_field(&this, "c", "Ljava/util/Collection;").await?;
-        jvm.invoke_virtual(&set, "equals", "(Ljava/lang/Object;)Z", (other,)).await
+        jvm.invoke_virtual(&set, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", (other,))
+            .await
     }
 
     async fn hash_code(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
         let set: ClassInstanceRef<Object> = jvm.get_field(&this, "c", "Ljava/util/Collection;").await?;
-        jvm.invoke_virtual(&set, "hashCode", "()I", ()).await
+        jvm.invoke_virtual(&set, "java/lang/Object", "hashCode", "()I", ()).await
     }
 }

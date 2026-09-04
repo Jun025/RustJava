@@ -1,6 +1,7 @@
 use alloc::vec;
 
 use java_class_proto::{JavaFieldProto, JavaMethodProto};
+use java_constants::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 use jvm::{ClassInstanceRef, Jvm, Result};
 
 use crate::{
@@ -21,12 +22,16 @@ impl JarFileEntries {
             parent_class: Some("java/lang/Object"),
             interfaces: vec!["java/util/Enumeration"],
             methods: vec![
-                JavaMethodProto::new("<init>", "(Ljava/util/zip/ZipFile$Entries;)V", Self::init, Default::default()),
-                JavaMethodProto::new("hasMoreElements", "()Z", Self::has_more_elements, Default::default()),
-                JavaMethodProto::new("nextElement", "()Ljava/lang/Object;", Self::next_element, Default::default()),
+                JavaMethodProto::new("<init>", "(Ljava/util/zip/ZipFile$Entries;)V", Self::init, MethodAccessFlags::empty()),
+                JavaMethodProto::new("hasMoreElements", "()Z", Self::has_more_elements, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("nextElement", "()Ljava/lang/Object;", Self::next_element, MethodAccessFlags::PUBLIC),
             ],
-            fields: vec![JavaFieldProto::new("entries", "Ljava/util/zip/ZipFile$Entries;", Default::default())],
-            access_flags: Default::default(),
+            fields: vec![JavaFieldProto::new(
+                "entries",
+                "Ljava/util/zip/ZipFile$Entries;",
+                FieldAccessFlags::PRIVATE,
+            )],
+            access_flags: ClassAccessFlags::empty(),
         }
     }
 
@@ -45,7 +50,8 @@ impl JarFileEntries {
 
         let entries = jvm.get_field(&this, "entries", "Ljava/util/zip/ZipFile$Entries;").await?;
 
-        jvm.invoke_virtual(&entries, "hasMoreElements", "()Z", ()).await
+        jvm.invoke_virtual(&entries, "java/util/zip/ZipFile$Entries", "hasMoreElements", "()Z", ())
+            .await
     }
 
     async fn next_element(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<Object>> {
@@ -53,7 +59,9 @@ impl JarFileEntries {
 
         let entries = jvm.get_field(&this, "entries", "Ljava/util/zip/ZipFile$Entries;").await?;
 
-        let element: ClassInstanceRef<ZipEntry> = jvm.invoke_virtual(&entries, "nextElement", "()Ljava/lang/Object;", ()).await?;
+        let element: ClassInstanceRef<ZipEntry> = jvm
+            .invoke_virtual(&entries, "java/util/zip/ZipFile$Entries", "nextElement", "()Ljava/lang/Object;", ())
+            .await?;
 
         let entry = jvm.new_class("java/util/jar/JarEntry", "(Ljava/util/zip/ZipEntry;)V", (element,)).await?;
 
