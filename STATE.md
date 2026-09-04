@@ -1,6 +1,21 @@
 # STATE
 
 ## 진행중
+- [rustjava-upstream-sync-s7-and-fix-the-conflict-count-format] ★**upstream 컷 `ba5797b`(가상 디스패치 해석 ·
+  1커밋 · 319파일) 머지 — 충돌 1 해소** + ★**§5 「충돌 수」 정본 서식에 «델타/누적» 축을 넣었다.**
+  ★**`merge-base` `95ebc5c` → `ba5797b` · behind 13 → 12 · 부모 2개** ⇒ ★★**계획 7회차(S1~S7) 완주.**
+  착수 재측정(신 서식): 컷 `ba5797b` = **누적 1 · 델타 +1**(base `3e02f8c` · merge-base `95ebc5c`).
+  ★`string.rs` 는 집합에서 **빠졌다**(S6 해소 뒤 upstream 무접촉) ⇒ ★**누적은 줄어들 수도 있다.**
+  ★★**`thread.rs` 는 «직교»였다** — upstream(**+23/−10**)은 `invoke_virtual` 에 «선언 클래스» 인자를 더하고
+  우리(**+50/−42**, 의미 3줄 + 들여쓰기)는 그 호출들을 감싸는 **수동 span**(PR #4)이다 ⇒ 우열 판정 대상이 아니다.
+  우리 구조를 뼈대로 upstream 새 인자 3곳을 얹었다(S1·S3·S4 와 같은 전략 · **4회째**).
+  ★★**「충돌 0으로 들어온」 파손 4회째 · ★축은 «처음»**: upstream 이 «공용 API 시그니처»를 바꿔
+  ★**우리 고유 테스트 5곳**이 구식 4인자로 남아 **컴파일 실패**(E0061×5). 우리 줄이라 충돌이 «날 수가 없다»
+  ⇒ ★**앞 세 번(신규 파일)과 «반대 방향»이고, 잡은 것은 «컴파일»이다.**
+  upstream 관용구를 그대로 채택(`&x.class_definition().name()` · `"java/lang/String"`) · 단언 무접촉.
+  green: stable 4종 + beta 2종 rc=0 · **554 / 0 / 1**(baseline 554 → ★**증감 0 이고 그것이 맞다** —
+  upstream 테스트 함수도 547 → 547 = 스윕이지 추가가 아니다) · `#[ignore]` 1 → 1 · 단언 삭제 0.
+  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
