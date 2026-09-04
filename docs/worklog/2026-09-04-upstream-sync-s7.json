@@ -27,7 +27,8 @@
     "★thread.rs 는 우리 수동 span 이 «함수 본문 안»에 있는 한 upstream 이 ThreadStartProxy::call 을 만질 때마다 계속 충돌한다(S1·S3·S4·S7 로 4회째). 이것은 결함이 아니라 PR #4 판단의 «상시 비용»이다 — string.rs 가 S5 판단에 대해 그렇듯이.",
     "★시험 수가 554 → 554 로 «안 늘었다» — upstream 테스트 함수도 547 → 547 이라 그것이 맞다. 다만 이 회차는 319파일 스윕을 흡수했으므로 「수가 안 늘었으니 검증이 얕다」로 읽으면 틀린다.",
     "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③이 --squash 면 merge-base 전진(95ebc5c → ba5797b)이 통째로 사라진다: <id>-merge 티켓에 merge_strategy: merge 필수(bin/queue-lint 검사22).",
-    "S8 은 집행하지 않았다(총괄 보류분 2026-09-03-upstream-sync-s5-s7-remeasure#p0). 남은 behind 12 가 그 구간이고, java_runtime/→rustjava-runtime/ · test_data/→test-data/ 개명 스윕이라 우리 픽스처에 꽂힌다. upstream 발신 0."
+    "S8 은 집행하지 않았다(총괄 보류분 2026-09-03-upstream-sync-s5-s7-remeasure#p0). 남은 behind 12 가 그 구간이고, java_runtime/→rustjava-runtime/ · test_data/→test-data/ 개명 스윕이라 우리 픽스처에 꽂힌다. upstream 발신 0.",
+    "★[게이트③ 2026-09-04] PR #23 을 ★--merge 로 착지시켰다(★--squash 아님 — rustjava 는 등재 repo 이고 이 저장소가 스쿼시 3회로 족보가 원점으로 되돌아간 사고의 당사자다). 검수 핀 fca80a00 · ★동봉 «전» head 가 핀과 일치(무이동)했고 원장 동봉으로 head 가 한 번 움직였다 — 전/후 sha 는 회신에 있다(그 이동은 계약 2-b 가 명시 승인한 것이지 «핀 이동»이 아니다). ★계획 7회차(S1~S7) 완주 · 남은 behind 12 는 개명 스윕이라 S8 몫이고 이 회차는 집행하지 않았다."
   ],
   "proposals": [
     {
