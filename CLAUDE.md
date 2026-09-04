@@ -22,8 +22,19 @@
     **검증기로 막을 수 없다.** ⇒ 이 조항은 **1차 방어**이며 **최종 방어는 diff 검토**다.
 
 ## Definition of Done
-- `cargo fmt --check` · `cargo clippy` · `cargo test` · `python3 scripts/check-worklog-json.py`
-  전부 green(명령 상세 = `AGENTS.md`).
+- ★**`.github/workflows/rust.yml` 이 «치는 그대로» 전부 green** — 축약하지 말고 이 다섯 줄을 그대로 쳐라:
+  ```
+  cargo fmt --all -- --check
+  cargo clippy --all -- -D warnings
+  cargo clippy --workspace --exclude test-utils --target wasm32-unknown-unknown -- -D warnings
+  cargo test --all
+  python3 scripts/check-worklog-json.py
+  ```
+  ★★**축약본을 쓰지 마라 — 그것이 2026-09-04 에 실제로 구멍을 만들었다.** 종전 문안은
+  `cargo fmt --check`·`cargo clippy`·`cargo test` 로 줄여 적어 ★**wasm32 줄이 통째로 빠져 있었고**,
+  그 줄이 ★**`--exclude <크레이트 이름>` 이 사는 «유일한» 자리**다. ⇒ upstream 이 `test_utils` 를
+  `test-utils` 로 개명(S8)했을 때 **로컬에서는 어떤 명령으로도 드러나지 않고 CI 에서만** 빨개졌다.
+  ⇒ ★**CI 가 검사를 늘리거나 인자를 바꾸면 이 블록도 «같이» 고쳐라**(아래 재개 조건이 그것을 센다).
 - 착수·완료마다 STATE.md 의 "진행중/완료/다음" 을 갱신하고, 완료 시 REPORT.md 상단에
   `[YYYY-MM-DD]` 요약 3줄(무엇을·왜·사용자 영향) + 후속 추천을 append 한다.
 - ★**후속 추천을 적었으면 `docs/worklog/YYYY-MM-DD-<slug>.{md,json}` 한 쌍도 남긴다** —

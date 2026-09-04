@@ -1,6 +1,17 @@
 # STATE
 
 ## 진행중
+- [rustjava-sync-contract-standing-clause-for-our-assets-going-stale] ★**「우리 자산이 낡는다」 상시 조항
+  «판정» — 결론: ★★넣지 «않는다». 대신 «그물이 없던 자리 하나»를 막았다.** ★코드 변경 0 · 문서 2파일.
+  ★**먼저 셌다(목록 문서화로 시작하지 않았다)**: 자산 8건을 **돌연변이로 깨뜨려** 무엇이 잡는지 쟀다 —
+  경로 문자열·`setProperty` 서술자·charset 라우팅·`ClassFormatError` 단정은 **`cargo test` RED** ·
+  수동 span 은 **clippy RED** · `double_must_use` allow 는 **깨져도 무해** · 워크로그 스크립트는 **로컬+CI 둘 다**.
+  ⇒ ★**「아무것도 없음」은 «1개»**(CI 워크플로의 `--exclude <크레이트 이름>`) ⇒ 계약대로 **조항이 아니라 그 하나를 고쳤다**.
+  ★★**근인은 「자산 목록이 없다」가 아니었다** — ★**로컬 DoD 가 CI 검사 5종 중 «wasm32 clippy» 한 줄을 빠뜨렸고**
+  그 줄이 그 자산이 사는 **유일한 자리**다. ⇒ `CLAUDE.md` DoD 가 이제 **CI 명령 5줄을 축약 없이 그대로** 싣는다.
+  ★그리고 ②는 «조용히» 실패하지도 않는다(`excluded package(s) not found` + 빌드 실패) ⇒ 문제는 침묵이 아니라 **늦음**이다.
+  ★**재개 조건**: 「CI 검사 ∖ 로컬 DoD」가 **1건이라도** 생기면 다시 연다 · **세는 명령을 §4 에 박았다** ·
+  ★**오늘의 값 = 0**(착수 시 **5**). **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이

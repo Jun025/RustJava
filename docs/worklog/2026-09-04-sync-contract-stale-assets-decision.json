@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "「우리 자산이 낡는다」 상시 조항 판정 — 넣지 않고 로컬 DoD 의 CI 검사 누락 1건을 막았다",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-sync-contract-standing-clause-for-our-assets-going-stale",
+  "summary": "운영자 채택 제안 둘(2026-09-04-upstream-sync-s6#p1 · …-s7#p1)에 대한 결정이다. 결론: 동기 회차 계약에 「우리 자산 서술자 목록을 문서화하고 머지 후 재확인한다」 상시 조항을 넣지 않는다. 대신 그물이 없던 자리 하나를 막았다 — CLAUDE.md §Definition of Done 이 이제 CI 명령 5줄을 축약 없이 그대로 싣는다. 목록 문서화로 시작하지 않고 먼저 셌다: 우리 자산 8건을 돌연변이로 깨뜨려 무엇이 잡는지 실측했고(경로 문자열·setProperty 서술자·charset 라우팅·ClassFormatError 종류 단정은 cargo test RED · 수동 span 은 clippy RED · double_must_use allow 는 stable·beta 둘 다 ok 라 깨져도 무해 · 워크로그 스크립트는 로컬 DoD 와 CI 둘 다), 「아무것도 없음」 칸이 1개(CI 워크플로의 --exclude 크레이트 이름)였다. 계약이 정한 대로 1개면 조항이 아니라 그 하나를 고치는 것이 처방이다. 그리고 그 1개도 조용히 실패하지 않는다 — cargo 가 warning: excluded package(s) not found 를 찍고 빌드가 깨진다 ⇒ 문제는 침묵이 아니라 늦음이고, 근인은 「자산 목록이 없다」가 아니라 「로컬 DoD 가 CI 검사 5종 중 wasm32 clippy 한 줄을 빠뜨렸다」였다. 그 줄이 --exclude 크레이트 이름이 사는 유일한 자리다.",
+  "changes": [
+    "CLAUDE.md §Definition of Done — CI(rust.yml)가 치는 5줄을 축약 없이 그대로 싣도록 교체 + 「축약본을 쓰지 마라」와 그 이유(2026-09-04 S8 실사고: wasm32 줄이 빠져 있어 test_utils→test-utils 개명이 로컬에서 안 드러나고 CI 에서만 red 였다) + 「CI 가 검사를 늘리거나 인자를 바꾸면 이 블록도 같이 고쳐라」.",
+    "docs/upstream-sync-approach.md §4 뒤 — 「[2026-09-04 결정] 「우리 자산이 낡는다」」 절 신설: 결정문 · 돌연변이 표 8건(무엇이 잡는가) · 「아무것도 없음 1개」 · 「조용히가 아니라 늦음」 정정 · 사료 표(S3·S5·S6=⑴ / S7=⑵ / S8=⑶ · 셋은 같은 형태가 아니다) · 재개 조건과 세는 명령과 오늘의 값.",
+    "STATE.md · REPORT.md · docs/worklog/2026-09-04-sync-contract-stale-assets-decision.{md,json} 갱신·신설.",
+    "★.github/workflows/rust.yml 은 무접촉 — 크레이트 이름 1건은 S8 회차가 이미 고쳐 착지시켰다."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "착수 실측: origin/main a76b305 · behind 0 · 열린 PR 0. 계약1⒝ 돌연변이(각각 깨뜨린 뒤 build/clippy/test 를 돌리고 원상 복구): ① tests/test_class_format.rs 의 test-data/ → test_data/ ⇒ build ok · clippy ok · test RED. ③ system.rs 의 setProperty 서술자 String → Object ⇒ test RED. ④ string.rs 의 Charset::resolve → from_name().unwrap() 우회 ⇒ test RED. ⑤ thread.rs 의 .instrument(span) 삭제 ⇒ clippy RED(미사용 import). ⑥ test_class_format.rs 의 ClassFormatError → Throwable ⇒ test RED. ⑦ jvm-bytecode/src/interpreter.rs 의 #[allow(clippy::double_must_use)] 삭제 ⇒ stable clippy ok · beta clippy 도 ok(깨져도 무해). ② cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown ⇒ rc=101 이고 문면은 warning: excluded package(s) `test_utils` not found in workspace + tokio wasm 컴파일 실패(조용한 통과가 아니다) · 로컬 4종 중 어느 것도 그 인자를 쓰지 않는다. ⑧ scripts/check-worklog-json.py 이동 ⇒ rc=2(로컬 DoD 와 CI 둘 다 그 경로를 친다). 근인 대조: rust.yml 의 - run: 줄 5개 ↔ CLAUDE.md DoD 4개 ⇒ 차집합이 정확히 wasm32 clippy 한 줄. 재개 조건 세는 명령(회신·§4 동일)의 값: 착수 시 5 → 착지본 0. 계약6: CI 5줄을 워크플로 문면 그대로 실행해 전건 rc=0 · cargo test --all = 554 passed / 0 failed / 1 ignored(baseline 554/0/1 동수 · 새 red 0). 돌연변이 전부 복구 확인(git status 가 문서 2파일만). 계약5: .github/workflows/rust.yml:55 이 이미 --exclude test-utils 이므로 이 회차는 무접촉.",
+  "issues": [
+    "★★결정은 「조항을 넣지 않는다」이고, 그 근거는 «수»다 — 「아무것도 없음」이 1개였다. 그 1개가 2개 이상이 되면 결론이 달라질 수 있으므로 재개 조건과 세는 명령을 §4 에 박았다(오늘의 값 0).",
+    "★이 결정이 «막는» 것은 「우리 자산이 낡는 것」 자체가 아니라 「그것이 로컬에서 안 드러나고 CI 에서만 드러나는 것」이다. 낡음 자체는 여전히 일어나고, 다만 여섯 자리는 기계가(테스트·컴파일·clippy) 이미 잡는다.",
+    "★잡는 그물이 축마다 다르다(테스트/컴파일/CI)는 것이 「조항 하나로 못 덮는다」의 근거다 — 조항으로 덮으면 이미 그물이 있는 다섯 자리에까지 사람 확인을 얹게 된다.",
+    "★double_must_use allow(PR #14)는 이제 지워도 stable·beta 둘 다 통과한다 — upstream 변경으로 불필요해졌을 수 있다. 이 회차는 포크 정책을 바꾸지 않으므로 «건드리지 않았다»(별건 판정 대상).",
+    "★S8 이 고친 CI 크레이트 이름 1건과 이 회차의 산출은 «다른 층»이다: 전자는 증상 1건, 후자는 그 증상이 늦게 드러난 경로. 티켓이 「고쳤다고 조항 결정을 건너뛰지 마라」고 못박은 자리다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수(bin/queue-lint 검사22). upstream 동기 회차를 새로 열지 않았다(behind 0 · S9 없음)."
+  ],
+  "proposals": [
+    {
+      "title": "upstream 동기를 «정기 축»으로 둘지 판정하라 — behind 0 인 지금이 적기이고 아직 열려 있다",
+      "plainSummary": "원본 저장소를 완전히 따라잡았지만 다음에 언제 다시 받아올지가 정해져 있지 않다. 아무도 챙기지 않으면 격차가 다시 벌어지고, 벌어진 뒤에 받으면 훨씬 비싸다.",
+      "userBenefit": "격차가 작을 때 받아오면 충돌이 작고 우리 고유 기능이 원본 변경에 삼켜질 위험도 작다. 이번 캠페인이 behind 33 에서 시작해 여덟 회차가 걸린 것이 그 반대 사례다.",
+      "why": "S8 착지로 behind 가 0 이 됐고 계획서 §5 의 7회차 + S8 이 모두 끝났다. 계획서는 「어느 컷을 언제」를 정했지만 「따라잡은 뒤」를 정하지 않았다. 이 캠페인 비용의 대부분이 「격차가 커진 뒤 한꺼번에 받은 것」에서 나왔다 — S5 는 설계 판단 1건, S8 은 개명 스윕 판정이 필요했고 둘 다 격차가 작았으면 훨씬 쌌다. 이 제안은 S8 워크로그 proposals[1] 과 같은 것이며 아직 미처분이다.",
+      "tradeoff": "⑴정기 축(예: 월 1회 또는 behind 임계)으로 두면 회차가 작아지지만 발권·검수 비용이 상시로 든다. ⑵필요할 때만 받으면 비용이 0 이지만 격차가 다시 33 이 될 수 있고 그때는 이번처럼 여덟 회차가 든다. ⑶behind 를 재는 것만 자동화하고 발권은 사람이 하면 중간이지만 그 기구가 지금 없다.",
+      "effort": "XS — 판정. 정기 축을 고르면 그 축의 발권 방식은 별건.",
+      "target": "docs/upstream-sync-approach.md · 총괄 발권 정책"
+    }
+  ],
+  "resolvedIssues": [],
+  "adoptedProposals": [
+    "2026-09-04-upstream-sync-s6#p1",
+    "2026-09-04-upstream-sync-s7#p1"
+  ],
+  "declinedProposals": []
+}

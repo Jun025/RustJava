@@ -185,6 +185,65 @@ upstream 은 여기서만 `UTF-8`/`EUC-KR` 하드코딩을 유지한다 ⇒ 그�
 
 ---
 
+### ★★★[2026-09-04 결정] 「우리 자산이 낡는다」 — ★**상시 조항을 «넣지 않는다». 대신 구멍 하나를 막았다**
+
+★**채택 제안 둘**(`2026-09-04-upstream-sync-s6#p1` · `2026-09-04-upstream-sync-s7#p1`)에 대한 **결정**이다.
+
+**결정문**:
+> ★**동기 회차 계약에 「우리 자산 서술자 목록을 문서화하고 머지 후 재확인한다」 상시 조항을 «넣지 않는다».**
+> ★**대신 «그물이 없던 자리 «하나»»를 막는다 — 로컬 DoD 가 CI 검사 5종 중 «wasm32 clippy» 한 줄을 빠뜨리고 있었다.**
+> ⇒ `CLAUDE.md` §Definition of Done 이 이제 **CI 명령 5줄을 «축약 없이 그대로»** 싣는다.
+
+★**왜 조항이 아닌가 — «세고» 정했다**(먼저 목록을 만들지 않았다). 자산 8건을 **돌연변이로 깨뜨려** 무엇이 잡는지 쟀다:
+
+| # | 우리 자산 | 돌연변이 | 무엇이 잡나 |
+|---|---|---|---|
+| ① | 픽스처 경로 문자열 | `test-data/` → `test_data/` | ★`cargo test` **RED** |
+| ② | ★**CI 워크플로의 크레이트 이름**(`--exclude test-utils`) | `test-utils` → `test_utils` | ★★**로컬 4종 «어느 것도» 안 잡는다 — CI 만** |
+| ③ | `System.setProperty` 서술자 | `String` → `Object` | ★`cargo test` **RED** |
+| ④ | charset 라우팅(PR #5) | `Charset::resolve` → 폴백 우회 | ★`cargo test` **RED** |
+| ⑤ | 수동 span(PR #4) | `.instrument(span)` 삭제 | ★`clippy` **RED**(미사용 import) |
+| ⑥ | `ClassFormatError` 종류 단정(PR #3) | `ClassFormatError` → `Throwable` | ★`cargo test` **RED** |
+| ⑦ | `double_must_use` allow(PR #14) | allow 삭제 | stable·beta 둘 다 **ok** ⇒ ★**깨져도 무해**(낡음 위험 없음) |
+| ⑧ | 워크로그 잠금 스크립트 경로 | 스크립트 이동 | 로컬 DoD **와** CI 둘 다 잡는다(rc=2) |
+
+⇒ ★**「아무것도 없음」 칸은 «1개»**(②)이고, 계약이 정한 대로 **1개면 조항이 아니라 «그 하나를 고치는 것»이 처방**이다.
+
+★★**그리고 ② 는 «조용히» 실패하지도 않았다 — 그 정정이 처방을 더 좁혔다.**
+낡은 이름으로 치면 cargo 가 ★**`warning: excluded package(s) 'test_utils' not found in workspace`** 를 찍고 **빌드가 깨진다**(rc≠0).
+⇒ 문제는 «침묵»이 아니라 ★**«늦음»**이다(push 후 CI 에서만 난다).
+⇒ ★**근인은 「자산 목록이 없다」가 아니라 ★«로컬 DoD 가 CI 검사 한 줄을 빠뜨렸다»**이다 — 그것을 고쳤다.
+
+★**사료 — 「세 번」·「두 방향」은 확정하되, ★«한 조항으로 못 덮는다»가 결론이다**:
+
+| 회차 | 낡은 것 | 방향 | 잡은 것 |
+|---|---|---|---|
+| S3 | `test_class_format.rs` 문구 단정 3건 | ⑴upstream **신규/판본 교체** | 테스트 |
+| S5 | io 테스트 **5곳** `setProperty` 서술자 | ⑴ | 테스트 |
+| S6 | regex 테스트 **3곳** 〃 | ⑴ | 정독(테스트 «전») |
+| S7 | 우리 고유 테스트 **5곳** `invoke_virtual` | ⑵**공용 API 시그니처 변경** | 컴파일 |
+| S8 | `rust.yml` 크레이트명 · `test_class_format.rs` 경로 4곳 | ⑶**개명** | ★CI 만 / 테스트 |
+
+⇒ ★★**셋은 «같은 형태»가 아니다** — 잡는 그물이 각각 다르다(테스트·컴파일·CI).
+★**그래서 조항 하나로 덮으려 하면 «이미 그물이 있는 다섯 자리»에까지 사람 확인을 얹게 된다** — 그것이 비용이다.
+
+### ★★재개 조건 — «세는 법»과 «오늘의 값»
+
+> ★**CI 가 치는 검사 중 로컬 DoD 에 없는 것이 «1건이라도» 생기면 이 결정을 다시 연다.**
+
+```sh
+# CI 검사 ∖ 로컬 DoD  (0 이어야 한다)
+cd "$(git rev-parse --show-toplevel)"
+DOD=$(sed -n '/## Definition of Done/,/^- 착수·완료마다/p' CLAUDE.md)
+LC_ALL=C /usr/bin/grep -E '^[[:space:]]+- run: ' .github/workflows/rust.yml | sed 's/^[[:space:]]*- run: //' | while IFS= read -r c; do printf '%s' "$DOD" | LC_ALL=C /usr/bin/grep -qF -- "$c" || echo "MISSING: $c"; done | /usr/bin/grep -c . 
+```
+
+★**오늘의 값 = 0**(2026-09-04 · 이 회차가 5 → 0 으로 만들었다).
+★**이 수가 «1 이상»이 되면**: 그 빠진 검사가 다시 「로컬에서 안 잡히는 자산」을 만들 수 있으므로
+**⑴그 줄을 DoD 에 넣거나 ⑵넣을 수 없는 이유를 적고 이 결정을 재검토**하라.
+★**「조항이 필요하다」로 바로 가지 마라 — 그때도 «먼저 세라»**(위 돌연변이 표를 다시 만들면 된다).
+
+
 ## 5. 단계 분할 — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
 
 각 컷 지점에서 `git merge-tree --write-tree --name-only origin/main <cut>` 을 돌린 실측:
