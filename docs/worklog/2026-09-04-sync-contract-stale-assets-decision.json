@@ -6,10 +6,10 @@
     "RustJava"
   ],
   "taskId": "rustjava-sync-contract-standing-clause-for-our-assets-going-stale",
-  "summary": "운영자 채택 제안 둘(2026-09-04-upstream-sync-s6#p1 · …-s7#p1)에 대한 결정이다. 결론: 동기 회차 계약에 「우리 자산 서술자 목록을 문서화하고 머지 후 재확인한다」 상시 조항을 넣지 않는다. 대신 그물이 없던 자리 하나를 막았다 — CLAUDE.md §Definition of Done 이 이제 CI 명령 5줄을 축약 없이 그대로 싣는다. 목록 문서화로 시작하지 않고 먼저 셌다: 우리 자산 8건을 돌연변이로 깨뜨려 무엇이 잡는지 실측했고(경로 문자열·setProperty 서술자·charset 라우팅·ClassFormatError 종류 단정은 cargo test RED · 수동 span 은 clippy RED · double_must_use allow 는 stable·beta 둘 다 ok 라 깨져도 무해 · 워크로그 스크립트는 로컬 DoD 와 CI 둘 다), 「아무것도 없음」 칸이 1개(CI 워크플로의 --exclude 크레이트 이름)였다. 계약이 정한 대로 1개면 조항이 아니라 그 하나를 고치는 것이 처방이다. 그리고 그 1개도 조용히 실패하지 않는다 — cargo 가 warning: excluded package(s) not found 를 찍고 빌드가 깨진다 ⇒ 문제는 침묵이 아니라 늦음이고, 근인은 「자산 목록이 없다」가 아니라 「로컬 DoD 가 CI 검사 5종 중 wasm32 clippy 한 줄을 빠뜨렸다」였다. 그 줄이 --exclude 크레이트 이름이 사는 유일한 자리다.",
+  "summary": "운영자 채택 제안 둘(2026-09-04-upstream-sync-s6#p1 · …-s7#p1)에 대한 결정이다. 결론: 동기 회차 계약에 「우리 자산 서술자 목록을 문서화하고 머지 후 재확인한다」 상시 조항을 넣지 않는다. 대신 그물이 없던 자리 하나를 막았다 — CLAUDE.md §Definition of Done 이 이제 CI 명령 5줄을 축약 없이 그대로 싣는다. 목록 문서화로 시작하지 않고 먼저 셌다: 우리 자산 8건을 돌연변이로 깨뜨려 무엇이 잡는지 실측했고(경로 문자열·setProperty 서술자·charset 라우팅·ClassFormatError 종류 단정은 cargo test RED · 수동 span 은 clippy RED · double_must_use allow 는 stable·beta 둘 다 ok 라 깨져도 무해 · 워크로그 스크립트는 로컬 DoD 와 CI 둘 다), ★[게이트② request-changes 정정] 「아무것도 없음」 칸은 1개가 아니라 «2개»다 — ② CI 워크플로의 --exclude 크레이트 이름 · ⑦ double_must_use allow. 초판이 ⑦을 「깨져도 무해」로 적은 것은 돌연변이를 «비하중» 자리(중복 crate-level attribute 한 곳)에 넣었기 때문이고, 9곳 전건 삭제로 재측정하면 stable 0 · beta error 7 이다 ⇒ ⑦의 그물도 «CI 만»이다. 계수가 2 라 「1개면 그 하나를 고쳐라」 규칙은 적용되지 않는다. 그리고 그 1개도 조용히 실패하지 않는다 — cargo 가 warning: excluded package(s) not found 를 찍고 빌드가 깨진다 ⇒ 문제는 침묵이 아니라 늦음이고, 근인은 「자산 목록이 없다」가 아니라 「로컬 DoD 가 CI 검사 5종 중 wasm32 clippy 한 줄을 빠뜨렸다」였다. 그 줄이 --exclude 크레이트 이름이 사는 유일한 자리다. ★결론은 그대로 「조항을 넣지 않는다」이나 논거를 다시 세웠다: ②와 ⑦은 다른 자산이 아니라 «한 근인의 두 얼굴»이다 — ②는 빠진 - run: 줄(target 축) · ⑦은 빠진 toolchain 축(beta) ⇒ 근인 하나(로컬 DoD 가 CI 매트릭스를 재현하지 않는다)를 고치면 둘 다 그물을 얻는다. DoD 에 cargo +beta clippy 를 넣자 ⑦의 9곳 전건 삭제가 로컬에서 error 7 로 잡힌다. 재개 조건도 축을 둘로 늘렸다(줄 문자열 축 + 매트릭스 차원 축) — 종전 명령은 rust: [stable, beta] 를 [stable] 로 줄여도 [stable, beta, nightly] 로 늘려도 0 을 냈다.",
   "changes": [
-    "CLAUDE.md §Definition of Done — CI(rust.yml)가 치는 5줄을 축약 없이 그대로 싣도록 교체 + 「축약본을 쓰지 마라」와 그 이유(2026-09-04 S8 실사고: wasm32 줄이 빠져 있어 test_utils→test-utils 개명이 로컬에서 안 드러나고 CI 에서만 red 였다) + 「CI 가 검사를 늘리거나 인자를 바꾸면 이 블록도 같이 고쳐라」.",
-    "docs/upstream-sync-approach.md §4 뒤 — 「[2026-09-04 결정] 「우리 자산이 낡는다」」 절 신설: 결정문 · 돌연변이 표 8건(무엇이 잡는가) · 「아무것도 없음 1개」 · 「조용히가 아니라 늦음」 정정 · 사료 표(S3·S5·S6=⑴ / S7=⑵ / S8=⑶ · 셋은 같은 형태가 아니다) · 재개 조건과 세는 명령과 오늘의 값.",
+    "CLAUDE.md §Definition of Done — CI 가 치는 명령을 5줄 → ★6줄로(cargo +beta clippy --all -- -D warnings 추가). CI 는 이 검사를 6셀(toolchain 2 × OS 3)로 치는데 repo 에 rust-toolchain.toml 이 없어 맨 cargo 는 stable 1개로만 돈다 — toolchain 축을 안 적으면 「rust.yml 이 치는 그대로」가 거짓이 된다. 실측 근거(9곳 전건 삭제 시 stable 0 · beta error 7)와 OS 축은 로컬 재현 불가라 CI 가 유일한 그물이라는 고지를 함께 넣었다.",
+    "docs/upstream-sync-approach.md §4 결정 절 — ⑦행 라벨을 「깨져도 무해」에서 ★「CI 만」으로 정정(세 갈래 재측정 표 첨부) · 계수 1 → ★2 · 결정 논거 재구성(둘은 한 근인의 두 얼굴 · 「조항이 여럿이면?」 기각) · 재개 조건에 ★축② 「매트릭스 차원 대조」 추가 · 비용 논거의 수를 「다섯」 → ★「여섯」으로 통일하고 세는 명령 병기.",
     "STATE.md · REPORT.md · docs/worklog/2026-09-04-sync-contract-stale-assets-decision.{md,json} 갱신·신설.",
     "★.github/workflows/rust.yml 은 무접촉 — 크레이트 이름 1건은 S8 회차가 이미 고쳐 착지시켰다."
   ],
@@ -19,12 +19,14 @@
   },
   "verification": "착수 실측: origin/main a76b305 · behind 0 · 열린 PR 0. 계약1⒝ 돌연변이(각각 깨뜨린 뒤 build/clippy/test 를 돌리고 원상 복구): ① tests/test_class_format.rs 의 test-data/ → test_data/ ⇒ build ok · clippy ok · test RED. ③ system.rs 의 setProperty 서술자 String → Object ⇒ test RED. ④ string.rs 의 Charset::resolve → from_name().unwrap() 우회 ⇒ test RED. ⑤ thread.rs 의 .instrument(span) 삭제 ⇒ clippy RED(미사용 import). ⑥ test_class_format.rs 의 ClassFormatError → Throwable ⇒ test RED. ⑦ jvm-bytecode/src/interpreter.rs 의 #[allow(clippy::double_must_use)] 삭제 ⇒ stable clippy ok · beta clippy 도 ok(깨져도 무해). ② cargo clippy --workspace --exclude test_utils --target wasm32-unknown-unknown ⇒ rc=101 이고 문면은 warning: excluded package(s) `test_utils` not found in workspace + tokio wasm 컴파일 실패(조용한 통과가 아니다) · 로컬 4종 중 어느 것도 그 인자를 쓰지 않는다. ⑧ scripts/check-worklog-json.py 이동 ⇒ rc=2(로컬 DoD 와 CI 둘 다 그 경로를 친다). 근인 대조: rust.yml 의 - run: 줄 5개 ↔ CLAUDE.md DoD 4개 ⇒ 차집합이 정확히 wasm32 clippy 한 줄. 재개 조건 세는 명령(회신·§4 동일)의 값: 착수 시 5 → 착지본 0. 계약6: CI 5줄을 워크플로 문면 그대로 실행해 전건 rc=0 · cargo test --all = 554 passed / 0 failed / 1 ignored(baseline 554/0/1 동수 · 새 red 0). 돌연변이 전부 복구 확인(git status 가 문서 2파일만). 계약5: .github/workflows/rust.yml:55 이 이미 --exclude test-utils 이므로 이 회차는 무접촉.",
   "issues": [
-    "★★결정은 「조항을 넣지 않는다」이고, 그 근거는 «수»다 — 「아무것도 없음」이 1개였다. 그 1개가 2개 이상이 되면 결론이 달라질 수 있으므로 재개 조건과 세는 명령을 §4 에 박았다(오늘의 값 0).",
+    "★★[게이트② request-changes 정정] 초판의 계수 「1」은 틀렸다 — 「아무것도 없음」은 «2개»(② · ⑦)다. 근인은 돌연변이를 비하중 자리에 넣은 것이고(중복 crate-level attribute 한 곳만 삭제), 9곳 전건 삭제로 재측정하면 beta error 7 이다. ★그리고 그 차를 놓친 «같은 근인»이 하나 더 있었다: 브리프가 「제안 2 ↔ 검수 1」의 차를 해소하라고 요구했는데 초판이 그것을 안 짚었다 — 이제 답이 나왔다: ★«2»가 맞다.",
     "★이 결정이 «막는» 것은 「우리 자산이 낡는 것」 자체가 아니라 「그것이 로컬에서 안 드러나고 CI 에서만 드러나는 것」이다. 낡음 자체는 여전히 일어나고, 다만 여섯 자리는 기계가(테스트·컴파일·clippy) 이미 잡는다.",
     "★잡는 그물이 축마다 다르다(테스트/컴파일/CI)는 것이 「조항 하나로 못 덮는다」의 근거다 — 조항으로 덮으면 이미 그물이 있는 다섯 자리에까지 사람 확인을 얹게 된다.",
-    "★double_must_use allow(PR #14)는 이제 지워도 stable·beta 둘 다 통과한다 — upstream 변경으로 불필요해졌을 수 있다. 이 회차는 포크 정책을 바꾸지 않으므로 «건드리지 않았다»(별건 판정 대상).",
     "★S8 이 고친 CI 크레이트 이름 1건과 이 회차의 산출은 «다른 층»이다: 전자는 증상 1건, 후자는 그 증상이 늦게 드러난 경로. 티켓이 「고쳤다고 조항 결정을 건너뛰지 마라」고 못박은 자리다.",
-    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수(bin/queue-lint 검사22). upstream 동기 회차를 새로 열지 않았다(behind 0 · S9 없음)."
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수(bin/queue-lint 검사22). upstream 동기 회차를 새로 열지 않았다(behind 0 · S9 없음).",
+    "★★[C1 승계 철회] 초판 후속 추천 3번(「double_must_use allow 가 이제 지워도 통과한다 — 정리할지는 별건」)을 «철회한다». 그 문장은 비하중 돌연변이에서 나온 것이고, 9곳을 전건 지우면 beta clippy 가 error 7 로 red 다. ★그대로 두면 다음 회차가 그 문장을 근거로 allow 를 지우고 beta 3셀을 빨갛게 만든다 ⇒ ★allow 9곳을 지우지 마라.",
+    "★[C7 고지] ⑸ⓐ 처방(DoD 가 CI 명령을 verbatim 싣는 것)의 «개악»을 자동으로 잡는 것은 없다 — 누군가 DoD 블록에서 한 줄을 지우면 재개 조건 축①이 1 이 되지만, 그 축을 «돌리는 것»이 사람이다. ★기계 강제(예: DoD 블록과 rust.yml 을 대조하는 CI job)는 이 회차 범위 밖이고, 고칠 수 없으면 «고지»가 처방이다 ⇒ 여기 적는다.",
+    "★[C7 고지 2] OS 축(macos·ubuntu·windows 3종)은 로컬에서 재현할 수 없다 — 그 차원은 CI 가 유일한 그물이고 재개 조건 대조의 대상이 아니다. 이것은 결함이 아니라 «알고 두는» 값이다."
   ],
   "proposals": [
     {
@@ -40,7 +42,8 @@
   "resolvedIssues": [],
   "adoptedProposals": [
     "2026-09-04-upstream-sync-s6#p1",
-    "2026-09-04-upstream-sync-s7#p1"
+    "2026-09-04-upstream-sync-s7#p1",
+    "2026-09-04-upstream-sync-s8#p0"
   ],
   "declinedProposals": []
 }
