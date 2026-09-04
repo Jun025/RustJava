@@ -23,6 +23,11 @@ round weighed that and declined it — clippy is the only lint-bearing axis, and
 where the measured gap was (9 `#[allow(clippy::double_must_use)]` deleted → stable 0,
 beta rc=101 / 6 diagnostics). Widening to the cross product is a decision, not a bug fix.
 
+★That decision was made on 2026-09-04 and the answer is NO — do not widen. Cost and benefit
+were both measured; see `docs/upstream-sync-approach.md` §4 "[2026-09-04 판정] 파리티 락을
+«교차곱»까지 넓히는가" for the numbers and, importantly, the reopen condition (a counting
+command over `rust.yml` failure history, today's value 0). Do not re-argue it from taste.
+
 Also out of scope by the same decision: the OS axis (macos/ubuntu/windows). It cannot be
 reproduced locally at all, so CI is its only net. Conditional (`if:`-guarded) steps are
 therefore excluded from axis A — but they are PRINTED, never silently dropped.

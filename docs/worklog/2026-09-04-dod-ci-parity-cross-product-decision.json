@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "title": "파리티 락 «교차곱» 확장 판정 — 넓히지 않는다(비용 3.66배 ↔ 이력상 실익 0건/76 run)",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-dod-ci-parity-cross-product-decision",
+  "summary": "채택 제안 2026-09-04-dod-ci-parity-lock#p0 에 대한 판정이다. 결론: scripts/check-dod-ci-parity.py 의 두 축(A=명령 · B=toolchain)을 «교차곱»으로 넓히지 «않는다». 부분 확장(fmt@beta 만)도 지금은 채택하지 않는다. ★비용을 먼저 쟀고 추정치를 쓰지 않았다 — 제안 문면의 「두 배」는 «무변경 재실행»에서만 참이고(19s → 38s = 2.00×), 회차가 실제로 겪는 «소스 1줄 편집 후» 케이스는 89s → 326s = ★3.66× 다. 지배항은 cargo +beta test --all 215s(같은 편집에서 stable test 66s 의 3.3배). 그리고 돈이 아닌 비용 둘이 재고 나서야 보였다: ⑴rustfmt 가 beta 에 설치돼 있지 않아 cargo +beta fmt 는 오늘 그대로 rc=1 이다(모든 머신·에이전트가 갖춰야 하고 안 갖추면 DoD 가 즉시 red) ⑵툴체인 교대 축출은 «없다»(beta 3줄 직후 stable clippy 2s · stable test 25s) — 시간을 서로 뺏는 대신 두 벌이 target/ 에 공존해 디스크를 쓴다(target 46G · 측정 45분 산출물 5.43 GiB). ★실익은 따로 쟀다: CI 에만 있는 조합은 «3»개로 비어 있지 않지만(fmt@beta · wasm32 clippy@beta · test@beta), rust.yml 이력 76 run(성공 73 · 실패 3) 전수 분해에서 그 3개가 «새로» 잡았을 사건은 0건이다 — 이 저장소의 beta 전용 실패는 전건 cargo clippy --all 이고 그 한 줄은 DoD 가 이미 +beta 로 덮는다. 나머지 1건(fmt)은 6셀 전건 실패라 stable 이 이미 잡는다. ⇒ +237s/회차를 지불해 얻는 것이 0 이다. 재개 조건을 세는 명령과 오늘의 값(0)과 함께 docs/upstream-sync-approach.md §4 에 박았다.",
+  "changes": [
+    "docs/upstream-sync-approach.md §4 — [2026-09-04 판정] 절 신설: 결정문 · 비용표(무변경 2.00× ↔ 편집 후 3.66× · 콜드 +171s) · 실익표(rust.yml 실패 3건 전수 분해) · 부분 확장 기각 사유 · 재개 조건 + 세는 명령 + 오늘의 값 0.",
+    "scripts/check-dod-ci-parity.py — ★docstring «만» 1블록 추가(실행 경로 무접촉). 그 파일이 스스로 「Widening to the cross product is a decision, not a bug fix」라고 적어 두고 결정이 났는지는 말하지 않아, 검사기를 읽는 사람이 그 문장 하나로 오도되기 때문이다. 결정 결과(NO)와 §4 포인터와 재개 조건의 존재만 적었다.",
+    "STATE.md · REPORT.md — 회차 기록.",
+    "★DoD 블록(CLAUDE.md)은 «무접촉» — 「넓힌다」가 아니므로 줄을 더하지 않았다. 더했으면 dod_parity 가 즉시 red 가 되어 이 repo 의 모든 PR 을 막는다(계약이 그것을 명시 경고했다)."
+  ],
+  "deploy": {
+    "sha": "",
+    "urls": []
+  },
+  "verification": "★비용 실측(이 머신 · 2026-09-04 · 벽시계 · 추정 0). 현행 로컬 DoD 는 7줄이다 — ★티켓 문면의 「6줄」은 낡았다(PR #26 61d5bf3f 이 파리티 검사기 줄을 더했다). 현행 7줄: warm 합계 19s(fmt 0 · clippy 1 · +beta clippy 0 · wasm32 clippy 1 · test 17 · worklog 0 · parity 0) / 소스 1줄 편집 후(코어 크레이트 jvm) 합계 89s(0 · 7 · 6 · 10 · 66 · 0 · 0). 교차곱 추가 3줄: 콜드 합계 171s(+beta fmt 7 · +beta wasm32 clippy 62 · +beta test 102) / warm 19s(1 · 0 · 18) / 편집 후 ★237s(3 · 19 · ★215). ⇒ 무변경 19→38s = 2.00× · 편집 후 89→326s = ★3.66×. 전제: rustfmt@beta 미설치 확인(cargo +beta fmt rc=1 · 문면 'cargo-fmt' is not installed) → rustup component add 3s 후 측정. 축출 없음 확인: beta 3줄 직후 stable clippy 2s · stable test 25s. target/ 46G · 45분 내 mtime 산출물 960파일 5.43 GiB. ★실익 실측: rust.yml run 76건(success 73 · failure 3) 전수 — 33824237441/0a2992a7 = fmt 가 6셀 전건 실패(beta 전용 아님) · 33798515798/d8af846d = clippy --all 이 beta 3셀만 · 32674170282/eaa56689 = clippy --all 이 ubuntu beta 만. ⇒ beta 전용 실패는 전건 cargo clippy --all 이고 DoD 가 이미 덮는다 ⇒ 교차곱이 새로 잡았을 사건 0건. 재개 조건 세는 명령을 실행해 오늘의 값 0 확인(중간 출력 3줄을 워크로그에 그대로 실었다). ★회차 종료 상태: 검사기 실행 경로 변경 0(docstring 만) · .rs 0줄(측정용 편집은 git checkout 으로 복구 · git status 청결) · rust.yml 무접촉 · CLAUDE.md DoD 블록 무접촉 · python3 scripts/check-dod-ci-parity.py rc=0(대칭차 0 유지) · python3 scripts/check-worklog-json.py rc=0.",
+  "issues": [
+    "★★티켓 문면이 「현행 로컬 DoD 6줄」이라 적었으나 실측은 «7줄»이다(PR #26 이 파리티 검사기 줄을 더했다). 이 리니지의 지병이 정확히 「낡은 수를 물려받아 인용한다」라서 그대로 넘기지 않고 실측 수로 쟀고, 회신에 명시했다.",
+    "★제안 문면의 「시간이 두 배」는 «무변경 재실행»에서만 참이었다(2.00×). 회차가 실제로 겪는 «편집 후» 케이스는 3.66× 다 — ★그 차이가 판정을 바꾸지는 않지만(어느 쪽이든 실익 0), 「두 배」를 그대로 인용했으면 비용을 41% 과소평가한 채 결정했을 것이다.",
+    "★「두 배」의 흔한 기전(두 toolchain 이 서로 캐시를 밀어낸다)은 이 저장소에 «없다» — 실측으로 확인했다(beta 3줄 직후 stable clippy 2s · test 25s). 대신 순수 가산이고 대가는 디스크다(target 46G). ⇒ 다음 사람이 「캐시 축출 때문에 비싸다」로 논거를 세우지 않게 여기 적는다.",
+    "★측정 부작용 1건이 «남는다»: rustup component add --toolchain beta rustfmt. 되돌리지 않았다 — 무해하고, 재개 조건이 fmt 에서 발화하면 바로 필요하다. ★그러나 이것이 «전제 비용»의 증거이기도 하다: 그 설치 전에는 cargo +beta fmt 가 rc=1 이었고, 교차곱을 채택했다면 모든 머신이 이 단계를 선행해야 했다.",
+    "★OS 축(macos·ubuntu·windows)은 이 판정의 대상이 아니다 — 로컬 재현 불가라 CI 가 유일한 그물이라는 선행 결정 그대로다. OS 축까지 세면 CI 실행은 26이고 로컬은 7 이다.",
+    "★부분 확장(fmt@beta 만 · 편집 후 +3s)도 기각했다. 싼데도 안 하는 이유를 적었다: 이력 실익 0건 · beta rustfmt 미설치가 기본이라 DoD 가 즉시 rc=1 · 검사기가 축을 «독립»으로 비교하므로 부분 교차곱은 모델 변경(= 이 회차 금지인 로직 변경)을 요구한다. ★재개 조건이 fmt 에서 발화하면 이것이 첫 후보다.",
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수."
+  ],
+  "proposals": [],
+  "resolvedIssues": [
+    "2026-09-04-dod-ci-parity-lock#p0 — 「축 A × 축 B 교차곱까지 넓힐지 판정하라」. 비용(편집 후 3.66× · +237s/회차)과 실익(이력 0건/76 run)을 각각 실측해 «넓히지 않는다»로 판정했고, 재개 조건을 세는 명령·오늘의 값(0)과 함께 docs/upstream-sync-approach.md §4 에 박았다."
+  ],
+  "adoptedProposals": [
+    "2026-09-04-dod-ci-parity-lock#p0"
+  ],
+  "declinedProposals": []
+}
