@@ -1,17 +1,18 @@
 {
   "schema": 1,
   "date": "2026-09-04",
-  "title": "형제 repo(wie·qts) 파리티 락 필요성 조사 — 둘 다 «조건부 필요» · 그러나 검사기는 포팅 불가",
+  "title": "형제 repo(wie·qts) 파리티 락 필요성 조사 — 둘 다 «조건부 필요» · 포팅은 qts «불가» / wie «상수 복사로는 불가 · 파서 4축 수정 후 가능»",
   "services": [
     "RustJava"
   ],
   "taskId": "rustjava-dod-ci-parity-sibling-repo-survey",
-  "summary": "채택 제안 2026-09-04-dod-ci-parity-lock#p1 에 대한 읽기 전용 조사 + 판정이다. 형제 repo 는 GitHub API(gh api repos/<slug>/contents/...)로만 읽었고 워킹트리·.git 을 건드리지 않았다 — 쓰기 0. ★구조 판정: RustJava(CLAUDE.md DoD 코드블록 ↔ rust.yml 단일 파일)와 wie 는 «비슷하나 같지 않고», qts 는 «다르다». wie 의 DoD 정본은 AGENTS.md 이고 CI 의 4번째 게이트(cargo test)가 if: 로 갈린 2 step + 블록 스칼라라 RustJava 파서를 그대로 적용하면 «거짓 red» 가 난다. qts 는 DoD 가 make 타깃 이름(산문)이라 Makefile 간접층이 있고, toolchain 매트릭스가 아예 없어 축 B 가 성립하지 않으며, gitleaks 는 action 이라 어떤 run: 파서도 못 본다. ★대칭차는 두 repo 다 0 이 아니고 «이력으로도» 실재를 확인했다: wie 는 rust.yml 최근 200 run 중 실패 34건 전수 분해에서 beta 셀에서만 실패한 clippy 가 9건(26%)인데 DoD 4 gates 에 cargo +beta 가 없다(문자열 beta 가 AGENTS.md·CLAUDE.md 에 0건). qts 는 ci.yml 최근 실패 60건 전수 분해에서 uv run ruff format --check . 가 38건에 포함되고 그중 10건(17%)은 그것이 «유일한» 실패였다 — make lint 는 그 명령을 치지 않으므로 로컬 DoD 를 전부 돌려도 green 이었다(문자열 format 이 규범 문서에 0건). ★판정: 둘 다 ⒞ 조건부 필요. 그러나 먼저 할 일은 파리티 락이 아니라 각 한 줄이다 — wie 는 four gates 에 cargo +beta clippy --all -- -D warnings, qts 는 make lint 에 uv run ruff format --check . 다. 락 포팅은 그 뒤이고, wie 는 파서 3군데(조건부 게이트 판별·env 접두 정규화·다중 워크플로), qts 는 Makefile 전개·축 B 부재·action 검사 명시를 각각 요구한다. 구현 0 — 형제 repo 는 다른 레인 소관이라 축과 합격선만 적었다.",
+  "summary": "채택 제안 2026-09-04-dod-ci-parity-lock#p1 에 대한 읽기 전용 조사 + 판정이다. 형제 repo 는 GitHub API(gh api repos/<slug>/contents/...)로만 읽었고 워킹트리·.git 을 건드리지 않았다 — 쓰기 0. ★구조 판정: RustJava(CLAUDE.md DoD 코드블록 ↔ rust.yml 단일 파일)와 wie 는 «비슷하나 같지 않고», qts 는 «다르다». wie 의 DoD 정본은 AGENTS.md 이고 CI 의 4번째 게이트(cargo test)가 if: 로 갈린 2 step + 블록 스칼라라 RustJava 파서를 그대로 적용하면 «거짓 red» 가 난다. qts 는 DoD 가 make 타깃 이름(산문)이라 Makefile 간접층이 있고, toolchain 매트릭스가 아예 없어 축 B 가 성립하지 않으며, gitleaks 는 action 이라 어떤 run: 파서도 못 본다. ★대칭차는 두 repo 다 0 이 아니고 «이력으로도» 실재를 확인했다: wie 는 rust.yml 최근 200 run 중 실패 34건 전수 분해에서 beta 셀에서만 실패한 clippy 가 9건(26%)인데 DoD 4 gates 에 cargo +beta 가 없다(문자열 beta 가 AGENTS.md·CLAUDE.md 에 0건). qts 는 ci.yml 최근 실패 60건 전수 분해에서 uv run ruff format --check . 가 38건에 포함되고 그중 10건(17%)은 그것이 «유일한» 실패였다 — make lint 는 그 명령을 치지 않으므로 로컬 DoD 를 전부 돌려도 green 이었다(문자열 format 이 규범 문서에 0건). ★[게이트² F2·F3 정정] 「검사기 포팅 불가」는 «qts 에만» 참이다 — 상수 1줄(DOD_FILE → AGENTS.md)만 바꿔 wie 에 돌리면 도구가 «돈다»(rc=1 · 축 A 대칭차 7 = CI 에만 3 · DoD 에만 4 · 축 B beta 1). 그 7 은 «거짓»이고 원인은 네 번째 축이다 — wie 의 four gates 4줄이 전부 후행 주석을 달고 있는데 parse_dod → norm() 이 공백만 접고 주석을 벗기지 않는다(RustJava 자신의 DoD 에는 주석이 없어 그 파서가 이 축을 만난 적이 없다). ⇒ wie 는 «상수 복사로는 불가 · 파서 4축 수정 후 가능», qts 는 «불가»(sys.exit)다. ★[F1] 이 PR 은 «스택»이다 — 204f98b(#27 의 구현 커밋)이 이 브랜치의 조상이고 착지 순서는 #27 → #28 이다. ★판정: 둘 다 ⒞ 조건부 필요. 그러나 먼저 할 일은 파리티 락이 아니라 각 한 줄이다 — wie 는 four gates 에 cargo +beta clippy --all -- -D warnings, qts 는 make lint 에 uv run ruff format --check . 다. 락 포팅은 그 뒤이고, wie 는 파서 3군데(조건부 게이트 판별·env 접두 정규화·다중 워크플로), qts 는 Makefile 전개·축 B 부재·action 검사 명시를 각각 요구한다. 구현 0 — 형제 repo 는 다른 레인 소관이라 축과 합격선만 적었다.",
   "changes": [
     "docs/worklog/2026-09-04-parity-sibling-repo-survey.{md,json} 신설 — 정본 위치 실측표 · 대칭차 원소 나열 · 이력 전수 분해 · repo 별 판정 · 다음 티켓 3건(T1·T2·T3)의 축과 합격선.",
     "docs/upstream-sync-approach.md §4 — 조사 결과 요약 3줄(다음 RustJava 회차가 같은 조사를 반복하지 않도록).",
     "STATE.md · REPORT.md — 회차 기록.",
-    "★형제 repo(wie·qts) 변경 0 — git 명령 0 · PR 0 · 파일 수정 0. 이 repo 의 검사기·rust.yml·DoD 블록도 무접촉."
+    "★형제 repo(wie·qts) 변경 0 — git 명령 0 · PR 0 · 파일 수정 0. 이 repo 의 검사기·rust.yml·DoD 블록도 무접촉.",
+    "★[fix · 게이트² request-changes 승계 · 문서만] F1 스택 고지(§0 신설 — 스택 사실·착지 순서 #27→#28·예정된 STATE.md 충돌·초판이 MERGEABLE 로 보였던 이유·그 예정이 실현됐다는 갱신) · F1-⒝ 「검사기 무접촉」을 «이 회차 커밋» 으로 한정(PR 파일 목록의 scripts/check-dod-ci-parity.py 5+ 는 #27 의 것) · F2 §1⒜ 의 「«그대로» 적용」 문면 정정 + T3 의 wie 전용 축을 3 → ★4 로(후행 주석 절삭) · F3 표제·PR 제목의 「포팅 불가」를 qts 로 한정 · F4 T3 합격선에 「세는 명령 + 오늘의 값」 한 줄."
   ],
   "deploy": {
     "sha": "",
@@ -26,7 +27,11 @@
     "★qts 의 go vet/go test 는 조건부 skip 이고 그 사실이 qts CLAUDE.md 에 이미 적혀 있다(「Go 는 이 맥북에 미설치라 watchdog 검증이 조용히 skip 된다 — 로컬 green 을 근거로 삼지 말고 PR CI 결과를 봐라」). ⇒ 그 축은 «몰라서 난 구멍»이 아니라 «알고 두는 값»이다. ruff format --check 와 같은 칸에 넣지 마라.",
     "★모집단 주의: qts 의 「10/60」과 「최근 200 run 중 실패 2」는 «다른 창»이다. 전자는 실패만 60건까지 거슬러 올라간 창(2026-07-18~09-03)이고 후자는 최근 200 run 창이다. 비율을 창 밖으로 옮겨 인용하지 마라.",
     "★형제 repo 는 다른 레인 소관이라 이 회차가 «고칠 수 없다» — T1·T2·T3 의 축과 합격선만 적었다. 발권은 총괄 몫이다.",
-    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수."
+    "머지하지 않았다 — 게이트②·③은 별 세션이다. ★게이트③은 등재 repo 라 merge_strategy: merge 필수.",
+    "★★[F1] 이 PR 은 «스택»이다 — 204f98b(#27 의 구현 커밋)이 이 브랜치의 조상이고(merge-base --is-ancestor rc=0), #28 은 #27 의 «옛» 상태를 업고 있다(e9e2a8e1 ↔ ed046208 rc=1). 초판은 그 사실을 한 줄도 적지 않았다(base main 뿐). ★단 base 가 main 이라 #27 의 브랜치가 지워져도 이 PR 이 «닫히지»는 않는다 — 계약 5 의 ripple 사고(자식 base 가 부모 브랜치)와 다른 형상이다. ★그리고 예정된 STATE.md 충돌은 «실현»됐다(#27 이 ba4bb417 로 착지 · 워밍 후 재조회 CONFLICTING/DIRTY · 충돌 파일 STATE.md 1건). 그 1건은 게이트③ 계약 2-c⒜ 의 «원장 파일 한정» 승인 범위 안이고 코드 파일 충돌은 0 이다. ★이 회차는 해소하지 않았다(게이트③ 몫 · 충돌 집합은 그때의 값).",
+    "★★[F2] RustJava 파서에 «네 번째 축»이 있다 — DoD 줄의 후행 주석 절삭. wie 의 four gates 4줄이 전부 후행 주석을 달고 있는데 norm() 은 공백만 접고 주석을 벗기지 않아 4줄 전건 불일치가 나고, 상수 1줄만 바꿔 돌리면 rc=1 · 축 A 대칭차 7(CI 에만 3 · DoD 에만 4)이 나온다. ★RustJava 자신의 DoD 에는 주석이 «없어서» 그 파서가 이 축을 만난 적이 없다. ★안 적으면 다음 워커가 거짓 7건을 만난 뒤 회차 중간에 발견한다.",
+    "★[F3] 「검사기 포팅 불가」는 qts 에만 참이다 — qts 는 DoD 절에 코드블록이 없어 sys.exit 로 죽고, wie 는 «돈다»(값이 틀릴 뿐). 요약이 본문보다 강했던 것을 표제·PR 제목에서 한정했다.",
+    "★[F4] T3 합격선에 「세는 명령 + 오늘의 값」을 넣었다 — T1·T2 가 «오늘의 어긋남»을 닫아 버리므로 그 뒤 「언제 락이 필요해지는가」를 기계로 다시 물으려면 명령이 필요하다. 오늘의 값: wie 9 · qts 38."
   ],
   "proposals": [
     {
