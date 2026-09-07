@@ -2,7 +2,9 @@
   "date": "2026-09-07",
   "taskId": "rustjava-parity-lock-per-repo-parser-axis-design",
   "summary": "파리티 락의 repo 별 파서 축을 설계했다. 결론은 «공용 파서를 만들지 않고 공용 계약만 남긴다» — wie 는 제안 다음날 스스로 포팅했고, qts 는 집합 상등 락 자체가 틀린 도구다.",
-  "adoptedProposals": ["2026-09-04-parity-sibling-repo-survey#p2"],
+  "adoptedProposals": [
+    "2026-09-04-parity-sibling-repo-survey#p2"
+  ],
   "declinedProposals": [],
   "changes": [
     "docs/upstream-sync-approach.md §4 — 설계 절 신설(⑴제안 3축의 확인/반증 ⑵파서 축 ⒜~⒟ ⑶합격선 2개 ⑷repo 별 고른 길 ⑸발권 제안)",
@@ -17,7 +19,8 @@
   ],
   "issues": [
     "이 저장소 축 A 의 잠복 위음성 — if: 로 분류하므로 cargo 게이트를 if: 아래로 옮기면 조용히 green 이 된다. 오늘 무증상(조건부 step 1건이 셋업). 처분 = proposals[0].",
-    "wie 천장 ③(rust.yml 밖 워크플로)은 이 회차가 «부분 반증»으로만 판정했다 — 확대 여부는 wie 레인의 결정이다."
+    "wie 천장 ③(rust.yml 밖 워크플로)은 이 회차가 «부분 반증»으로만 판정했다 — 확대 여부는 wie 레인의 결정이다.",
+    "★[게이트③ 집행] PR #32 를 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다: #11·#13·#16·#17 4회 실증). 게이트② approve · 핀 bd4c6da5 불이동(원장 동봉 전 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 착지 diff 전건 문서(.md/.json)이고 이 저장소의 배포 워크플로는 0개 ⇒ 배포 0 · 코드(.rs) 변경 0 · 형제 repo·upstream 쓰기 0."
   ],
   "proposals": [
     {
