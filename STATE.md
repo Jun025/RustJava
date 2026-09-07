@@ -1,6 +1,14 @@
 # STATE
 
 ## 진행중
+- [rustjava-parity-lock-per-repo-parser-axis-design] ★**파리티 락의 repo 별 «파서 축» 설계 — 결론: 공용 파서를 만들지 않고 «공용 계약»만 남긴다.**
+  채택 제안 `2026-09-04-parity-sibling-repo-survey#p2`. ★**형제 repo 파일 편집 0 · 검사기 본체 변경 0 · 발권 0** · 측정 트리 = 각 repo `origin/main`.
+  ★★**전제가 무너졌다** — `wie` 가 제안 «다음날»(2026-09-05) 스스로 포팅했고(`wie_cli/tests/dod_ci_parity.rs` +
+  `tests/support/dod_ci_parity.rs` · 삭제는 `check-parity-lock-wired.mjs` 가 문다) 그 포팅이 ⒜~⒟ 를 우리보다 낫게 풀었다.
+  ★제안 5축 판정 = **3확인 · 1부분반증(다중 워크플로 = 파서 요구가 아니라 «범위 결정») · 1정정(qts 축 B 는 «부재»가 아니라 «퇴화» — 원소 1개인데 DoD 가 침묵)**.
+  ★**qts 는 집합 상등 락 자체가 틀린 도구다** — `make test`↔CI 마커 3잡 · `go` 로컬 조건부 skip↔CI 경성 게이트라 **어긋남이 정당**하다.
+  ★★**이 저장소의 잠복 위음성**: 축 A 를 `if:` 로 분류하는데 지금 조건부 step 이 셋업이라 «우연히» 옳다 —
+  `cargo test --all` 을 `if:` 아래로 옮기면 조용히 green 이다(wie 는 그 이동을 **이미 한** repo). ⇒ 후속 ⑴. **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이

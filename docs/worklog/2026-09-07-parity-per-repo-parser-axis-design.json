@@ -1,0 +1,51 @@
+{
+  "date": "2026-09-07",
+  "taskId": "rustjava-parity-lock-per-repo-parser-axis-design",
+  "summary": "파리티 락의 repo 별 파서 축을 설계했다. 결론은 «공용 파서를 만들지 않고 공용 계약만 남긴다» — wie 는 제안 다음날 스스로 포팅했고, qts 는 집합 상등 락 자체가 틀린 도구다.",
+  "adoptedProposals": ["2026-09-04-parity-sibling-repo-survey#p2"],
+  "declinedProposals": [],
+  "changes": [
+    "docs/upstream-sync-approach.md §4 — 설계 절 신설(⑴제안 3축의 확인/반증 ⑵파서 축 ⒜~⒟ ⑶합격선 2개 ⑷repo 별 고른 길 ⑸발권 제안)",
+    "REPORT.md · STATE.md — 회차 기록"
+  ],
+  "verification": [
+    "측정 트리 = 각 repo origin/main(2026-09-07 fetch). 형제 repo 파일 편집 0 · git 발신 0.",
+    "제안 5축 판정: 3확인 · 1부분반증(wie 다중 워크플로) · 1정정(qts 축 B 는 부재가 아니라 퇴화).",
+    "wie 자체 포팅 실재 확인: wie_cli/tests/dod_ci_parity.rs + tests/support/dod_ci_parity.rs, engine-contract.yml 의 상시 step node scripts/check-parity-lock-wired.mjs.",
+    "qts 상등 불가 확인: DoD 3토큰(make lint/guardrail/test) ↔ CI 6명령, 문자열 교집합 0. strategy.matrix 0건.",
+    "이 저장소 DoD 블록 전건 green (fmt · clippy · +beta clippy · wasm32 clippy · test · worklog · parity)."
+  ],
+  "issues": [
+    "이 저장소 축 A 의 잠복 위음성 — if: 로 분류하므로 cargo 게이트를 if: 아래로 옮기면 조용히 green 이 된다. 오늘 무증상(조건부 step 1건이 셋업). 처분 = proposals[0].",
+    "wie 천장 ③(rust.yml 밖 워크플로)은 이 회차가 «부분 반증»으로만 판정했다 — 확대 여부는 wie 레인의 결정이다."
+  ],
+  "proposals": [
+    {
+      "title": "파리티 락 축 A 를 `if:` 가 아니라 «도구 이름»으로 분류하라",
+      "plainSummary": "CI 검사 목록을 뽑을 때 «조건이 붙었는가»로 거르던 것을 «cargo 를 부르는가»로 바꾼다.",
+      "userBenefit": "지금은 누가 진짜 검사를 조건부 step 으로 옮기면 그 검사가 대조 목록에서 조용히 빠지고 초록불이 뜬다. 바꾸면 그 순간 빨간불이 난다.",
+      "why": "형제 repo wie 가 그 이동을 «이미 한» repo 다 — cargo test 가 windows/비-windows 2 step 으로 갈려 있고, wie 의 자체 포팅은 그래서 분류축을 도구 이름으로 바꿨다. 우리 쪽은 조건부 step 1건이 마침 셋업(git config)이라 «우연히» 옳을 뿐이고, 이것은 가정이 아니라 형제가 밟은 자리다.",
+      "tradeoff": "⑴비-cargo 게이트(python3 scripts/…)가 이미 축 A 에 둘 있어 분류 술어가 «cargo» 하나로는 부족하다 — 도구 화이트리스트가 필요하고 그 목록이 다시 낡을 수 있다. ⑵OS 축이 축 A 로 새어 들어오지 않게 정규화가 먼저 서야 한다. ⑶안 하면 오늘은 무증상이지만 그물이 한 칸 비어 있다.",
+      "effort": "S. 개악 대조 필수 — `cargo test --all` 을 `if:` 아래로 옮긴 rust.yml 로 red 가 나야 한다(지금은 green).",
+      "target": "scripts/check-dod-ci-parity.py"
+    },
+    {
+      "title": "qts 는 «상등» 락이 아니라 «CI 잡 도달 가능성» 락이어야 한다",
+      "plainSummary": "qts 에는 우리 검사기를 옮기지 말고, CI 의 각 검사 잡을 로컬에서 칠 수 있는 make 명령이 있는지만 확인하는 잠금을 둔다.",
+      "userBenefit": "CI 에만 있고 로컬에서는 칠 방법이 없는 검사가 생기는 순간 PR 이 빨개진다 — 개발자가 로컬 green 을 근거로 삼았다가 CI 에서 처음 알게 되는 일이 끊긴다.",
+      "why": "qts 는 DoD 와 CI 의 어긋남이 «정당»하다 — make test 는 pytest 전부인데 CI 는 마커로 갈린 3잡이고, go vet/test 는 로컬에서 `command -v go` 로 조건부 skip 되는데 CI 에서는 전용 잡의 경성 게이트다(DoD 산문이 그 skip 을 명시한다). 집합 상등을 요구하면 옳은 문서가 red 가 된다. 게다가 DoD 가 fenced block 이 아니라 산문 불릿이고 gitleaks 는 action 이라 run: 파서로는 보이지도 않는다.",
+      "tradeoff": "⑴도달 가능성은 상등보다 약한 단언이다 — 명령이 «있다»만 보지 «같다»는 안 본다. ⑵DoD 를 마커 구간 + fenced block 으로 바꾸는 선행이 붙는다(쪼개면 선행만 남고 락이 안 온다). ⑶안 하면 qts 는 사람 손 대조로 남는다 — RustJava 에서 다섯 번 실패한 방식이다.",
+      "effort": "M. 자리는 이미 있다 — tests/guardrail/test_ci_guardrail_job_marker.py 가 같은 형태로 ci.yml 문자열을 문다(새 층 0). 선행: qts-make-lint-add-ruff-format-check.",
+      "target": "qts (tests/guardrail/ · CLAUDE.md §Definition of Done)"
+    },
+    {
+      "title": "wie 파리티 락의 천장 ③(rust.yml 밖 워크플로)을 «결정»으로 승격하라",
+      "plainSummary": "wie 의 잠금은 rust.yml 만 본다고 스스로 밝혀 두었다. 나머지 워크플로까지 볼지 말지를 정해서 «천장»을 «판정»으로 바꾼다.",
+      "userBenefit": "지금은 engine-contract·web 의 검사가 로컬 목록에서 빠져도 아무도 울지 않는다. 넓히면 그것이 막히고, 넓히지 않기로 정하면 적어도 그것이 «알고 남긴 값»이 된다.",
+      "why": "2026-09-04 제안은 «다중 워크플로 스캔이 필요하다»고 적었는데, 실측하면 부분 반증이다 — wie 의 DoD 는 스스로 범위를 rust.yml 로 못박았고(COMMIT-GATES 마커, rust.yml 헤더가 그 마커를 가리킨다) 자체 포팅은 그것을 천장 ③으로 명시 기각했다. 즉 파서의 요구가 아니라 범위를 넓힐 것인가라는 별개 결정이며, 미결로 두면 다음 회차가 같은 조사를 반복한다.",
+      "tradeoff": "⑴넓히면 PR 에 도는 워크플로가 3개라 DoD 명령 집합이 커지고, web/engine 쪽은 node·wasm 툴체인이라 축 B 가 하나 더 생긴다. ⑵넓히지 않으면 커버리지는 오늘과 같다 — 얻는 것은 «천장이 결정이 된다»는 것뿐이다. ⑶안 하면 천장 문안이 계속 «미정»으로 읽혀 재조사를 부른다.",
+      "effort": "S(결정만). 「넓히지 않는다」도 정답이고, 그때는 천장 문안을 결정으로 승격만 하면 된다.",
+      "target": "wie (wie_cli/tests/support/dod_ci_parity.rs ceilings())"
+    }
+  ]
+}

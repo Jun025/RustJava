@@ -429,6 +429,75 @@ gh run list --repo Jun025/RustJava --workflow=rust.yml --status=failure --limit 
   (우리 = wasm32 줄 + beta 축 · `wie` = beta 축 · `qts` = `ruff format --check`).
   ⇒ ★**「사람이 문서를 최신으로 유지한다」가 세 repo에서 «각각» 실패했다** — 그것이 기계 대조의 일반 근거다.
 
+### ★★[2026-09-07 설계] repo 별 «파서 축» — ★결론: **공용 파서를 만들지 않는다. 공용 «계약»만 남긴다**
+
+★**바로 위 조사(2026-09-04)의 후속이고, 그 조사의 「포팅 불가」를 «지금 검사기 그대로는»으로 좁혀 읽은 결과다.**
+★**측정 트리 = 각 repo `origin/main`(2026-09-07 fetch)** · ★**이 회차는 형제 repo 파일을 만지지 않았고 발권도 하지 않았다**(소관 = 각 레인).
+
+#### ⑴ 제안 3축의 확인/반증 — ★**5개 중 3확인 · 1부분반증 · 1전제붕괴**
+
+| repo | 제안이 말한 것 | 실측 판정 |
+|---|---|---|
+| `wie` | 조건부 step 이 «진짜 게이트» | ★**확인.** `cargo test --all` 은 `if: matrix.os == 'windows-latest'` / `!= ` **2 step 에만** 있다 ⇒ 우리 「조건부=제외」면 축 A 의 CI 쪽에서 사라지고 DoD 쪽에만 남아 **거짓 red** |
+| `wie` | env 접두 정규화 필요 | ★**확인.** 그 2 step 은 **블록 스칼라**이고 각각 `export RUST_MIN_STACK=…` · `$env:RUST_MIN_STACK=…` 다. 우리 파서는 블록 스칼라를 `<셸 블록> …` 로 접어 **명령 자체를 잃는다** |
+| `wie` | 다중 워크플로 스캔 필요 | ★**부분 반증.** PR 에 도는 워크플로는 8개 중 3개(`rust.yml`·`engine-contract.yml`·`web.yml`)로 «많다»는 맞다. 그러나 wie 의 DoD 는 스스로 범위를 **`rust.yml` 로 못박았다**(마커 이름이 `COMMIT-GATES`, `rust.yml` 헤더가 그 마커를 가리킨다) ⇒ ★**파서의 요구가 아니라 «범위를 넓힐 것인가»라는 별개 결정**이고, wie 자신이 **천장 ③으로 명시 기각**했다 |
+| `qts` | Makefile 간접층 | ★**확인, 그리고 제안보다 세다.** DoD = `make lint · make guardrail · make test` **3토큰** ↔ CI = `uv run ruff check .` / `uv run ruff format --check .` / `uv run pytest -ra` / `uv run pytest -m "guardrail and not integration" -ra` / `uv run pytest -m "phase0 and not integration" -ra` / `go vet ./...`+`go test ./...` ⇒ ★**문자열 교집합이 «0»** 이다 |
+| `qts` | 축 B(toolchain) «부재» | ★**정정 — «부재»가 아니라 «퇴화»다.** `strategy.matrix` 는 **0건**이지만 버전 축은 있다: `PYTHON_VERSION: "3.12"`(env) · `go-version: "1.22"`. ★**원소가 1개인데 DoD 는 그 버전을 아예 안 적는다** ⇒ 대조 불성립이라는 결론은 같되, 「없다」로 적으면 다음 사람이 «축을 만들면 된다»로 오독한다 |
+| `qts` | action 기반 검사 | ★**확인.** `gitleaks/gitleaks-action@v2`(잡 「gitleaks (secret scan)」) · `docker/build-push-action@v6` ⇒ `run:` 만 읽는 **어떤** 파서도 못 본다 |
+
+★★**제안이 못 본 것 셋 — 이것들이 설계를 실제로 바꾼다.**
+- ⒳**`wie` 는 이미 포팅했다**(2026-09-05 · 제안이 쓰인 «다음날»). `wie_cli/tests/dod_ci_parity.rs` + `wie_cli/tests/support/dod_ci_parity.rs`,
+  그 삭제는 `engine-contract.yml` 의 상시 step `node scripts/check-parity-lock-wired.mjs` 가 문다.
+  ⇒ ★**이 회차의 «설계»는 상당 부분 «이미 집행된 설계의 검증»이 됐다** — 그리고 그 포팅이 위 축을 우리보다 잘 풀었다(⑵ 참조).
+- ⒴**`wie` DoD 구간에 fenced block 이 «2개»다**(4게이트 + beta). 우리 「§제목 뒤 **첫** 코드블록」 규칙이면 ★**beta 줄을 통째로 놓쳐 축 B 가 «거짓 통과»** 한다.
+- ⒵**`qts` DoD 는 fenced block 이 아니라 «산문 불릿 한 줄»이다** ⇒ 우리 `parse_dod` 는 파싱할 **대상 자체가 없어** 즉시 FAIL 한다.
+
+★★★**그리고 `qts` 에는 «파서가 아니라 설계»를 뒤집는 사실이 하나 더 있다 — 어긋남이 «정당»하다.**
+`make test` = `uv run pytest`(전부) ↔ CI = 마커로 갈린 **3잡** · `make lint` 의 `go vet` 은
+★**`command -v go` 조건부 skip**(DoD 산문이 그 skip 을 **명시**한다) ↔ CI 는 전용 `watchdog` 잡으로 **경성 게이트**.
+⇒ ★**집합 «상등»을 요구하는 락은 qts 에서 «옳은 문서»를 red 로 만든다.** 이것은 파서 성능 문제가 아니라 **락의 종류가 틀린 것**이다.
+
+#### ⑵ 파서 축 — ⒜~⒟, ★**규칙은 공용 · 구현은 repo 별**
+
+| 축 | 규칙 | 왜(실측) |
+|---|---|---|
+| ⒜ CI 의 «명령 집합» | ★**분류축을 `if:` 로 잡지 마라 — «도구 이름»으로 잡아라**(`cargo` 를 부르는가). `if:` 는 OS 축의 «표지»일 뿐 게이트/셋업의 축이 «아니다» | wie 가 그 반례다 — 진짜 게이트가 `if:` 아래 있다. ★**우리 repo 도 잠복 위음성이다**: 지금 조건부 step 1건이 `git config --global core.autocrlf false`(셋업)라 **우연히** 옳을 뿐이고, 누가 `cargo test --all` 을 `if:` 아래로 옮기면 축 A 에서 **조용히 빠지고 green** 이 된다 |
+| ⒝ DoD 의 «명령 집합» | ★**위치 규칙(「첫 코드블록」·「§제목」)을 쓰지 마라 — «이름 있는 마커»를 써라**(`COMMIT-GATES:BEGIN/END`) + 그 구간의 **모든** fenced block | 위치는 문서 편집으로 **조용히** 깨지고 마커는 **시끄럽게**(fatal) 깨진다. ⒴ 가 그 실례다 |
+| ⒞ 정규화 | 4단 — ⑴공백 접기 ⑵` #` 이후 주석 절단 ⑶`+<tc>` 를 축 B 로 분리 ⑷블록 스칼라를 **«env 접두 + 명령»으로 평탄화**(`export A=B` · `$env:A=B`) | ★**env 를 «버리지» 마라** — `RUST_MIN_STACK` 은 있고 없고가 «크래시 ↔ 통과»를 가른다. DoD 는 `RUST_MIN_STACK=… cargo test` 한 줄, CI 는 2줄 블록 — 평탄화가 그 둘을 만나게 하는 유일한 지점이다 |
+| ⒟ 조건부 step 의 처분 | ★**«제외»도 «포함»도 아니라 «분류»다.** 도구 게이트를 부르면 **포함**(정규화 뒤 합집합에서 한 원소로 합쳐진다) · 셋업이면 **제외 + 출력** | wie 의 `if:` 2갈래는 정규화 뒤 `RUST_MIN_STACK=4194304 cargo test --all` **한 원소**가 된다. 「제외」면 거짓 red, 「전부 포함」이면 OS 축이 새어 들어온다 — 분류만이 둘 다 피한다 |
+
+★**축 B 는 그대로다**(`strategy.matrix.rust` ↔ `cargo +<tc>` 접두 · 맨 `cargo` = 기본 toolchain + 고정 파일 감시).
+★**두 축은 계속 «독립»이다** — 교차곱 확대는 2026-09-04 에 «넓히지 않는다»로 판정됐고 wie 포팅도 그 판정을 승계했다.
+
+#### ⑶ 합격선 2개 — ★**어떻게 만족하는가**
+
+- ★**정본 위치를 «코드에» 박는다.** 우리 = `CI_FILE`·`DOD_FILE`·`DOD_SECTION` 상수 · wie = `BEGIN`/`END` 상수 + `LOCK{test,checker}` 경로.
+  ★**문서에 「정본은 여기」라고 적는 것은 합격이 «아니다»** — 이 리니지가 다섯 번 낡은 방식이 정확히 그것이다.
+  ⒝ 의 마커 규칙이 이 합격선의 «강한 형태»다: 정본이 사라지면 **fatal 로 운다**(조용한 통과가 불가능해진다).
+- ★**성공에도 «원소»를 찍는다.** 합집합 전 원소를 `(CI=y DoD=y)` 로 나열 + 끝줄에 「OK … 명령 N개 · toolchain N개」.
+  ★**그리고 «제외한 것»도 세어 찍는다** — wie 는 여기서 한 걸음 더 가 **천장 7줄을 pass/fail 무관 상시 출력**한다.
+  ⇒ ★**이 저장소가 채택할 형태도 그것이다**(「빈 대칭차를 침묵으로 두지 마라」의 확장 — 침묵의 다음 형태는 «못 보는 것에 대한 침묵»이다).
+
+#### ⑷ repo 별로 고른 길 — ★**셋 다 «그대로 포팅»이 아니다**
+
+| repo | 고른 길 | 근거 |
+|---|---|---|
+| `wie` | ★**안 함 — 이미 됐다** | 2026-09-05 자체 포팅이 ⒜(도구 이름 분류)·⒝(마커+전체 블록)·⒞(`flatten_shell`)·⒟(분류)를 **전부** 우리보다 낫게 풀었다. 남은 것은 천장 ③(다중 워크플로) 확대 **여부 결정**뿐이고 그것은 wie 레인 소관이다 |
+| `qts` | ★**포팅 안 함 — «다른 형태»** | 집합 상등 락은 여기서 **틀린 도구**다(위 「어긋남이 정당하다」). 옳은 축은 **«도달 가능성»**: `ci.yml` 의 게이트 잡마다 그것을 로컬에서 치는 `make` 타깃이 있는가 — 없으면 그 **잡 이름을 찍는다**. ★자리는 이미 있다(`tests/guardrail/test_ci_guardrail_job_marker.py` 가 같은 형태로 `ci.yml` 문자열을 문다) ⇒ **새 층 0** |
+| **이 저장소** | ★**축 ⒜ 를 `if:` → «도구 이름»으로 교체** | 위 표의 잠복 위음성. 오늘 무증상이지만 ★**wie 는 그 이동을 «이미 한» repo 다** — 가정이 아니라 형제가 밟은 자리다 |
+
+★★**「repo 마다 파서를 세 벌」이 되지 않는가** — 제안이 적은 그 대가는 **치르지 않는다.**
+셋 중 «파서»는 둘뿐이고(우리 python · wie rust), 그 둘은 **각 repo 의 CI 가 이미 돌리는 런타임**에 얹혀 새 의존이 0이다.
+qts 는 파서가 아니라 **다른 축의 락**이라 애초에 세 벌째가 아니다. ⇒ ★**공용으로 뺄 것은 코드가 아니라 «⑵의 규칙 + ⑶의 합격선»이고, 그것이 이 절이다.**
+
+#### ⑸ 발권 제안 — ★**이 회차는 발권하지 않는다**(소관 = 각 레인)
+
+1. **`rustjava-parity-axis-a-classify-by-tool-not-conditional`**(P2 · repo `rustjava`) — 축 ⒜ 분류 교체.
+   ★개악 대조 필수: `cargo test --all` 을 `if:` 아래로 옮겨도 **red 여야 한다**(지금은 green 이다).
+2. **`qts-ci-job-reachability-lock`**(P3 · repo `qts` · `depends_on: [qts-make-lint-add-ruff-format-check]`) — ⑷의 «도달 가능성» 락.
+   ★DoD 를 마커 구간 + fenced block 으로 바꾸는 일을 **여기에 포함**한다(별건으로 쪼개면 선행만 남고 락이 안 온다).
+3. **`wie-parity-lock-multi-workflow-scope-decision`**(P3 · repo `wie`) — 천장 ③ 확대 여부. ★**「넓히지 않는다」도 정답**이고, 그때는 천장 문안을 «결정»으로 승격만 하면 된다.
+
 ## 5. 단계 분할 — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
 
 각 컷 지점에서 `git merge-tree --write-tree --name-only origin/main <cut>` 을 돌린 실측:

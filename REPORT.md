@@ -1,5 +1,23 @@
 # REPORT
 
+## [2026-09-07] 파리티 락의 repo 별 «파서 축» 설계 — ★공용 파서를 만들지 않는다 (rustjava-parity-lock-per-repo-parser-axis-design)
+- 무엇을: 채택 제안 `2026-09-04-parity-sibling-repo-survey#p2` 의 **설계 회차**다. 형제 repo(`wie`·`qts`)를
+  각 `origin/main` 에서 실측해 ⑴제안이 말한 «막는 것» 5축을 확인/반증하고 ⑵파서 축 ⒜~⒟ + 합격선 2개를 정하고
+  ⑶repo 별로 «포팅/다른 형태/안 함»을 골랐다. 산출은 `docs/upstream-sync-approach.md` §4 의 설계 절 **하나**다.
+  ★**형제 repo 파일 편집 0 · 검사기 본체 변경 0 · 발권 0**(설계까지가 계약이다).
+- 왜: 「포팅 불가」는 «지금 검사기 그대로는»이라는 뜻이었고, **무엇을 바꾸면 성립하는가**가 미정이었다.
+  재보니 ★**전제가 무너졌다** — `wie` 는 제안이 쓰인 **다음날(2026-09-05) 스스로 포팅했고**, 그 포팅이 ⒜~⒟ 를
+  우리보다 낫게 풀었다(`if:` 가 아니라 **도구 이름**으로 분류 · 위치가 아니라 **이름 있는 마커** · `flatten_shell` 로 env 보존).
+  `qts` 는 반대로 ★**집합 상등 락 자체가 틀린 도구**다 — `make test`↔CI 마커 3잡, `go` 의 로컬 조건부 skip↔CI 경성 게이트라
+  **어긋남이 «정당»하고**, 상등을 요구하면 «옳은 문서»가 red 가 된다.
+- 사용자 영향: **없다**(이 repo 코드 무변경). ★**이 저장소의 «잠복 위음성» 하나가 드러났다** — 축 A 를 `if:` 로 분류하는데
+  지금 조건부 step 이 셋업(`git config …`)이라 **우연히** 옳을 뿐이고, 누가 `cargo test --all` 을 `if:` 아래로 옮기면
+  축 A 에서 **조용히 빠지고 green** 이 된다. ★wie 는 그 이동을 **이미 한** repo 다.
+- 후속 추천 3건(★이 회차는 발권하지 않는다 — 소관은 각 레인):
+  ⑴`rustjava-parity-axis-a-classify-by-tool-not-conditional`(P2·이 repo) — 축 ⒜ 분류 교체 + 개악 대조
+  ⑵`qts-ci-job-reachability-lock`(P3·qts·`depends_on: [qts-make-lint-add-ruff-format-check]`) — 상등이 아니라 «도달 가능성» 락
+  ⑶`wie-parity-lock-multi-workflow-scope-decision`(P3·wie) — 천장 ③ 확대 여부(「넓히지 않는다」도 정답)
+
 ## [2026-09-05] `behind` 를 «재는» 예약 워크플로 신설 (rustjava-upstream-behind-measure-scheduled-workflow)
 - 무엇을: `.github/workflows/upstream-behind.yml` **1개 신설**. 주 1회 upstream 을 **read-only fetch** 해
   `rev-list --count` 를 찍고 **Job Summary + annotation** 으로 보고한다. ★**코드(`.rs`) 0줄 · `scripts/` 무접촉.**
