@@ -1,13 +1,6 @@
 # STATE
 
 ## 진행중
-- [rustjava-parity-lock-axis-a-classify-by-tool-name] ★**파리티 락 축 A 의 소속 판정을 「`if:` 가 없는가」 →
-  「어느 도구를 부르는가」(`CHECK_TOOLS = cargo·python3`)로 교체.** 채택 = `2026-09-07-…-parser-axis-design#p0`.
-  ★★**지정 개악(`cargo test --all` 을 `if:` 아래로 + DoD 줄 삭제)이 rc=0 → rc=1** · 반대 개악·우회 3종 red ·
-  ★**위양성 0**(무해 편집 4종 green). ★**축 A 원소 6 → 6 불변** — 순증이 아니라 «같은 6개를 다른 술어로» 잡는다.
-  ★**「cargo 하나」로 좁히지 않은 이유는 수다**: 6 중 cargo 4 · python3 2 ⇒ 좁히면 **커버리지 33% 손실**.
-  ★설계 문서 문면 1건 정정 — 「`if:` 를 붙이면 green」은 짧았다. **붙이기만 하면 red 이고, DoD 줄까지 지워야 green** 이다.
-  **PR 대기 — 게이트③ 미착지.**
 - [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
   한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
   증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
@@ -30,6 +23,14 @@
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-parity-lock-axis-a-classify-by-tool-name] ★**파리티 락 축 A 의 소속 판정을 「`if:` 가 없는가」 →
+  「어느 도구를 부르는가」(`CHECK_TOOLS = cargo·python3`)로 교체.** 채택 = `2026-09-07-…-parser-axis-design#p0`.
+  ★★**지정 개악(`cargo test --all` 을 `if:` 아래로 + DoD 줄 삭제)이 rc=0 → rc=1** · 반대 개악·우회 3종 red ·
+  ★**위양성 0**(무해 편집 4종 green). ★**축 A 원소 6 → 6 불변** — 순증이 아니라 «같은 6개를 다른 술어로» 잡는다.
+  ★**「cargo 하나」로 좁히지 않은 이유는 수다**: 6 중 cargo 4 · python3 2 ⇒ 좁히면 **커버리지 33% 손실**.
+  ★설계 문서 문면 1건 정정 — 「`if:` 를 붙이면 green」은 짧았다. **붙이기만 하면 red 이고, DoD 줄까지 지워야 green** 이다.
+  ★**게이트③ 착지 — PR #33 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 잃는다).
+  ★`ci-presence` **rc=0 CI_GREEN** · 핀 무이동 · 자식 PR **0건** · 배포 워크플로 **0개 ⇒ 배포 0**.
 - [rustjava-parity-lock-per-repo-parser-axis-design] ★**파리티 락의 repo 별 «파서 축» 설계 — 결론: 공용 파서를 만들지 않고 «공용 계약»만 남긴다.**
   채택 제안 `2026-09-04-parity-sibling-repo-survey#p2`. ★**형제 repo 파일 편집 0 · 검사기 본체 변경 0 · 발권 0** · 측정 트리 = 각 repo `origin/main`.
   ★★**전제가 무너졌다** — `wie` 가 제안 «다음날»(2026-09-05) 스스로 포팅했고(`wie_cli/tests/dod_ci_parity.rs` +
