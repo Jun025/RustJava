@@ -461,7 +461,7 @@ gh run list --repo Jun025/RustJava --workflow=rust.yml --status=failure --limit 
 
 | 축 | 규칙 | 왜(실측) |
 |---|---|---|
-| ⒜ CI 의 «명령 집합» | ★**분류축을 `if:` 로 잡지 마라 — «도구 이름»으로 잡아라**(`cargo` 를 부르는가). `if:` 는 OS 축의 «표지»일 뿐 게이트/셋업의 축이 «아니다» | wie 가 그 반례다 — 진짜 게이트가 `if:` 아래 있다. ★**우리 repo 도 잠복 위음성이다**: 지금 조건부 step 1건이 `git config --global core.autocrlf false`(셋업)라 **우연히** 옳을 뿐이고, 누가 `cargo test --all` 을 `if:` 아래로 옮기면 축 A 에서 **조용히 빠지고 green** 이 된다 |
+| ⒜ CI 의 «명령 집합» | ★**분류축을 `if:` 로 잡지 마라 — «도구 이름»으로 잡아라**(`cargo` 를 부르는가). `if:` 는 OS 축의 «표지»일 뿐 게이트/셋업의 축이 «아니다» | wie 가 그 반례다 — 진짜 게이트가 `if:` 아래 있다. ★**우리 repo 도 잠복 위음성이다**: 지금 조건부 step 1건이 `git config --global core.autocrlf false`(셋업)라 **우연히** 옳을 뿐이고, 누가 `cargo test --all` 을 `if:` 아래로 옮기면 축 A 에서 **조용히 빠진다** ★**[2026-09-08 집행 · 실측 정정]** 그 «빠짐»만으로는 **red 다**(DoD 쪽에 그 줄이 남아 `only_dod`) — ★**green 이 되는 것은 «그다음 한 걸음», 즉 DoD 줄까지 지웠을 때**다. ★**`if:` 는 그 삭제를 «허가»하는 것이고, 그것이 이 구멍의 정확한 형태다** |
 | ⒝ DoD 의 «명령 집합» | ★**위치 규칙(「첫 코드블록」·「§제목」)을 쓰지 마라 — «이름 있는 마커»를 써라**(`COMMIT-GATES:BEGIN/END`) + 그 구간의 **모든** fenced block | 위치는 문서 편집으로 **조용히** 깨지고 마커는 **시끄럽게**(fatal) 깨진다. ⒴ 가 그 실례다 |
 | ⒞ 정규화 | 4단 — ⑴공백 접기 ⑵` #` 이후 주석 절단 ⑶`+<tc>` 를 축 B 로 분리 ⑷블록 스칼라를 **«env 접두 + 명령»으로 평탄화**(`export A=B` · `$env:A=B`) | ★**env 를 «버리지» 마라** — `RUST_MIN_STACK` 은 있고 없고가 «크래시 ↔ 통과»를 가른다. DoD 는 `RUST_MIN_STACK=… cargo test` 한 줄, CI 는 2줄 블록 — 평탄화가 그 둘을 만나게 하는 유일한 지점이다 |
 | ⒟ 조건부 step 의 처분 | ★**«제외»도 «포함»도 아니라 «분류»다.** 도구 게이트를 부르면 **포함**(정규화 뒤 합집합에서 한 원소로 합쳐진다) · 셋업이면 **제외 + 출력** | wie 의 `if:` 2갈래는 정규화 뒤 `RUST_MIN_STACK=4194304 cargo test --all` **한 원소**가 된다. 「제외」면 거짓 red, 「전부 포함」이면 OS 축이 새어 들어온다 — 분류만이 둘 다 피한다 |
@@ -492,13 +492,42 @@ qts 는 파서가 아니라 **다른 축의 락**이라 애초에 세 벌째가 
 
 #### ⑸ 발권 제안 — ★**이 회차는 발권하지 않는다**(소관 = 각 레인)
 
-1. **`rustjava-parity-axis-a-classify-by-tool-not-conditional`**(P2 · repo `rustjava`) — 축 ⒜ 분류 교체.
-   ★개악 대조 필수: `cargo test --all` 을 `if:` 아래로 옮겨도 **red 여야 한다**(지금은 green 이다).
+1. ~~**`rustjava-parity-axis-a-classify-by-tool-not-conditional`**(P2 · repo `rustjava`) — 축 ⒜ 분류 교체.~~
+   ★★**[2026-09-08 집행 완료 · `rustjava-parity-lock-axis-a-classify-by-tool-name`]** 아래 ⑹ 참조.
 2. **`qts-ci-job-reachability-lock`**(P3 · repo `qts` · `depends_on: [qts-make-lint-add-ruff-format-check]`) — ⑷의 «도달 가능성» 락.
    ★DoD 를 마커 구간 + fenced block 으로 바꾸는 일을 **여기에 포함**한다(별건으로 쪼개면 선행만 남고 락이 안 온다).
 3. **`wie-parity-lock-multi-workflow-scope-decision`**(P3 · repo `wie`) — 천장 ③ 확대 여부. ★**「넓히지 않는다」도 정답**이고, 그때는 천장 문안을 «결정»으로 승격만 하면 된다.
 
-## 5. 단계 분할 — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
+#### ⑹ [2026-09-08 집행] 축 ⒜ 를 «도구 이름»으로 교체했다 — ★**개악 대조 9종의 실측표**
+
+술어 교체: `scripts/check-dod-ci-parity.py` 의 축 A 소속 판정이 **「`if:` 가 없는가」 → 「`CHECK_TOOLS` 의 도구를 부르는가」**
+(`CHECK_TOOLS = ("cargo", "python3")` · 도구 = 명령줄 **첫 셸 낱말**). ★**CI 쪽과 DoD 쪽에 «같은» 술어를 적용한다** — 한쪽만 걸면 그 자체가 새 대칭차다.
+
+★**「cargo 하나」로 하지 않은 이유는 «측정»이다**: `if:` 술어가 오늘 잡는 6개 중 **cargo 는 4개**이고 나머지 **2개가 `python3` 두 락**이다
+(`check-worklog-json.py` · `check-dod-ci-parity.py` — ★**둘 다 DoD 블록에 실재하는 게이트**). cargo 만으로 좁히면 **6 → 4**, 즉 ★**커버리지 33% 손실**이고
+그것은 교체가 아니라 후퇴다. ⇒ 제안이 말한 축(«도구 이름»)은 그대로 두고 **집합을 둘로** 뒀다.
+★**그 집합을 DoD 블록에서 «유도»하지 않았다** — 유도하면 「python3 줄을 전부 지우면 python3 가 축에서 사라진다」로 **같은 구멍이 한 층 위에 다시 생긴다**.
+
+| # | 편집 | 옛 술어(`if:`) | ★새 술어(도구) | 읽는 법 |
+|---|---|---|---|---|
+| **M1b** | ★**지정 개악** — `cargo test --all` 을 `if:` 아래로 **+ DoD 줄 삭제** | ★**green(rc=0)** | ★**red(rc=1)** | ★**이 회차의 유일한 성공 기준.** 「CI 에만 있다」로 운다 |
+| M1a | `if:` 아래로만(DoD 유지) | red | ★**green** | ★**옛 red 가 «위양성»이었다** — 일부 OS 셀에서만 도는 검사를 로컬이 «항상» 치는 것은 옳다 |
+| M1c | DoD 줄만 삭제 | red | red | 불변 |
+| **M2** | ★**반대 개악** — `cargo test --all` step 자체 삭제 | red | red | ★분류가 «실제 내용»을 본다 |
+| M3 | `cargo test --all` 을 블록 스칼라(`run: \|-`)로 감싸기 | red | red | ★**새 우회로도 막힌다**(도구는 `cargo` 로 잡히되 표시가 `<셸 블록> …` 이라 DoD 와 안 만난다 = 시끄럽게 실패) |
+| M4 | `python3` 락을 `if:` 아래로 **+ DoD 줄 삭제** | ★**green** | ★**red** | ★**비-cargo 도구도 같이 막혔다** — 화이트리스트를 둘로 둔 값이 여기서 나온다 |
+| B1 | 빈 줄 추가 | green | green | 위양성 0 |
+| B2 | step 순서 교환 | green | green | 위양성 0 |
+| B3 | step `name:` 추가 | green | green | 위양성 0 |
+| B4 | DoD 줄 공백 변형(`cargo   test   --all  `) | green | green | 위양성 0 |
+
+★**빠진 것을 수로 적는다**(교체는 순증이 아니다): ⒜축 A 원소 수는 **6 → 6**(불변 · 오늘 조건부 검사 step 이 0건이라 순증도 0) ·
+⒝«제외» 집합은 **조건부 1건 → 도구 미해당 1건**(같은 `git config` 셋업 step, ★**이유가 «조건부라서» → «`git` 이라서»로 바뀌었다**) ·
+⒞★**옛 술어가 red 로 잡던 형상 1종(M1a)이 green 이 됐다** — 이것이 유일한 «빠짐»이고, ★**위양성이었으므로 회수하지 않는다**.
+★**임계를 낮춰 덮은 곳은 없다** — 넓힌 뒤 생긴 위양성이 0이라 낮출 임계 자체가 없었다.
+
+★**천장(알고 둔다)**: ⑴`CHECK_TOOLS` 는 **손으로 적은 목록**이라 CI 가 `npm`·`make` 를 들이면 그 step 은 축 밖이다 — ★**그래서 «제외» 절이 도구 이름을 «찍는다»**(침묵 0).
+「모르는 도구 = 즉시 red」는 **새 게이트**라 이 회차 범위 밖이다. ⑵블록 스칼라 평탄화(⒞의 env 보존)는 **하지 않았다** — 이 repo 엔 그 형상이 없고(M3 이 red 로 운다), wie 가 이미 푼 축이다. — ★**커밋 수로 자르지 마라. 충돌은 앞쪽 7커밋에 몰려 있다**
 
 각 컷 지점에서 `git merge-tree --write-tree --name-only origin/main <cut>` 을 돌린 실측:
 
