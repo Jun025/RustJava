@@ -29,8 +29,21 @@ were both measured; see `docs/upstream-sync-approach.md` §4 "[2026-09-04 판정
 command over `rust.yml` failure history, today's value 0). Do not re-argue it from taste.
 
 Also out of scope by the same decision: the OS axis (macos/ubuntu/windows). It cannot be
-reproduced locally at all, so CI is its only net. Conditional (`if:`-guarded) steps are
-therefore excluded from axis A — but they are PRINTED, never silently dropped.
+reproduced locally at all, so CI is its only net.
+
+Axis A membership is decided by WHICH TOOL a step invokes — not by whether it carries an
+`if:`. That was changed on 2026-09-08 and the old rule ("`if:`-guarded steps are excluded")
+is gone, because `if:` says nothing about what a step *does*, which made it an escape
+hatch. Measured on `4959d0f` before changing anything:
+
+  - put `cargo test --all` under an `if:` and delete its DoD line  -> rc=0, GREEN.
+    The real gate left the compared set and nothing complained. That is the hole.
+  - put `cargo test --all` under an `if:` and keep the DoD line    -> rc=1, RED.
+    A false positive: a check CI runs on some OS cells is still correct to run locally.
+
+The tool-name rule turns both around: the first case is red (CI has a cargo step the DoD
+does not), the second is green. Setup steps (`git config …`) are excluded by their tool
+name, not by their `if:` — and they are still PRINTED, never silently dropped.
 """
 
 import re
@@ -49,9 +62,24 @@ DOD_SECTION = "## Definition of Done"
 TOOLCHAIN_PIN_FILES = ("rust-toolchain.toml", "rust-toolchain")
 DEFAULT_TOOLCHAIN = "stable"
 
+# ★ The axis-A classifier. A step belongs to axis A iff the tool it invokes is in here.
+#   `cargo` is the tool the adopted proposal named; `python3` is here because the two
+#   doc locks (`check-worklog-json.py`, this file) are also in the DoD block — dropping
+#   them would lose 2 of today's 6 compared commands, and a replacement that loses
+#   coverage is not a fix. Deliberately hardcoded: deriving the set from the DoD block
+#   would rebuild the same escape hatch one level up (delete every `python3` line and
+#   `python3` leaves the axis, taking the CI steps with it).
+CHECK_TOOLS = ("cargo", "python3")
+
 
 def norm(cmd):
     return " ".join(cmd.split())
+
+
+def tool_of(cmd):
+    """The tool a command line invokes = its first shell word."""
+    words = cmd.split()
+    return words[0] if words else ""
 
 
 def split_toolchain(cmd):
@@ -65,7 +93,9 @@ def split_toolchain(cmd):
 
 
 def parse_ci(text):
-    """-> (checks, conditional, toolchains) reading `- run:` steps out of the workflow.
+    """-> (runs, toolchains); runs = [(tool, normalized command, `if:` condition or "")].
+
+    Classification is the caller's job — this only reports what each `- run:` step is.
 
     Hand-rolled rather than PyYAML: the sibling lock is stdlib-only and CI installs
     nothing for it. The file is small and its shape is asserted below.
@@ -99,23 +129,25 @@ def parse_ci(text):
                 continue
             cur.append(stripped)
 
-    checks, conditional = [], []
+    runs = []
     for step in steps:
         body = "\n".join(step)
         if not re.search(r"^run:", body, re.M):
             continue
         run = re.search(r"^run:\s*(.*)$", body, re.M).group(1)
         if run.startswith("|") or run.startswith(">"):
-            # block scalar: a multi-line shell snippet. Keep it identifiable but do not
-            # pretend it is a single command — every one of these so far is setup.
+            # block scalar: a multi-line shell snippet. Its tool is the first line's tool,
+            # but the display keeps it identifiable rather than pretending it is one
+            # command — so a block scalar that ever does invoke a check tool goes red and
+            # asks for a human, instead of silently half-matching a DoD line.
             tail = [s for s in step if not re.match(r"^(name|uses|run|if|with):", s)]
-            run = "<셸 블록> " + (tail[0] if tail else "")
-        cond = re.search(r"^if:\s*(.*)$", body, re.M)
-        if cond:
-            conditional.append((norm(run), norm(cond.group(1))))
+            first = tail[0] if tail else ""
+            tool, run = tool_of(first), "<셸 블록> " + first
         else:
-            checks.append(norm(run))
-    return checks, conditional, toolchains
+            tool = tool_of(run)
+        cond = re.search(r"^if:\s*(.*)$", body, re.M)
+        runs.append((tool, norm(run), norm(cond.group(1)) if cond else ""))
+    return runs, toolchains
 
 
 def parse_dod(text):
@@ -128,21 +160,28 @@ def parse_dod(text):
 
 
 def main():
-    ci_cmds, ci_cond, ci_tcs = parse_ci(CI_FILE.read_text())
+    ci_runs, ci_tcs = parse_ci(CI_FILE.read_text())
     dod_lines = parse_dod(DOD_FILE.read_text())
 
-    dod_cmds, dod_tcs = set(), set()
+    ci_checks = [r for r in ci_runs if r[0] in CHECK_TOOLS]
+    ci_setup = [r for r in ci_runs if r[0] not in CHECK_TOOLS]
+
+    dod_cmds, dod_tcs, dod_setup = set(), set(), []
     for line in dod_lines:
         tc, cmd = split_toolchain(line)
+        if tool_of(cmd) not in CHECK_TOOLS:
+            dod_setup.append(cmd)
+            continue
         dod_cmds.add(cmd)
         if tc:
             dod_tcs.add(tc)
 
-    ci_set = set(ci_cmds)
+    ci_set = {cmd for _, cmd, _ in ci_checks}
     problems = []
 
     print("DOD-CI-PARITY  로컬 DoD ↔ .github/workflows/rust.yml")
     print(f"  정본: {DOD_FILE.name} §Definition of Done 의 첫 코드블록  ↔  {CI_FILE.relative_to(ROOT)}")
+    print(f"  분류축: «어느 도구를 부르는가» = {list(CHECK_TOOLS)} — ★`if:` 는 보지 않는다")
 
     print(f"\n  [축 A · 명령]  CI {len(ci_set)}개 · DoD {len(dod_cmds)}개")
     for c in sorted(ci_set | dod_cmds):
@@ -165,10 +204,18 @@ def main():
         for t in sorted(only_dod_tc):
             print(f"    ★ DoD 에만 있다 — CI 가 안 도는 toolchain 이다: {t}")
 
-    # Never silent: conditional steps are excluded from axis A, so they get printed.
-    print(f"\n  [제외] 조건부 step {len(ci_cond)}건 — OS 축은 로컬 재현 불가(설계상 CI 가 유일한 그물)")
-    for run, cond in ci_cond:
-        print(f"    - if: {cond}   run: {run[:70]}")
+    # Never silent — three things the axis does not compare get printed anyway.
+    on_cond = [(cmd, cond) for _, cmd, cond in ci_checks if cond]
+    print(f"\n  [주의] 축 A 에 있으나 조건부인 step {len(on_cond)}건 — 일부 OS 셀에서만 돈다(로컬은 항상 친다)")
+    for cmd, cond in on_cond:
+        print(f"    - if: {cond}   run: {cmd[:70]}")
+
+    print(f"\n  [제외] 검사 도구를 안 부르는 run: step {len(ci_setup)}건 — 셋업(도구 이름으로 갈랐다)")
+    for tool, cmd, cond in ci_setup:
+        pre = f"if: {cond}   " if cond else ""
+        print(f"    - 도구={tool or '?'}   {pre}run: {cmd[:70]}")
+    if dod_setup:
+        print(f"  [제외] DoD 쪽 {len(dod_setup)}줄 — 같은 술어로 뺐다: {' · '.join(dod_setup)}")
 
     pinned = [f for f in TOOLCHAIN_PIN_FILES if (ROOT / f).exists()]
     if pinned:
