@@ -23,6 +23,14 @@
   (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
 
 ## 완료
+- [rustjava-parity-unknown-tool-step-red-decision] ★**「`CHECK_TOOLS`·`SETUP_TOOLS` 둘 «다» 밖인 도구를 부르는 CI step 은 FAIL」로 정하고 집행.**
+  채택 = `2026-09-08-parity-axis-a-tool-name#p0` · 선택지 **⒞ 조건부**(등록은 한 줄 — ⒜·⒝ 버린 이유는 §4 ⑺).
+  ★★**발권 소견의 전제가 반증됐다** — 「목록 밖 0」이 아니라 **1**(`git config …` 셋업) ⇒ ★무조건 red 면 **첫날부터 위양성**.
+  ★**지정 개악 `- run: npm test` 가 rc=0 → rc=1** · 반대 개악·우회 4종 red · ★**등록 경로 둘 다 통한다**(N4·N5) · ★**위양성 0**.
+  ★**선행 술어 무손상**: `git diff --numstat f133cd30` = **33 0**(추가만). ★새 워크플로·새 잡 **0** · `.rs` **0줄**.
+  ★직전 회차가 삼킨 `docs/upstream-sync-approach.md` **§5 제목 복구**(내가 낸 결함이다).
+  ★**게이트③ 착지 — PR #34 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 잃는다).
+  ★`ci-presence` **rc=0 CI_GREEN** · 핀 무이동 · 자식 PR **0건** · 배포 워크플로 **0개 ⇒ 배포 0**.
 - [rustjava-parity-lock-axis-a-classify-by-tool-name] ★**파리티 락 축 A 의 소속 판정을 「`if:` 가 없는가」 →
   「어느 도구를 부르는가」(`CHECK_TOOLS = cargo·python3`)로 교체.** 채택 = `2026-09-07-…-parser-axis-design#p0`.
   ★★**지정 개악(`cargo test --all` 을 `if:` 아래로 + DoD 줄 삭제)이 rc=0 → rc=1** · 반대 개악·우회 3종 red ·
