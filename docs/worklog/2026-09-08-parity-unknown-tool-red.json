@@ -27,7 +27,8 @@
   "issues": [
     "SETUP_TOOLS 등록은 «한 줄»이지만 «공짜»가 아니다 — `sh` 를 등록하면 그 겹 아래 도구가 다시 안 보인다. 등록 줄 자체가 리뷰 대상이다.",
     "블록 스칼라의 도구는 «첫 줄»로만 읽는다(선행 회차 그대로) — 둘째 줄부터의 도구는 이 규칙이 보지 않는다.",
-    "직전 회차(PR #33)가 `docs/upstream-sync-approach.md` 의 `## 5. 단계 분할` 제목을 Edit old_string 에 넣고 new_string 에서 되살리지 않아 삼켰다. 이 회차가 복구했다 — 다음 사람은 §5 가 사라진 판본을 인용하지 마라."
+    "직전 회차(PR #33)가 `docs/upstream-sync-approach.md` 의 `## 5. 단계 분할` 제목을 Edit old_string 에 넣고 new_string 에서 되살리지 않아 삼켰다. 이 회차가 복구했다 — 다음 사람은 §5 가 사라진 판본을 인용하지 마라.",
+    "게이트③ 집행(2026-09-09): PR #34 를 `--merge` 로 착지 — `merge_strategy: merge` 선언을 4-A 스니펫이 읽었다. upstream 동기 등재 repo 라 `--squash` 는 부모 2개를 1개로 접어 계보를 잃는다."
   ],
   "proposals": []
 }
