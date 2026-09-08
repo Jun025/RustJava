@@ -44,6 +44,14 @@ hatch. Measured on `4959d0f` before changing anything:
 The tool-name rule turns both around: the first case is red (CI has a cargo step the DoD
 does not), the second is green. Setup steps (`git config …`) are excluded by their tool
 name, not by their `if:` — and they are still PRINTED, never silently dropped.
+
+Classifying by tool name left one hole, closed on 2026-09-08: a tool nobody had listed
+(`npm`, `make`) simply got printed and the lock stayed green — so a whole new CI check
+could arrive with the DoD block never learning about it. Now a step whose tool is in
+NEITHER CHECK_TOOLS nor SETUP_TOOLS is a failure. Registering is one line; see the
+SETUP_TOOLS comment for which tuple and why. That escape hatch is the point, not a
+weakness: without it the rule would also red on the legitimate `git config` setup step,
+which was measured to be the only out-of-list tool on the day the rule was written.
 """
 
 import re
@@ -70,6 +78,19 @@ DEFAULT_TOOLCHAIN = "stable"
 #   would rebuild the same escape hatch one level up (delete every `python3` line and
 #   `python3` leaves the axis, taking the CI steps with it).
 CHECK_TOOLS = ("cargo", "python3")
+
+# ★ Tools that are legitimately NOT checks — setup a local DoD has no business reproducing.
+#   This tuple exists because "not a check tool" was measured to be TWO different things:
+#   on 2026-09-08 `rust.yml` had exactly one step outside CHECK_TOOLS and it was
+#   `git config --global core.autocrlf false` (windows line-ending setup). So a blanket
+#   "outside the list => fail" would have gone red on a correct workflow, on day one.
+#
+#   ★A step whose tool is in NEITHER tuple is a failure: it is a check nobody taught the
+#   DoD about, and until 2026-09-08 it merely got printed while the lock stayed green.
+#   ★Registering is one line — that is the whole escape hatch, and it is deliberate:
+#     · a real check the DoD must also run  -> add it to CHECK_TOOLS (and to the DoD block)
+#     · setup that stays out of the compare -> add it here, with why
+SETUP_TOOLS = ("git",)
 
 
 def norm(cmd):
@@ -182,6 +203,7 @@ def main():
     print("DOD-CI-PARITY  로컬 DoD ↔ .github/workflows/rust.yml")
     print(f"  정본: {DOD_FILE.name} §Definition of Done 의 첫 코드블록  ↔  {CI_FILE.relative_to(ROOT)}")
     print(f"  분류축: «어느 도구를 부르는가» = {list(CHECK_TOOLS)} — ★`if:` 는 보지 않는다")
+    print(f"  셋업 등록분: {list(SETUP_TOOLS)} — ★이 둘 «밖»의 도구를 부르는 step 은 FAIL 이다(등록은 한 줄)")
 
     print(f"\n  [축 A · 명령]  CI {len(ci_set)}개 · DoD {len(dod_cmds)}개")
     for c in sorted(ci_set | dod_cmds):
@@ -209,6 +231,17 @@ def main():
     print(f"\n  [주의] 축 A 에 있으나 조건부인 step {len(on_cond)}건 — 일부 OS 셀에서만 돈다(로컬은 항상 친다)")
     for cmd, cond in on_cond:
         print(f"    - if: {cond}   run: {cmd[:70]}")
+
+    unknown = [r for r in ci_setup if r[0] not in SETUP_TOOLS]
+    unknown_dod = [c for c in dod_setup if tool_of(c) not in SETUP_TOOLS]
+    if unknown or unknown_dod:
+        problems.append("미등록 도구")
+        for tool, cmd, _ in unknown:
+            print(f"\n    ★ CI 가 «모르는 도구»를 부른다 — 도구={tool or '?'}: {cmd[:70]}")
+        for cmd in unknown_dod:
+            print(f"\n    ★ DoD 가 «모르는 도구»를 부른다 — 도구={tool_of(cmd) or '?'}: {cmd[:70]}")
+        print("      ⇒ 한 줄로 등록하라: 진짜 검사면 CHECK_TOOLS 에(그리고 DoD 블록에도) ·")
+        print(f"         셋업이면 SETUP_TOOLS 에 «왜»와 함께. 현재 등록분: CHECK={list(CHECK_TOOLS)} SETUP={list(SETUP_TOOLS)}")
 
     print(f"\n  [제외] 검사 도구를 안 부르는 run: step {len(ci_setup)}건 — 셋업(도구 이름으로 갈랐다)")
     for tool, cmd, cond in ci_setup:

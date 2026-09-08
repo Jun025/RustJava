@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-08",
+  "taskId": "rustjava-parity-unknown-tool-step-red-decision",
+  "summary": "「CHECK_TOOLS 에도 SETUP_TOOLS 에도 없는 도구를 부르는 CI step 은 FAIL」로 정하고 집행했다(⒞ 조건부 — 등록은 한 줄). 지정 개악 `- run: npm test` 가 green → red.",
+  "adoptedProposals": [
+    "2026-09-08-parity-axis-a-tool-name#p0"
+  ],
+  "declinedProposals": [],
+  "changes": [
+    "scripts/check-dod-ci-parity.py — SETUP_TOOLS 신설 + 두 목록 «밖» 도구를 problems 에 올린다(CI 쪽·DoD 쪽 동일 술어). 실패 문면이 등록 경로 2갈래를 그 자리에 찍는다",
+    "scripts/check-dod-ci-parity.py — docstring 에 이 구멍과 그 해소를 기록 · 출력에 「셋업 등록분」 1줄 추가",
+    "docs/upstream-sync-approach.md §4 — ⑺ 결정+집행 절 신설(개악 대조 12종 표 + 버린 이유 둘 + 천장 3건)",
+    "docs/upstream-sync-approach.md — ★직전 회차가 «삼킨» `## 5. 단계 분할` 제목 복구(내가 낸 결함이다)",
+    "REPORT.md · STATE.md — 회차 기록"
+  ],
+  "verification": [
+    "측정 트리 = git clone -s 스크래치 + 40자 핀 f133cd3044b9003bbabb98f9164b8a7184a4ea9a. 레인 워킹트리 체크아웃 0.",
+    "F1⑶ 실측: rust.yml 의 run: step 7 · 축 A 6 · ★목록 밖 «1» = `git`(발권 소견의 「0이면」 전제가 반증됐다).",
+    "★지정 개악 N1(`- run: npm test`): green(rc=0) → ★red(rc=1). 원복 green.",
+    "N2 make red · N3 `if:` 아래 숨김 red · N6 DoD 쪽 거울 red · N7 `sh -c` 겹 red(도구=sh).",
+    "★등록 경로 실재: N4(SETUP_TOOLS 한 줄) green · N5(CHECK_TOOLS + DoD 줄) green·명령 7개.",
+    "반대 개악 M2(cargo step 삭제) red · 선행 회차 개악 M1b red ⇒ 기존 축 무손상.",
+    "위양성 0 — 무해 편집 3종(빈 줄·step name·순서) 전건 rc=0.",
+    "★선행 술어 무손상 증명: git diff --numstat f133cd30 -- scripts/check-dod-ci-parity.py = 33 0 (추가만 · 삭제 0).",
+    "DoD 7명령 전건 rc=0(.rs 변경 0)."
+  ],
+  "issues": [
+    "SETUP_TOOLS 등록은 «한 줄»이지만 «공짜»가 아니다 — `sh` 를 등록하면 그 겹 아래 도구가 다시 안 보인다. 등록 줄 자체가 리뷰 대상이다.",
+    "블록 스칼라의 도구는 «첫 줄»로만 읽는다(선행 회차 그대로) — 둘째 줄부터의 도구는 이 규칙이 보지 않는다.",
+    "직전 회차(PR #33)가 `docs/upstream-sync-approach.md` 의 `## 5. 단계 분할` 제목을 Edit old_string 에 넣고 new_string 에서 되살리지 않아 삼켰다. 이 회차가 복구했다 — 다음 사람은 §5 가 사라진 판본을 인용하지 마라."
+  ],
+  "proposals": []
+}
