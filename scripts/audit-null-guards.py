@@ -29,6 +29,20 @@ SINKS are the `Jvm` methods that take `&Box<dyn ClassInstance>`, `&mut Box<…>`
 AsClassInstance, all three of which are `.unwrap()` on an Option (see
 `jvm/src/class_instance.rs`). That unwrap is the host abort.
 
+Blind spots this scanner HAS HAD (2026-09-12, gate2 R2) — read before trusting a count:
+  * The first committed version demanded `(` immediately after the function name and only
+    accepted `pub `/`async ` prefixes. That hid 34 declarations repo-wide — every generic
+    fn (`fn sort_primitive<T, F>(`) and every `pub(crate)`/`pub(super)` fn — and undercounted
+    M by 2. Both are handled now (FN + the balanced `<…>` scan in split_fns).
+  * ★Why that mattered more than the 2: K survived only by luck. The two hidden functions
+    happened not to be registered in as_proto. Had ONE generic or `pub(crate)` entry point
+    been registered, K would have dropped SILENTLY and this audit would have answered
+    "closed" while the hole stayed open. A miscount here is not a rounding error; it is the
+    audit lying in the safe direction.
+  * Parameters are split on depth-0 commas and the type is anchored at the parameter's
+    start, so a `ClassInstanceRef` nested inside another parameter's type is not counted
+    as its own parameter.
+
 Known limits — K is a LOWER bound, and not a clean one:
   * intraprocedural only. A fn that derefs inside a helper is invisible (this is why
     `String::init_with_string` was missed: it derefs inside `Self::value_range`).
@@ -57,8 +71,21 @@ SINKS = (
     "object_notify", "object_wait_prepare", "put_field", "shallow_clone", "store_array",
 )
 
-FN = re.compile(r"(?:^|\n)\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z0-9_]+)\s*\(")
-PARAM = re.compile(r"([A-Za-z0-9_]+)\s*:\s*(?:&\s*)?(?:mut\s+)?ClassInstanceRef\s*<")
+# Matches `fn <name>` under any visibility/qualifier. Generics are NOT matched here:
+# `fn sort_primitive<T, F>(` needs a balanced `<…>` scan, which split_fns does. An earlier
+# version demanded `(` immediately after the name and only accepted `pub `/`async ` as
+# prefixes; that silently hid 34 declarations repo-wide (generic fns and `pub(crate)`/
+# `pub(super)`), undercounting M by 2. See "blind spots" in the module docstring.
+FN = re.compile(
+    r"(?:^|\n)\s*"
+    r"(?:pub\s*(?:\([^)]*\)\s*)?)?"      # pub, pub(crate), pub(super), pub(in …)
+    r"(?:default\s+)?(?:const\s+)?(?:async\s+)?(?:unsafe\s+)?"
+    r"(?:extern\s+\"[^\"]*\"\s+)?"
+    r"fn\s+([A-Za-z0-9_]+)"
+)
+# Anchored at the START of a parameter, so a `ClassInstanceRef` nested inside another
+# parameter's type (a closure bound, say) is not miscounted as its own parameter.
+PARAM = re.compile(r"^(?:mut\s+)?([A-Za-z0-9_]+)\s*:\s*(?:&\s*)?(?:mut\s+)?ClassInstanceRef\s*<")
 PROTO = re.compile(r'JavaMethodProto::new\(\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*Self::([A-Za-z0-9_]+)')
 SINK_CALL = r"\.\s*(?:" + "|".join(SINKS) + r")\s*\(\s*&\s*(?:mut\s+)?\**\s*"
 
@@ -79,7 +106,19 @@ def _balanced(text, start, open_ch, close_ch):
 def split_fns(text):
     """Yield (name, params_src, body_src). All indices address `text` itself."""
     for m in FN.finditer(text):
-        paren = m.end() - 1
+        i = m.end()
+        while i < len(text) and text[i].isspace():
+            i += 1
+        if i < len(text) and text[i] == "<":          # generic parameter list
+            i = _balanced(text, i, "<", ">")
+            if i < 0:
+                continue
+            i += 1
+            while i < len(text) and text[i].isspace():
+                i += 1
+        if i >= len(text) or text[i] != "(":
+            continue
+        paren = i
         close = _balanced(text, paren, "(", ")")
         if close < 0:
             continue
@@ -92,13 +131,31 @@ def split_fns(text):
         yield m.group(1), text[paren + 1:close], text[brace:end]
 
 
+def split_params(params):
+    """Split a parameter list on depth-0 commas, ignoring nested <>, (), []."""
+    out, depth, start = [], 0, 0
+    for i, ch in enumerate(params):
+        if ch in "<([":
+            depth += 1
+        elif ch in ">)]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            out.append(params[start:i])
+            start = i + 1
+    out.append(params[start:])
+    return out
+
+
 def audit(root):
     rows, n = [], 0
     for path in sorted(pathlib.Path(root).rglob("*.rs")):
         text = path.read_text(encoding="utf-8", errors="replace")
         protos = set(PROTO.findall(text))
         for name, params, body in split_fns(text):
-            for pm in PARAM.finditer(params):
+            for raw in split_params(params):
+                pm = PARAM.match(raw.strip())
+                if not pm:
+                    continue
                 p = pm.group(1)
                 if p == "this" or p.startswith("_"):
                     continue

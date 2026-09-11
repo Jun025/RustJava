@@ -8,17 +8,17 @@ DataOutputStream.writeChars(String):
 caught NPE
 DataOutputStream.writeUTF(String):
 caught NPE
-InputStreamReader.read(char[]):
+Reader.read(char[]) via InputStreamReader:
 caught NPE
-OutputStreamWriter.write(char[]):
+Writer.write(char[]) via OutputStreamWriter:
 caught NPE
 Writer.write(String):
 caught NPE
 Writer.write(String,int,int):
 caught NPE
-Reader.read(char[]):
+InputStreamReader.read(char[],int,int):
 caught NPE
-Writer.write(char[]):
+OutputStreamWriter.write(char[],int,int):
 caught NPE
 String.getChars(int,int,char[],int):
 caught NPE

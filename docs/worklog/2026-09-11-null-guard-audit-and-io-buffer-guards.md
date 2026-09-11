@@ -5,26 +5,38 @@
 선행 회차는 **손으로 열거한** 9곳을 닫았고, ★그 열거 자신이 `arraycopy` 의 `dest` 를 빠뜨렸다.
 그래서 이번엔 **술어로 셌다**.
 
-## 감사 — 수와 술어 (측정 2026-09-11 · 트리 `origin/main` `6da7d66f`)
+## 감사 — 수와 술어 (★**재측 2026-09-12** · 트리별 병기)
 
 ★★**[게이트② F1 정정] 수는 «트리와 함께» 적는다 — 초판이 두 트리를 섞었다.**
 정본 = **`scripts/audit-null-guards.py`**(이 회차가 커밋했다). 재현: `python3 scripts/audit-null-guards.py [<runtime-src>]`.
 
 | 트리 | N | M | K |
 |---|---|---|---|
-| **base `6da7d66f`**(= 이 PR 의 `merge-base`) | 1,163 | **50** | ★**38** |
-| **head `068fdb95`** | 1,163 | **32** | **20** |
-| **Δ** | 0 | **18** | ★**18** = 이 회차의 가드 수(자기정합) |
+| `eaad8e9c`(두 회차 전 · ★초판이 잘못 인용한 트리) | 1,175 | 60 | 46 |
+| **base `6da7d66f`**(= 이 PR 의 `merge-base`) | **1,175** | **52** | ★**38** |
+| **head** | **1,175** | **34** | **20** |
+| **Δ**(base→head) | 0 | **18** | ★**18** = 이 회차의 가드 수(자기정합) |
+
+★★**[게이트² R2] 이 표의 M 은 «한 번 더» 틀렸었다 — 커밋한 스크립트가 2 낮게 셌다**(50/32 로 신고).
+근인은 `fn` 정규식 한 줄이다: 이름 뒤 `(` 를 **즉시** 요구하고 접두를 `pub `/`async ` 로만 받아
+★**제네릭 fn(`fn sort_primitive<T, F>(`)과 `pub(crate)`/`pub(super)` 선언 34개가 통째로 안 보였다**
+(놓친 2건 = `java/util/arrays.rs sort_primitive(array)` · `java/util/timer_task_queue.rs add(task)`).
+★고친 뒤 **세 트리 × 세 독립 구현(커밋본·검수 재구현·전 검수)이 전건 일치**한다.
+★★**그리고 K 가 흔들리지 않은 것은 «설계가 아니라 운»이다** — 그 2건이 **우연히** `as_proto` 미등재였을 뿐이고,
+제네릭·`pub(crate)` 진입점이 **하나라도** 등재됐으면 ★**K 가 조용히 낮아져 이 감사가 「닫혔다」고 답했을 것**이다.
+⇒ 그 «눈먼 구간»을 스크립트 docstring 에 박았다(무엇을 못 보는지).
 
 술어: **N** = `rustjava-runtime/src/**` 의 fn 파라미터 중 타입이 `ClassInstanceRef<…>`(★`this`·`_` 접두 제외) ·
 **M** = N 중 그 파라미터가 **deref 강제 sink** 에 `&p`/`&mut p`(또는 `p.as_class_instance()`)로 도달하고 ★**그 «앞»에 `p.is_null()` 가 없는** 것 ·
 **K** = M 중 그 fn 이 같은 파일 `JavaMethodProto::new(… Self::fn …)` 에 등재 = **게스트가 부를 수 있다**.
 
-★★**초판의 「M 58 · K 46」은 «다른 트리»의 수다** — **`eaad8e9c`**(선행 9곳 회차 «이전» main)에서 재고 라벨만 `6da7d66f` 로 달았다.
+★★**초판의 「M 58 · K 46」은 «다른 트리»의 수다** — **`eaad8e9c`**(선행 9곳 회차 «이전» main)에서 재고 라벨만 `6da7d66f` 로 달았다
+(★그 트리의 «옳은» 수는 **60/46** 이다 — 58 은 위 R2 의 undercount 가 겹친 값이다).
 ⇒ ★**`46 − 18 = 28 ≠ 20`** 이라는 산술 모순이 그 혼입의 «증상»이었고, 검수자가 술어를 재구현해 그것으로 잡았다.
 ★**이 저장소가 반복해 규탄한 「base 를 병기하지 않으면 수가 섞인다」의 교과서적 재현이다.**
-※검수 재구현치는 N **1,130** · M **52/34**(K 는 **38/20 으로 정확 일치**) — ★**판단을 이끄는 K 가 두 구현에서 같다.**
-N·M 의 차는 구현 세부(파라미터 계수 방식)이고, ★**이제 스크립트가 커밋돼 있으므로 «어느 쪽이 맞나»는 돌려서 답한다.**
+★★**[철회] 전 회차가 「N·M 의 차는 구현 세부이고 내 쪽이 정본」이라는 뜻으로 적은 문안을 «철회»한다 — 틀린 것은 내 쪽이었다.**
+검수 재구현(N 1,175 · M 60/52/34)이 옳았고, 커밋본을 고치니 **그 값에 정확히 수렴**했다.
+※그보다 앞선 검수의 N **1,130** 은 또 다른 구현이고, M/K 는 **52·34 / 38·20 으로 이미 일치**했다.
 
 **deref 강제 sink = 17개**(`jvm/src/jvm.rs` 의 시그니처로 확정 — `&Box<dyn ClassInstance>` · `&mut Box<…>` · `impl AsClassInstance`):
 `array_element_type` `array_length` `array_raw_buffer` `array_raw_buffer_mut` `get_field` `interrupt_java_thread`
@@ -33,7 +45,7 @@ N·M 의 차는 구현 세부(파라미터 계수 방식)이고, ★**이제 스
 
 ★**왜 sink 를 한정했는가**: 초판은 「`&p` 가 나오면 deref」로 셌는데 그것은 **과대계상**이다 —
 `Self::value_range(jvm, &value)` 처럼 **`&ClassInstanceRef<T>` 를 받는** 헬퍼는 deref 하지 «않는다».
-한정 전 220 → 한정 후 152 → (계측기 버그 수정 후) **58**.
+한정 전 220 → 한정 후 152 → (off-by-one 수정 후) 58 → ★(**R2 의 `fn` 눈먼 구간까지 수정 후**) **60**. ※전부 `eaad8e9c` 기준.
 
 ## ★계측기를 «먼저» 검증했다 — 그리고 초판이 틀렸다
 
@@ -65,11 +77,17 @@ N·M 의 차는 구현 세부(파라미터 계수 방식)이고, ★**이제 스
 ## ★남긴 20건 — 「가드를 넣어라」가 «아니다»
 
 ```
-java/io      read_utf_from_input(input) · init(file)×2 · init_with_file(file)
-java/net     init(url) · init_with_context_spec_handler(handler) · set_url(url) · open_connection(url)
-java/util    init(list)×4 · on_access(map) · init(map) · init(pattern) · matches(pattern) · split_with_limit(input)
-java/util/zip init_with_zip_entry(zip_entry) · get_input_stream(entry) · init(file)
+java/io          4   read_utf_from_input(input) · init(file) · init_with_append(file) · init_with_file(file)
+java/net         3   init(url) · init_with_context_spec_handler(handler) · set_url(url)
+java/util        6   init(list)×4 [abstract_list · array_list_itr · linked_list_itr · vector_itr]
+                     · on_access(map) · init(map)
+java/util/regex  3   init(pattern) · matches(pattern) · split_with_limit(input)
+java/util/zip    3   init_with_zip_entry(zip_entry) · get_input_stream(entry) · init(file)
+org/rustjava/net 1   open_connection(url)
+                ──   합계 20
 ```
+★★**[게이트² R3 정정] 전 회차의 분해는 오기였다** — `open_connection` 을 `java/net` 으로 세고 `java/util/regex` 3건을 `java/util` 에 합쳐
+「4·8·3·1」로 적었다. 위가 도구 출력 그대로다.
 ★★**일괄 가드는 «틀린다»** — `URL(URL context, String spec, URLStreamHandler handler)` 는 JDK 규격상
 **`handler == null` 이 합법**이다(기본 핸들러를 쓰라는 뜻). 실제로 이 repo 의 구현도 그 파라미터를 **섀도잉해 무시**한다
 (⇒ 그 1건은 이 계측의 **오탐**이기도 하다 — 이름 기반 절차내 스캔은 섀도잉을 못 본다).
@@ -79,27 +97,34 @@ java/util/zip init_with_zip_entry(zip_entry) · get_input_stream(entry) · init(
 
 - **정상 → green**: `cargo test --test test_class` **ok** · DoD 7종 rc=0 · `cargo test --all` **554/0/1**
   (★계수 불변이 맞다 — `test_class` 는 `test-data/` 를 **한 테스트 함수**가 순회한다).
-- **개악 → red**: ⑴18곳 **전건** 되돌림 → **FAILED** `class_instance.rs:108`(`Deref`)
-  ⑵★**단일 가드**(`String.getChars` 의 `dst`)만 제거 → **FAILED** `:114`(`DerefMut`) ⇒ 픽스처가 **케이스별로** 문다.
+- **개악 → red**: ★★**커버리지를 «추론»하지 않고 «측정»했다 — 18곳을 «하나씩» 빼고 각각 빌드·실행했다**(2회전 = 36빌드).
+  ⇒ **12곳 red(덮인다) · 6곳 green(안 덮인다)**. 그 밖에 `getChars` **가드 위치** 원복 개악도 red.
+  ★**이 측정이 R1 을 잡는 «지문»이다** — 이미 덮인 가드를 또 덮으면 red 가 «안» 나므로, 중복 케이스가 즉시 드러난다.
 
-## 픽스처 커버리지 — ★**13케이스가 가드 12/18 을 문다** (F2 정정 + 권고 채택)
+## 픽스처 커버리지 — ★**측정값 12/18 · 미커버 6** (게이트² R1 정정)
 
-★★**[게이트② F2] 초판의 「18 중 12」는 «그 시점엔 거짓»이었다 — 실측 10.**
-근인: `new InputStreamReader(...).read(char[])` · `new OutputStreamWriter(...).write(char[])` 는
-그 **서브클래스가 오버라이드**하므로 `Reader`/`Writer` 의 **base 구현에 닿지 못한다** ⇒ 그 2곳은 «덮은 줄 알았지만» 안 덮였다.
+★★**[R1] 전 회차의 근인 서술이 «뒤집혀» 있었다 — 그 문장이 다음 사람을 오도한다.**
+종전 문안: 「`InputStreamReader` 가 **오버라이드하므로** `Reader` base 에 닿지 못한다」 ⇒ ★**정반대다.**
+**등재 서술자 실측**: `InputStreamReader` 는 `read` 를 **`([CII)I` 로만** 등재하고 `Reader` 가 **`([C)I`** 를 등재한다
+(`OutputStreamWriter` `write([CII)V` ↔ `Writer` `write([C)V` 도 같은 형상).
+⇒ ★**오버라이드가 «없어서» 1인자 호출이 `Reader::read([C)` 로 해소된다.**
 
-⇒ ★**검수 권고를 채택해 2케이스를 «추가»했다**: `Reader`/`Writer` 를 상속하되 **추상 `(char[],int,int)` 만** 구현하는
-**중첩 클래스**(`NullBufferGuards$BareReader`·`$BareWriter` — ★하버스가 `$` 든 이름을 건너뛰므로 별 `.txt` 가 필요 없다)로 base 구현에 도달시켰다.
-★**도달을 «실행»으로 증명했다** — `reader.rs read(buf)` 만, `writer.rs write_chars(chars)` 만 각각 제거하면 **각각 red** 다.
+⇒ 그래서 전 회차가 더한 **중첩 클래스 2케이스는 «이미 덮인 가드»를 또 덮었고** 커버리지는 **10/18 그대로**였다(검수 지적이 옳다).
+★**그 2케이스와 `$BareReader`/`$BareWriter` 를 지웠다.**
+★**대신 «그 가드가 실제로 사는 서술자»를 겨눴다** — `read(char[],int,int)` · `write(char[],int,int)` **3인자 호출**.
+★★**판정 축은 «클래스 이름»이 아니라 «서술자 + 등재 위치»다**(검수가 준 축 그대로).
 
-**덮는 12** = `BufferedOutputStream.write` · `DataInputStream.readFully` · `DataOutputStream`×3 ·
-`InputStreamReader.read` · `OutputStreamWriter.write` · `Writer.write(String)` · `Writer.write(String,int,int)` ·
-★`Reader.read(char[])` · ★`Writer.write(char[])` · `String.getChars`
-(+13번째 케이스는 `getChars` 의 **예외 선후 잠금** — 같은 가드의 «위치»를 문다).
+★★**그리고 이번엔 «추론»하지 않고 «쟀다» — 가드 18곳을 하나씩 빼고 각각 빌드·실행**:
 
-★**덮지 «못한» 6곳** = `FileInputStream.read` · `FileOutputStream.write` · `RandomAccessFile` 4종 —
-**실파일 핸들이 있어야 인스턴스가 생기고**, 테스트가 작업 디렉터리에 파일을 만드는 것을 피했다.
-⇒ ★**그 6곳은 «가드는 들어갔으나 픽스처가 잠그지 않는다»** — 다음 회차가 임시 파일 픽스처를 세우면 닫힌다(`proposals[1]`).
+| | 가드 | 판정 |
+|---|---|---|
+| **덮는다(12)** | `buffered_output_stream.write_bytes` · `data_input_stream.read_fully` · `data_output_stream`×3 · ★`input_stream_reader.read` · ★`output_stream_writer.write` · `reader.read` · `writer.write_chars` · `writer.write_string` · `writer.write_string_offset` · `string.get_chars` | 단일 제거 → **red** |
+| ★**미커버(6)** | `file_input_stream.read_array` · `file_output_stream.write_bytes_offset` · `random_access_file`×4 | 단일 제거 → **green** |
+
+★**미커버 6 은 전부 «실파일 핸들이 있어야 인스턴스가 생기는» 것**이고, 테스트가 작업 디렉터리에 파일을 만드는 것을 피했다.
+⇒ ★**「가드는 들어갔으나 픽스처가 잠그지 않는다」** — `proposals[1]` 이 진다.
+※★전 회차가 「reader/writer 단일 개악이 red 였으니 새 케이스가 문다」고 적은 것은 **논증이 안 된다** —
+그 red 는 **기존 `InputStreamReader` 케이스만으로도** 났다. ★**한 가드를 두 케이스가 덮으면 단일 개악은 그 둘을 구별하지 못한다.**
 
 ## ★F4 — `String.getChars` 가드의 «위치»를 고쳤다 (선택했다)
 
