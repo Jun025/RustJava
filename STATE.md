@@ -10,12 +10,30 @@
   `merge-base` = **`bd42427`** · behind **1**(`2ce4717` · dependabot encoding_rs 0.8.35→0.8.40 · 임계 20 미만 ⇒ 동기 회차 불요).
   ★**근인 = 이 파일 `## 다음` 이 「다음은 S5」인 채 8일 낡아** LANE_IDLE 처방(「STATE.md 의 «다음»을 읽어라」)이 그것을 읽었다 —
   아래 ③ 절이 경고한 「이미 끝난 일을 가리키면」 형태의 ★**두 번째 재현**이다. ⇒ 이 회차가 `## 다음`·`진행중` 을 오늘 값으로 닫았다(코드 0줄 · 문서 전용).
+  ★-fix 회차(게이트② F1): 초판 PR #35 가 «2일 낡은 로컬 `main`»에서 잘려 `CONFLICTING` — ★**이 회차가 고치는 병(낡은 것을 읽는다)을 자신이 밟았다.**
+  `origin/main` 머지로 재해소(#33·#34 항목 보존 · force-push 0).
 - [rustjava-upstream-sync-squash-defeats-convergence] ★게이트③ 착지 — **PR #18 `--merge`**(2026-08-27T08:47:35Z).
   `-s ours` 계보 복원 + 「스쿼시가 족보를 접는다」 확정. 상세 = `docs/upstream-sync-approach.md`. ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
 - [rustjava-upstream-sync-s4] ★게이트③ 착지 — **PR #17 MERGED**(2026-08-27T01:28:44Z · 스쿼시 — 그 계보 절단을 #18 이 복원).
   컷 `3296139` 머지 · 충돌 2 해소 · `test_timer` 여백 500→2000ms(«회귀» 아님 단정 불변 · 사료는 아래 ① 절). ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
 - [rustjava-coverage-workflow-codecov-token-red] ★게이트③ 착지 — **PR #12 MERGED**(2026-08-17T05:34:32Z).
   `fail_ci_if_error: false` 로 coverage 상시 red 해소. ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
+- [rustjava-parity-unknown-tool-step-red-decision] ★**「`CHECK_TOOLS`·`SETUP_TOOLS` 둘 «다» 밖인 도구를 부르는 CI step 은 FAIL」로 정하고 집행.**
+  채택 = `2026-09-08-parity-axis-a-tool-name#p0` · 선택지 **⒞ 조건부**(등록은 한 줄 — ⒜·⒝ 버린 이유는 §4 ⑺).
+  ★★**발권 소견의 전제가 반증됐다** — 「목록 밖 0」이 아니라 **1**(`git config …` 셋업) ⇒ ★무조건 red 면 **첫날부터 위양성**.
+  ★**지정 개악 `- run: npm test` 가 rc=0 → rc=1** · 반대 개악·우회 4종 red · ★**등록 경로 둘 다 통한다**(N4·N5) · ★**위양성 0**.
+  ★**선행 술어 무손상**: `git diff --numstat f133cd30` = **33 0**(추가만). ★새 워크플로·새 잡 **0** · `.rs` **0줄**.
+  ★직전 회차가 삼킨 `docs/upstream-sync-approach.md` **§5 제목 복구**(내가 낸 결함이다).
+  ★**게이트③ 착지 — PR #34 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 잃는다).
+  ★`ci-presence` **rc=0 CI_GREEN** · 핀 무이동 · 자식 PR **0건** · 배포 워크플로 **0개 ⇒ 배포 0**.
+- [rustjava-parity-lock-axis-a-classify-by-tool-name] ★**파리티 락 축 A 의 소속 판정을 「`if:` 가 없는가」 →
+  「어느 도구를 부르는가」(`CHECK_TOOLS = cargo·python3`)로 교체.** 채택 = `2026-09-07-…-parser-axis-design#p0`.
+  ★★**지정 개악(`cargo test --all` 을 `if:` 아래로 + DoD 줄 삭제)이 rc=0 → rc=1** · 반대 개악·우회 3종 red ·
+  ★**위양성 0**(무해 편집 4종 green). ★**축 A 원소 6 → 6 불변** — 순증이 아니라 «같은 6개를 다른 술어로» 잡는다.
+  ★**「cargo 하나」로 좁히지 않은 이유는 수다**: 6 중 cargo 4 · python3 2 ⇒ 좁히면 **커버리지 33% 손실**.
+  ★설계 문서 문면 1건 정정 — 「`if:` 를 붙이면 green」은 짧았다. **붙이기만 하면 red 이고, DoD 줄까지 지워야 green** 이다.
+  ★**게이트③ 착지 — PR #33 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 잃는다).
+  ★`ci-presence` **rc=0 CI_GREEN** · 핀 무이동 · 자식 PR **0건** · 배포 워크플로 **0개 ⇒ 배포 0**.
 - [rustjava-parity-lock-per-repo-parser-axis-design] ★**파리티 락의 repo 별 «파서 축» 설계 — 결론: 공용 파서를 만들지 않고 «공용 계약»만 남긴다.**
   채택 제안 `2026-09-04-parity-sibling-repo-survey#p2`. ★**형제 repo 파일 편집 0 · 검사기 본체 변경 0 · 발권 0** · 측정 트리 = 각 repo `origin/main`.
   ★★**전제가 무너졌다** — `wie` 가 제안 «다음날»(2026-09-05) 스스로 포팅했고(`wie_cli/tests/dod_ci_parity.rs` +

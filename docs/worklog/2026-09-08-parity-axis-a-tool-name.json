@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-08",
+  "taskId": "rustjava-parity-lock-axis-a-classify-by-tool-name",
+  "summary": "파리티 락 축 A 의 소속 판정을 «`if:` 가 없는가» → «어느 도구를 부르는가»(cargo/python3)로 교체했다. 지정 개악(`cargo test --all` 을 `if:` 아래로 옮기고 DoD 줄을 지우는 조합)이 green → red 로 바뀌었다.",
+  "adoptedProposals": [
+    "2026-09-07-parity-per-repo-parser-axis-design#p0"
+  ],
+  "declinedProposals": [],
+  "changes": [
+    "scripts/check-dod-ci-parity.py — CHECK_TOOLS/tool_of() 신설, parse_ci 가 (tool, 명령, if조건) 을 돌려주고 분류는 호출부가 한다. CI·DoD 양쪽에 같은 술어 적용",
+    "scripts/check-dod-ci-parity.py — 출력에 분류축 1줄 + 「축 A 에 있으나 조건부인 step」 절 추가(제외 절은 «도구 이름»을 찍는다)",
+    "docs/upstream-sync-approach.md §4 — ⒜ 행의 「green 이 된다」 실측 정정 + ⑹ 집행 절(개악 대조 10종 표)",
+    "REPORT.md · STATE.md — 회차 기록"
+  ],
+  "verification": [
+    "측정 트리 = git clone -s 스크래치 + 40자 핀 4959d0f3678c2e6506c82cc47bf37819270c31e7. 레인 워킹트리 체크아웃 0.",
+    "F1 두 수: 옛 술어(`if:` 없음) 계수 6 ↔ cargo 를 부르는 step 계수 4 — 차 2 = python3 락 2건(그래서 CHECK_TOOLS 가 둘이다).",
+    "★지정 개악 M1b(`if:` + DoD 줄 삭제): 옛 술어 rc=0(green) → 새 술어 rc=1(red).",
+    "반대 개악 M2(cargo step 삭제) red · M3(블록 스칼라 우회) red · M4(python3 락 우회) 옛 green → 새 red.",
+    "위양성 0 — 무해 편집 4종(빈 줄·step 순서·step name·DoD 공백) 전건 rc=0.",
+    "DoD 5개 cargo 명령 전건 rc=0(.rs 변경 0) · python3 락 2건 rc=0."
+  ],
+  "issues": [
+    "CHECK_TOOLS 는 손으로 적은 목록이라 CI 가 npm/make 를 들이면 그 step 은 축 밖이다 — 제외 절이 도구 이름을 찍어 침묵은 막지만 red 는 아니다(새 게이트라 범위 밖).",
+    "M1a(`if:` 만 붙이고 DoD 유지)는 옛 술어에서 red 였고 이제 green 이다 — 위양성 회수이지 커버리지 손실이 아니다.",
+    "게이트③ 집행(2026-09-08): PR #33 을 `--merge` 로 착지 — `merge_strategy: merge` 선언을 4-A 스니펫이 읽었다. upstream 동기 등재 repo 라 `--squash` 는 부모 2개를 1개로 접어 계보를 잃는다(#11·#13·#16·#17 4회 실증)."
+  ],
+  "proposals": [
+    {
+      "title": "모르는 도구를 부르는 CI step 을 «찍기»에서 «red»로 올릴지 결정하라",
+      "plainSummary": "CI 에 cargo·python3 가 아닌 새 검사(예: npm, make)가 들어오면 지금은 목록에 이름만 찍히고 초록불이 그대로 뜬다. 그걸 빨간불로 올릴지 정한다.",
+      "userBenefit": "새 CI 검사가 로컬 DoD 에 반영되지 않은 채로 지나가는 일이 없어진다 — 이 락이 애초에 막으려던 그 형태다.",
+      "why": "이번 회차가 `if:` 구멍을 닫으면서 «도구 화이트리스트»라는 다음 구멍을 열었다. 오늘 그 형상은 0건이라 무증상이지만, 그것은 `if:` 구멍이 2026-09-07 까지 무증상이던 것과 정확히 같은 상태다.",
+      "tradeoff": "CI 를 막는 게이트를 새로 만드는 일이라 «결함 수정»이 아니라 «결정»이다. 올리면 새 도구를 들이는 회차가 DoD 블록을 같이 고쳐야 통과한다(그것이 목적이자 마찰이다). 안 올리면 제외 절의 출력에 의존한다 — 사람이 읽어야 효력이 있다.",
+      "effort": "S. 개악 대조 필수 — `- run: npm test` 한 줄을 rust.yml 에 넣어 red 가 나야 한다(지금은 green).",
+      "target": "scripts/check-dod-ci-parity.py"
+    }
+  ]
+}
