@@ -10,6 +10,11 @@
 - 사용자 영향: 없음(코드 0줄). 다음 발권자가 같은 중복을 다시 밟지 않는다.
 - 후속 추천: `rustjava-null-guard-string-init-and-arraycopy`(P2·S) 발권 — 「①의 뒤」 선행 조건이 충족됐고
   레인이 굶고 있다(케이스 8건·완료 정의는 STATE.md ③-2 에 이미 확정돼 있다).
+- ★**[-fix · 게이트② F1·F2] 이 회차가 «자기가 고치는 병»을 밟았다** — 초판 PR #35 를 **2일 낡은 로컬 `main`**
+  (`4959d0f3`)에서 잘라 `CONFLICTING` 이 됐고, done 이 `origin/main = 2cb03af7` 을 정확히 적고도 그 어긋남을
+  화해시키지 않았다(`mergeable` 축 미조회 = **몰랐다**). 처방은 리베이스가 아니라 **`origin/main` 머지**(등재 repo · 계보 보존):
+  #33·#34 의 STATE 16행·REPORT 39행을 **바이트 동일로 보존** 확인 후 해소. F2 = DoD 증빙이 «옛 파서»(조건부 기준)에서
+  나왔던 것 — 머지로 현행 판본(도구 이름 기준)이 들어와 **재실행 rc=0**, 분류축 줄이 실제로 바뀌었다.
 ## [2026-09-08] 「모르는 도구」를 부르는 CI step 은 red 다 — ★등록 한 줄로 지나간다 (rustjava-parity-unknown-tool-step-red-decision)
 - 무엇을: 채택 제안 `2026-09-08-parity-axis-a-tool-name#p0` 의 **결정 + 집행** 회차다. 세 선택지 중 ★**⒞ 조건부**를 골랐다 —
   `CHECK_TOOLS` 에도 `SETUP_TOOLS` 에도 «없는» 도구를 부르는 `run:` step 은 **FAIL**, 등록은 **한 줄**.
