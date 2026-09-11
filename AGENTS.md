@@ -18,6 +18,8 @@
 ## Git Workflow
 - **Never commit directly to `main`**: always work on a short-lived branch.
 - **Clean up merged branches (MANDATORY)**: once a branch's work is complete and merged into `main`, delete it — remote and local — and sync local `main`. Prefer `gh pr merge --delete-branch` (deletes the remote), then locally `git branch -D <branch>` and `git fetch --prune`. Use `-D` (force) because squash-merged branches aren't recognized as merged by `-d`. Leave no stale merged branches behind — only `main` and in-progress work remain. Never re-merge or re-PR an already-merged branch.
+- **Cut the branch from `origin/main`, never from local `main`** (2026-09-11): `git fetch origin && git checkout -b <branch> origin/main`. This does *not* replace the "sync local `main`" duty above — it makes forgetting it harmless, which is the point. `git fetch origin` refreshes `origin/main` but leaves local `main` where it was, so branching off `main` silently inherits however stale it is. Basis: PR #35 was cut from a local `main` two days behind and opened `CONFLICTING`.
+- **Query `mergeable` right after opening a PR** (2026-09-11): `gh pr view <N> -R Jun025/RustJava --json mergeable`, and re-query after a few seconds — the first call often returns `UNKNOWN` because GitHub computes it lazily. Record the value in the round's reply. Basis: same incident — the conflict went unreported for a whole round because nothing in the round ever measured this axis.
 
 ## Project Structure
 - `jvm/` - Core JVM implementation (`#![no_std]`)
