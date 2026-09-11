@@ -1,0 +1,12 @@
+DataInputStream.readUTF(DataInput):
+caught NPE
+new FileInputStream(File):
+caught NPE
+new FileOutputStream(File,boolean):
+caught NPE
+new RandomAccessFile(File,String):
+caught NPE
+new ZipEntry(ZipEntry):
+caught NPE
+new ZipFile(File):
+caught NPE

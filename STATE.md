@@ -4,6 +4,21 @@
 (없음 — 2026-09-11 실측: 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 PR(#35) 착지 시점 기준**이다 — 회신 시점에는 #35 자신이 열려 있다)
 
 ## 완료
+- [rustjava-null-guard-spec-triage-for-constructor-and-collection-params] ★★**남은 20곳을 «JDK 규격»으로 삼분하고 «미충족»만 닫았다 — 산출물은 가드가 아니라 «분류»다.**
+  채택 제안 `2026-09-11-null-guard-audit-and-io-buffer-guards#p0`. ★**전수표 정본 = `docs/worklog/2026-09-12-null-guard-spec-triage.md`**(여기서 다시 쓰지 않는다).
+  ★**삼분**: ⒜NPE 의무 **11** · ⒝null 합법 **1** · ⒞규격 적합 게스트 코드로는 도달 불가 **8**(= 내가 다시 센 **20**).
+  ★★**⒜ 11 중 «가드는 9» 다** — `Pattern.matches`·`split` 은 규격상 NPE 의무이나 **런타임이 이미 NPE 를 던진다**(감사의 **섀도잉 오탐**이었다)
+  ⇒ 가드를 넣으면 **죽은 코드**다. ★**「⒜ = 가드」가 아니라 「⒜ 이면서 «미충족»일 때만」**이다.
+  ★**규격 근거는 «관측»이다** — `AGENTS.md` 가 OpenJDK 소스 참조를 금지하므로(`src.zip` 로컬 실재하나 **열지 않았다**)
+  허용 축인 **observable behavior** 로 **참조 JVM(OpenJDK 26.0.1)** 에 같은 호출을 넣어 쟀다.
+  ★**대가를 적는다**: 측정 판본 **26** ↔ 타깃 **8** — null 계약 불변이라는 **가정**이고, 반증되면 ⒜/⒝ 가 흔들린다.
+  ★★**⒞ 는 «도달 불가»가 아니라 «규격 적합 게스트 코드로는 도달 불가»다** — 이 런타임은 **접근 플래그도 `java.*` 금지도 강제하지 않는다**(실측 0건)
+  ⇒ 손으로 만든 바이트코드는 package-private 멤버를 부를 수 있다. ★그 한정을 숨기지 않았다.
+  ★**착수 «전» 런타임 실측이 분류를 갈랐다**(사이트별 개별 픽스처 8회): 6곳 **호스트 abort** ↔ `Pattern` 2곳 **이미 NPE**.
+  ★가드별 커버리지도 **측정**(9곳 단일 개악): **6 red · 3 green** — 미커버 3은 「테스트 미작성」이 아니라 ★**픽스처 도달 불가**
+  (`JarURLConnection`·`URLStreamHandler` 는 `ABSTRACT` · `ZipFile.getInputStream` 은 **`ZipOutputStream` 부재**로 zip 을 못 만든다).
+  ★감사 `K` **20 → 11** — ★**그 11 을 «미해결»로 읽지 마라**(⒝1 + ⒞8 + 오탐2 ⇒ **규격상 닫을 것 0**).
+  ★`cargo test --all` **554 / 0 / 1**(전체 실행) · DoD 7종 rc=0 · ⒝⒞ **무접촉**(diff 에 그 파일 0).
 - [rustjava-null-guard-audit-remaining-runtime-entrypoints] ★★**런타임 전체를 «세고»(감사) 그중 «데이터 전송 버퍼» 18곳에 가드를 넣었다.**
   채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`. 픽스처 `test-data/NullBufferGuards` **13케이스**(가드 **12/18** 커버 — ★**18곳 전건 단일 가드 개악으로 «측정»**).
   ★★**감사 표 — 재측 2026-09-12 · ★트리 병기**(정본 = `scripts/audit-null-guards.py`):
