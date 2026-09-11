@@ -1,0 +1,18 @@
+arraycopy src null:
+caught NPE
+arraycopy dest null:
+caught NPE
+String(byte[]):
+caught NPE
+String(char[]):
+caught NPE
+String(byte[],int,int):
+caught NPE
+String(byte[],String):
+caught NPE
+String(byte[],int,int,String):
+caught NPE
+String(String):
+caught NPE
+String(StringBuffer):
+caught NPE
