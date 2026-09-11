@@ -609,6 +609,11 @@ impl String {
                 .await);
         }
 
+        // the range checks run first, matching JDK getChars: a bad range wins over a null dst
+        if dst.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "dst is null").await);
+        }
+
         let chars: Vec<JavaChar> = jvm
             .load_array(&value, offset + src_begin as usize, (src_end - src_begin) as usize)
             .await?;

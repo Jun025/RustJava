@@ -117,6 +117,10 @@ impl BufferedOutputStream {
     ) -> Result<()> {
         tracing::debug!("java.io.BufferedOutputStream::write({this:?}, {bytes:?}, {offset}, {length})");
 
+        if bytes.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "bytes is null").await);
+        }
+
         let source_length = jvm.array_length(&bytes).await? as i32;
         if offset < 0 || length < 0 || offset > source_length - length {
             return Err(jvm.exception("java/lang/IndexOutOfBoundsException", "Invalid offset or length").await);

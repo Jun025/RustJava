@@ -99,12 +99,20 @@ impl Writer {
     async fn write_chars(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, chars: ClassInstanceRef<Array<JavaChar>>) -> Result<()> {
         tracing::debug!("java.io.Writer::write({this:?}, {chars:?})");
 
+        if chars.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "chars is null").await);
+        }
+
         let length = jvm.array_length(&chars).await? as i32;
         jvm.invoke_virtual(&this, "java/io/Writer", "write", "([CII)V", (chars, 0, length)).await
     }
 
     async fn write_string(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, string: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.Writer::write_string({this:?}, {string:?})");
+
+        if string.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "string is null").await);
+        }
 
         let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&string, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
@@ -125,6 +133,10 @@ impl Writer {
         len: i32,
     ) -> Result<()> {
         tracing::debug!("java.io.Writer::write({this:?}, {string:?}, {off}, {len})");
+
+        if string.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "string is null").await);
+        }
 
         let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&string, "java/lang/String", "toCharArray", "()[C", ()).await?;
         jvm.invoke_virtual(&this, "java/io/Writer", "write", "([CII)V", (chars, off, len)).await

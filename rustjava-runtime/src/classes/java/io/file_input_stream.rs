@@ -114,6 +114,10 @@ impl FileInputStream {
     ) -> Result<i32> {
         tracing::debug!("java.io.FileInputStream::read({this:?}, {buf:?}, {offset:?}, {length:?})");
 
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
+
         let fd = jvm.get_field(&this, "fd", "Ljava/io/FileDescriptor;").await?;
         let mut rust_file = FileDescriptor::file(jvm, context, fd).await?;
 

@@ -104,6 +104,10 @@ impl OutputStreamWriter {
     ) -> Result<()> {
         tracing::debug!("java.io.OutputStreamWriter::write({this:?}, {chars:?}, {off}, {len})");
 
+        if chars.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "chars is null").await);
+        }
+
         let array_length = jvm.array_length(&chars).await? as i32;
         if off < 0 || len < 0 || off > array_length - len {
             return Err(jvm.exception("java/lang/IndexOutOfBoundsException", "Invalid offset or length").await);

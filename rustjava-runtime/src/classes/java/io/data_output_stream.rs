@@ -190,6 +190,10 @@ impl DataOutputStream {
     async fn write_bytes(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeBytes({this:?}, {s:?})");
 
+        if s.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "s is null").await);
+        }
+
         let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
         let chars: Vec<JavaChar> = jvm.load_array(&chars, 0, length).await?;
@@ -202,6 +206,10 @@ impl DataOutputStream {
 
     async fn write_chars(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeChars({this:?}, {s:?})");
+
+        if s.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "s is null").await);
+        }
 
         let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;
@@ -221,6 +229,10 @@ impl DataOutputStream {
 
     async fn write_utf(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, s: ClassInstanceRef<String>) -> Result<()> {
         tracing::debug!("java.io.DataOutputStream::writeUTF({this:?}, {s:?})");
+
+        if s.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "s is null").await);
+        }
 
         let chars: ClassInstanceRef<Array<JavaChar>> = jvm.invoke_virtual(&s, "java/lang/String", "toCharArray", "()[C", ()).await?;
         let length = jvm.array_length(&chars).await?;

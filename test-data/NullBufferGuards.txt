@@ -1,0 +1,26 @@
+BufferedOutputStream.write(byte[],int,int):
+caught NPE
+DataInputStream.readFully(byte[]):
+caught NPE
+DataOutputStream.writeBytes(String):
+caught NPE
+DataOutputStream.writeChars(String):
+caught NPE
+DataOutputStream.writeUTF(String):
+caught NPE
+Reader.read(char[]) via InputStreamReader:
+caught NPE
+Writer.write(char[]) via OutputStreamWriter:
+caught NPE
+Writer.write(String):
+caught NPE
+Writer.write(String,int,int):
+caught NPE
+InputStreamReader.read(char[],int,int):
+caught NPE
+OutputStreamWriter.write(char[],int,int):
+caught NPE
+String.getChars(int,int,char[],int):
+caught NPE
+String.getChars bad range beats null dst:
+caught SIOOBE
