@@ -16,5 +16,11 @@ Writer.write(String):
 caught NPE
 Writer.write(String,int,int):
 caught NPE
+Reader.read(char[]):
+caught NPE
+Writer.write(char[]):
+caught NPE
 String.getChars(int,int,char[],int):
 caught NPE
+String.getChars bad range beats null dst:
+caught SIOOBE

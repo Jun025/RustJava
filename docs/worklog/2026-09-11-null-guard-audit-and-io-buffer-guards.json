@@ -1,28 +1,37 @@
 {
   "schema": 1,
   "date": "2026-09-11",
-  "title": "null 가드 감사 — N 1163 / M 58 / K 46 을 세고 java/io 데이터 전송 버퍼 18곳을 닫았다",
-  "services": ["RustJava"],
+  "title": "null 가드 감사 — base 6da7d66f 에서 N 1163 / M 50 / K 38 을 세고 java/io 데이터 전송 버퍼 18곳을 닫았다",
+  "services": [
+    "RustJava"
+  ],
   "taskId": "rustjava-null-guard-audit-remaining-runtime-entrypoints",
-  "summary": "선행 회차는 손으로 «열거한» 9곳을 닫았고 그 열거 자신이 arraycopy 의 dest 를 빠뜨렸다. 그래서 이번엔 술어로 셌다 — N 1,163(this·_ 제외 ClassInstanceRef 파라미터) → M 58(deref 강제 sink 에 미가드 도달) → K 46(as_proto 등재 = 게스트 도달 가능). sink 는 jvm/src/jvm.rs 가 &Box<dyn ClassInstance>/impl AsClassInstance 로 받는 17개 메서드로 한정했다 — 초판은 「&p 가 나오면 deref」로 세어 과대계상했다(&ClassInstanceRef<T> 를 받는 헬퍼는 deref 하지 않는다). ★계측기를 «먼저» 검증했고 초판이 틀렸다: 선행 9곳을 정답지로 대니 3/9 만 잡혔고 근인은 정규식을 \"\\n\"+src 에 돌리고 인덱스를 src 에 적용한 off-by-one 이었다(괄호 스캔이 한 칸 밀려 파라미터 문자열이 본문을 삼켰다). 고친 뒤 8/9. 남은 1건(init_with_string)은 helper 안에서 deref 하므로 ★이 계측은 절차간을 못 보고 따라서 K 는 «하한»이다 — 검수자가 선행 회차에 적은 「899 중 560 · 상한값」과 방향이 반대이므로 두 수를 같은 축으로 비교하지 마라. 이 회차가 닫은 범위는 java/io 데이터 전송 버퍼 + String.getChars 18곳이고, 잔여 20건은 «일괄 가드가 틀리는» 자리를 포함하므로(URL(context,spec,handler) 는 JDK 규격상 null handler 가 합법) 후속으로 남겼다.",
+  "summary": "선행 회차는 손으로 «열거한» 9곳을 닫았고 그 열거 자신이 arraycopy 의 dest 를 빠뜨렸다. 그래서 이번엔 술어로 셌다. ★수는 «트리와 함께» 읽어라 — base 6da7d66f: N 1,163 · M 50 · K 38 → head 068fdb95: N 1,163 · M 32 · K 20 ⇒ ΔM = ΔK = 18 = 이 회차의 가드 수(자기정합). sink 는 jvm/src/jvm.rs 가 &Box<dyn ClassInstance>/impl AsClassInstance 로 받는 17개 메서드로 한정했다 — 「&p 가 나오면 deref」로 세면 &ClassInstanceRef<T> 를 받는 헬퍼까지 물어 과대계상한다. ★[게이트² F1 정정] 초판이 적은 「M 58 · K 46」은 eaad8e9c(선행 9곳 회차 «이전» main)의 수인데 라벨만 6da7d66f 였다 — 46 − 18 = 28 ≠ 20 이라는 산술 모순이 그 혼입의 증상이었고 검수자가 그것으로 잡았다. 이 저장소가 반복해 규탄한 「base 를 병기하지 않으면 수가 섞인다」의 교과서적 재현이다. ★계측기를 먼저 검증했고 초판이 틀렸다: 선행 9곳을 정답지로 대니 3/9 만 잡혔고 근인은 off-by-one 이었다(고친 뒤 8/9). 남은 1건(init_with_string)은 helper 안에서 deref 하므로 이 계측은 절차간을 못 보고 따라서 K 는 «하한»이다 — 검수자가 선행 회차에 적은 「899 중 560 · 상한값」과 방향이 반대이므로 두 수를 같은 축으로 비교하지 마라. 닫은 범위는 java/io 데이터 전송 버퍼 + String.getChars 18곳이고, 잔여 20건은 «일괄 가드가 틀리는» 자리를 포함하므로(URL(context,spec,handler) 는 JDK 규격상 null handler 가 합법) 후속으로 남겼다.",
   "changes": [
-    "rustjava-runtime/src/classes/java/io/{buffered_output_stream,data_input_stream,data_output_stream,file_input_stream,file_output_stream,input_stream_reader,output_stream_writer,random_access_file,reader,writer}.rs — 진입부 is_null() 가드 17곳(삽입만 · 삭제 0)",
-    "rustjava-runtime/src/classes/java/lang/string.rs — get_chars(dst) 가드 1곳(삽입만 · 삭제 0)",
-    "test-data/src/NullBufferGuards.java + .class + test-data/NullBufferGuards.txt — 10케이스 회귀 픽스처",
-    "STATE.md · REPORT.md — 감사 표·술어·범위 근거·잔여 목록"
+    "rustjava-runtime/src/classes/java/io/{buffered_output_stream,data_input_stream,data_output_stream,file_input_stream,file_output_stream,input_stream_reader,output_stream_writer,random_access_file,reader,writer}.rs — 진입부 is_null() 가드 17곳",
+    "rustjava-runtime/src/classes/java/lang/string.rs — get_chars(dst) 가드 1곳 · ★[F4] 위치를 «범위 검사 뒤»로(JDK 의 예외 선후 보존)",
+    "test-data/src/NullBufferGuards.java + .class(중첩 $BareReader/$BareWriter 포함) + .txt — 13케이스(가드 12/18 커버)",
+    "★scripts/audit-null-guards.py — 감사 스크립트 신설(★CI 미배선 = 잠금이 아니라 감사)",
+    "STATE.md · REPORT.md — 감사 표(트리 병기)·술어·범위 근거·잔여 목록"
   ],
   "verification": [
-    "정상 → green: cargo test --test test_class ok · cargo fmt --check rc=0 · clippy stable/beta/wasm32 rc=0 · cargo test --all 554 passed / 0 failed / 1 ignored · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
-    "개악 → red ⑴: 18곳 전건 되돌림 → test_class FAILED, panicked at jvm/src/class_instance.rs:108 (Deref)",
-    "개악 → red ⑵: 단일 가드(String.getChars 의 dst)만 제거 → test_class FAILED, panicked at jvm/src/class_instance.rs:114 (DerefMut) ⇒ 픽스처가 케이스별로 문다",
-    "계측기 검증: 가드 전(eaad8e9c)/후 트리 차집합이 선행 9곳 중 8건과 일치 · 새로 생긴 것 0",
+    "정상 → green: cargo test --test test_class ok · cargo fmt --check rc=0 · clippy stable/beta/wasm32 rc=0 · cargo test --all 554 passed / 0 failed / 1 ignored(★전체 실행) · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
+    "개악 → red ⑴: 18곳 전건 되돌림 → test_class FAILED @ jvm/src/class_instance.rs:108 (Deref)",
+    "개악 → red ⑵: String.getChars 의 dst 가드만 제거 → FAILED @ :114 (DerefMut)",
+    "★개악 → red ⑶: reader.rs read(buf) 가드«만» 제거 → FAILED — 새 케이스 Reader.read(char[]) 가 base 구현에 실제로 도달함을 증명",
+    "★개악 → red ⑷: writer.rs write_chars(chars) 가드«만» 제거 → FAILED — 새 케이스 Writer.write(char[]) 동일 증명",
+    "★개악 → red ⑸: getChars 가드를 «범위 검사 앞»(초판 위치)으로 되돌림 → 선후 잠금 케이스가 caught NPE 를 내어 FAILED ⇒ F4 의 이동이 하중을 진다",
+    "계측기 검증: base(6da7d66f)/head 차집합이 이 회차 가드 18건과 일치 · 선행 회차 정답지로는 8/9(나머지 1건은 절차간이라 원리적 위음성)",
     "픽스처 형식: javac --release 8 ⇒ major 52 · invokedynamic/CP 태그 15~18 0건"
   ],
   "issues": [
-    "★픽스처 커버리지는 18 중 12 다 — FileInputStream.read · FileOutputStream.write · RandomAccessFile 4종은 실파일 핸들이 있어야 인스턴스가 생겨서 덮지 못했다(작업 디렉터리에 파일을 만드는 것을 피했다). 가드는 들어갔으나 픽스처가 잠그지 않는다 ⇒ 임시 파일 픽스처는 다음 회차 몫이다.",
-    "★이 계측은 절차간 deref 와 섀도잉을 못 본다. 전자는 위음성(init_with_string 을 놓쳤다), 후자는 위양성(url.rs 의 handler 는 섀도잉돼 무시되는데 잡혔다) ⇒ N·M·K 를 «정확한 수»가 아니라 «하한 + 알려진 오탐 1건»으로 읽어라.",
-    "★부수 발견 — 패닉 impl 은 둘이 아니라 셋이다: Deref(:108) · DerefMut(:114) · AsClassInstance::as_class_instance(as_deref().unwrap()). 셋째는 monitor_enter/monitor_exit/object_wait_prepare/object_notify 경로다.",
-    "감사 스크립트는 커밋하지 않았다 — CI 에 배선되지 않은 검사기는 낡는다(이 저장소의 기존 판정). 술어는 worklog .md 의 표가 정본이다."
+    "★[게이트² F1] 초판이 K 46 을 적었는데 그것은 eaad8e9c 트리의 수였다(라벨은 6da7d66f). 46 − 18 = 28 ≠ 20 이 증상. ⇒ 정정했고 이제 base·head 를 나란히 적는다.",
+    "★[게이트² F2] 초판의 「픽스처 18 중 12 커버」는 그 시점엔 거짓이고 실측 10 이었다 — InputStreamReader/OutputStreamWriter 가 오버라이드해 Reader/Writer base 구현에 닿지 못했다. ⇒ 검수 권고를 채택해 중첩 클래스(BareReader/BareWriter)로 2케이스를 추가했고 지금은 진짜로 12/18 이다.",
+    "★[게이트² F4] String.getChars 가드가 JDK 의 예외 선후를 뒤집고 있었다(잘못된 범위 + null dst 면 JDK 는 SIOOBE). ⇒ 범위 검사 뒤로 «옮겼고» 선후 잠금 케이스를 넣었다 — issues 기재가 아니라 이동을 선택했다.",
+    "★[게이트² F5] 감사 스크립트를 커밋했다 — 초판의 「배선 없는 검사기는 낡는다」를 뒤집는다. 근거는 이 회차 자신이다: 작성자가 자기 수를 교차검증할 수단이 없어 F1 이 났고 검수자는 술어를 산문에서 재구현해야 했다(그래서 N 1,163↔1,130 · M 50↔52 가 갈렸다 — ★판단을 이끄는 K 는 38/20 으로 정확 일치).",
+    "★픽스처 커버리지는 여전히 18 중 12 다 — FileInputStream.read · FileOutputStream.write · RandomAccessFile 4종은 실파일 핸들이 필요해 못 덮었다. 가드는 들어갔으나 픽스처가 잠그지 않는다 ⇒ proposals[1].",
+    "★이 계측은 절차간 deref 와 섀도잉을 못 본다. 전자는 위음성(init_with_string), 후자는 위양성(url.rs 의 handler) ⇒ N·M·K 를 «정확한 수»가 아니라 «하한 + 알려진 오탐 1건»으로 읽어라.",
+    "★부수 발견 — 패닉 impl 은 둘이 아니라 셋이다: Deref · DerefMut · AsClassInstance::as_class_instance(as_deref().unwrap()). 셋째는 monitor_* 경로다."
   ],
   "proposals": [
     {
@@ -44,6 +53,8 @@
       "target": "RustJava test-data (FileInputStream·FileOutputStream·RandomAccessFile 6곳)"
     }
   ],
-  "adoptedProposals": ["2026-09-11-null-guard-string-init-and-arraycopy#p0"],
+  "adoptedProposals": [
+    "2026-09-11-null-guard-string-init-and-arraycopy#p0"
+  ],
   "declinedProposals": []
 }

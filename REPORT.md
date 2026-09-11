@@ -1,17 +1,25 @@
 # REPORT
 
 ## [2026-09-11] null 가드 «감사» — 세고, 그중 데이터 전송 버퍼 18곳을 닫았다 (rustjava-null-guard-audit-remaining-runtime-entrypoints)
-- 무엇을: 런타임 전체에서 `ClassInstanceRef` 인자를 받아 **곧바로 역참조하는** 진입점을 **셌고**(N 1,163 → M 58 → K 46),
+- 무엇을: 런타임 전체에서 `ClassInstanceRef` 인자를 받아 **곧바로 역참조하는** 진입점을 **셌고**
+  (★**트리 병기** — base `6da7d66f`: **N 1,163 · M 50 · K 38** → head `068fdb95`: **M 32 · K 20** · **ΔK 18**),
   그중 **`java/io` 데이터 전송 버퍼 + `String.getChars` 18곳**에 선행 회차와 **같은 모양**의 진입부 `is_null()` 가드를 넣었다.
-  회귀 잠금 = 픽스처 `test-data/NullBufferGuards`(10케이스). 채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`.
+  회귀 잠금 = 픽스처 `test-data/NullBufferGuards`(**13케이스** · 가드 **12/18** 커버). 채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`.
 - 왜: 선행 회차가 닫은 것은 **손으로 열거한** 9곳이었고, ★그 열거 자신이 `arraycopy` 의 `dest` 를 빠뜨렸다.
   ⇒ 이번엔 **열거가 아니라 술어로 셌다**. sink 는 `jvm.rs` 가 `&Box<dyn ClassInstance>`/`impl AsClassInstance` 로 받는 **17개 메서드**다.
 - 사용자 영향: 게스트가 스트림·Writer·`String.getChars` 에 **null 버퍼**를 넘겨도 에뮬레이터가 죽지 않고 `NullPointerException` 이 난다.
   정상 입력 동작 **불변**(가드 앞에서 패닉하던 입력만 예외로 바뀐다) · 예외 종류·메시지 형태는 선행 회차와 동일.
-- 검증: ★**양방향** — 18곳 전건 되돌림 → `test_class` **FAILED**(`class_instance.rs:108`) · ★**단일 가드**(`get_chars(dst)`)만 빼도 **FAILED**(`:114` `DerefMut`) ↔ 복원 **ok**.
-  DoD 7종 rc=0 · `cargo test --all` **554/0/1**(계수 불변이 맞다).
+- 검증: ★**양방향 · 개악 5종** — ⑴18곳 전건 ⑵`get_chars(dst)` 단독 ⑶`reader.rs read` 단독 ⑷`writer.rs write_chars` 단독
+  ⑸**`getChars` 가드를 옛 위치로 되돌림** → **전건 FAILED** ↔ 복원 전건 **ok**. DoD 7종 rc=0 · `cargo test --all` **554/0/1**(★전체 실행 · 계수 불변이 맞다).
 - ★★**계측기를 먼저 검증했고, 초판이 틀렸다**: 선행 9곳을 정답지로 대니 **3/9** 만 잡혔다(근인 = `"\n"+src` 에 정규식을 돌리고 인덱스는 `src` 에 쓴 **off-by-one**).
   고쳐서 **8/9**. 남은 1건은 helper **안**에서 deref 하므로 ★**이 계측은 절차간을 못 보고, 따라서 K 는 «하한»이다**(검수자의 「899/560 상한」과 방향이 반대다).
+- ★★**[게이트② 정정 3건] 초판이 낸 수 중 «둘»이 틀렸고, 둘 다 «수를 섞은» 형태다.**
+  ⑴**K 46** 은 base 가 아니라 **`eaad8e9c`**(두 회차 전) 트리의 수였다 — 라벨만 `6da7d66f` 였고, `46 − 18 = 28 ≠ 20` 이 그 증상이었다.
+  ⇒ ★**base·head 를 나란히 적는 형태로 바꿨다.** ⑵**픽스처 12/18** 도 그 시점엔 **10/18** 이었다(`Reader`/`Writer` 의 base 구현에 닿지 못했다)
+  ⇒ ★**검수 권고대로 2케이스를 «추가»해 실제로 12/18 로 만들었다**(중첩 클래스로 base 구현 도달 · 개악 ⑶⑷가 증명).
+  ⑶`String.getChars` 가드가 **JDK 의 예외 선후를 뒤집고 있었다** ⇒ **범위 검사 뒤로 옮기고** 선후 잠금 케이스를 넣었다.
+- ★**감사 스크립트를 커밋했다**(`scripts/audit-null-guards.py` · ★CI 미배선 = **잠금이 아니라 감사**) — 초판의 「배선 없는 검사기는 낡는다」를 뒤집는다.
+  ★**근거는 이 회차 자신이다**: 작성자가 자기 수를 교차검증할 수단이 없어 ⑴이 났다.
 - ★**잔여 20건을 «일괄 가드»로 닫지 마라** — `URL(context, spec, handler)` 는 JDK 규격상 **null handler 가 합법**이다.
   ⇒ 후속의 본체는 「가드를 넣는 것」이 아니라 **「null 이 합법인지 규격으로 가르는 것」**이다.
 - 후속 추천: `rustjava-null-guard-spec-triage-for-constructor-and-collection-params`(P3) — 잔여 20건을 **규격 기준으로 삼분**

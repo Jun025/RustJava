@@ -5,9 +5,12 @@
 
 ## 완료
 - [rustjava-null-guard-audit-remaining-runtime-entrypoints] ★★**런타임 전체를 «세고»(감사) 그중 «데이터 전송 버퍼» 18곳에 가드를 넣었다.**
-  채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`. 픽스처 `test-data/NullBufferGuards` 10케이스.
-  ★★**감사 표(측정 2026-09-11 · 트리 `origin/main` `6da7d66f`)**: **N 1,163**(`this`·`_` 제외 `ClassInstanceRef` 인자)
-  → **M 58**(deref 강제 sink 에 미가드 도달) → **K 46**(그중 `as_proto` 등재 = 게스트 도달 가능) ⇒ 이 회차가 **18** 을 닫아 **K 28 → 실측 20**.
+  채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`. 픽스처 `test-data/NullBufferGuards` **13케이스**(가드 **12/18** 커버).
+  ★★**감사 표 — 측정 2026-09-11 · ★트리 병기**(`bin/audit-null-guards` 가 아니라 **`scripts/audit-null-guards.py`** 가 정본):
+  **base `6da7d66f`** = **N 1,163 · M 50 · K 38** → **head `068fdb95`** = **N 1,163 · M 32 · K 20** ⇒ **ΔM = ΔK = 18** = 이 회차의 가드 수(자기정합).
+  ★★**[게이트② F1 정정] 초판이 적은 「M 58 · K 46」은 «다른 트리»의 수다** — **`eaad8e9c`**(= 선행 9곳 회차 «이전» main)에서 재고
+  라벨만 `6da7d66f` 로 달았다. ⇒ ★**`46 − 18 = 28 ≠ 20`** 이라는 산술 모순이 그 혼입의 증상이었고, 검수자가 그것으로 잡았다.
+  ★**이 저장소가 반복해 규탄한 「base 를 병기하지 않으면 수가 섞인다」의 교과서적 재현**이다 — ★그래서 이제 **두 트리를 나란히** 적는다.
   ★**판정 술어를 적어 둔다**(「보아하니」 금지): sink = `jvm/src/jvm.rs` 가 **`&Box<dyn ClassInstance>`/`impl AsClassInstance`** 로 받는 **17개 메서드**
   (`array_length`·`load_array`·`store_array`·`get_field`·`put_field`·`invoke_virtual`·`invoke_special`·`monitor_*` …) — 그 인자에 `&p`/`&mut p` 로 넘기면 **Deref/DerefMut 가 강제**된다.
   ★★**계측기를 «먼저 검증»했다 — 그리고 초판이 틀렸다.** 선행 회차가 닫은 **9곳**을 정답지로 삼아 가드 전/후 트리에 같은 자를 댔는데
@@ -18,8 +21,18 @@
   ★**범위를 «좁게» 골랐다 — 「전부 고쳐라」가 아니다**: `java/io` **데이터 전송**(read/write 버퍼) + `String.getChars` **18곳**.
   ★★**생성자류를 «일부러» 뺐다 — 일괄 가드가 «틀리는» 자리가 실재한다**: `URL(context, spec, handler)` 는 JDK 규격상 **handler == null 이 «합법»**(기본 핸들러를 쓰라는 뜻)이다.
   ⇒ ★**잔여 20건은 «가드를 넣을지»가 아니라 «null 이 합법인지»를 규격으로 먼저 가려야 한다** — 후속의 본체가 그것이다.
-  ★개악 대조 **양방향**: 18곳 전건 되돌림 → `test_class` **FAILED**(`:108`) · ★**단일 가드**(`get_chars(dst)`)만 제거해도 **FAILED**(`:114` `DerefMut`) ↔ 복원 **ok**.
-  ★`cargo test --all` **554 / 0 / 1**(증감 0 이 맞다 — `test_class` 는 픽스처를 한 함수가 순회한다) · DoD 7종 rc=0.
+  ★개악 대조 **양방향 · 4종**: ⑴18곳 전건 되돌림 → `test_class` **FAILED** ⑵**단일 가드**(`get_chars(dst)`)만 제거 → **FAILED**
+  ⑶`reader.rs read(buf)` 만 · ⑷`writer.rs write_chars(chars)` 만 제거 → **각각 FAILED** ↔ 복원 전건 **ok**.
+  ★★**[게이트② F2 정정] 초판의 「픽스처 18 중 12 커버」는 «그 시점엔 거짓»이었다 — 실측 10** (`Reader.read(char[])`·`Writer.write(char[])` 는
+  `InputStreamReader`/`OutputStreamWriter` 가 오버라이드해 **base 구현에 닿지 못했다**). ⇒ ★**검수 권고를 채택해 그 2케이스를 «추가»했다** —
+  `Reader`/`Writer` 를 상속하되 추상 `(char[],int,int)` 만 구현하는 **중첩 클래스**(`$` 가 든 이름은 하버스가 건너뛴다)로 base 구현에 도달시켰고,
+  ⑶⑷ 개악이 그 도달을 **실행으로 증명**한다. ⇒ ★**지금은 진짜로 12/18** 이고 **미커버 6**(파일 핸들 필요분).
+  ★★**[게이트② F4] `String.getChars` 가드를 «범위 검사 뒤»로 옮겼다 — «선택»이다.**
+  JDK 는 범위를 먼저 보므로 «잘못된 범위 + null dst» 면 **SIOOBE 가 이긴다**. 초판 위치는 그 선후를 **NPE 로 뒤집었다**(계약 4 「동작 의미를 바꾸지 마라」 위반).
+  ★픽스처에 **선후 잠금 케이스**를 넣었고, 가드를 옛 위치로 되돌리면 그 케이스가 **red** 다(개악 ⑸).
+  ★`cargo test --all` **554 / 0 / 1**(★**전체 실행** · 증감 0 이 맞다 — `test_class` 는 픽스처를 한 함수가 순회한다) · DoD 7종 rc=0.
+  ★★**[게이트② F5] 감사 스크립트를 «커밋했다» — 초판의 「배선 없는 검사기는 낡는다」 판단을 뒤집는다.**
+  근거: ★**작성자가 자기 수를 교차검증할 수단이 없어 F1 이 났다.** `scripts/audit-null-guards.py`(★CI 미배선 = **잠금이 아니라 감사**).
 - [rustjava-null-guard-string-init-and-arraycopy-p0] ★★**null 인자 8경로의 «호스트 abort» 를 `NullPointerException` 으로 바꿨다.**
   채택 제안 `2026-09-11-s5-duplicate-issuance-stale-next-close#p0`. ★**가드 9곳**(`string.rs` 7 · `system.rs` 2) · 픽스처 `test-data/NullArgGuards` 9케이스.
   ★**제안은 「8경로」라 했는데 실측은 «9곳»이다** — `System.arraycopy` 가 `src`·`dest` **둘 다** 뚫려 있었고(제안·STATE ③-2 는 `src` 만 셌다) 그 둘은 다른 인자다.
