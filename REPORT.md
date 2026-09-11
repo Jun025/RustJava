@@ -1,5 +1,16 @@
 # REPORT
 
+## [2026-09-11] S5 중복 발권 판정 + 낡은 «다음» 절 폐쇄 (rustjava-upstream-sync-s5-java12-api)
+- 무엇을: 티켓이 요구한 S5(`c4665b0`) 동기화는 **이미 착지돼 있었다** — `c4665b0` 은 `origin/main` 의 조상이고
+  PR #21 이 `rustjava-upstream-sync-s5-with-remeasured-conflicts` 로 2026-09-03 에 `--merge` 착지했다(S6~S8 도 완주 ·
+  behind **1** < 임계 20). ⇒ 티켓 대전제 ⓒ 경로로 **blocked** 종료. 이 회차의 실변경은 **문서 전용**:
+  `STATE.md` 의 「다음은 S5」(8일 낡음)와 «PR 대기» 진행중 3건을 오늘 값으로 닫았다.
+- 왜: 낡은 `## 다음` 이 LANE_IDLE 처방(「STATE.md 의 «다음»을 읽어라」)을 타고 **중복 발권을 실제로 만들었다** —
+  STATE.md 자신이 경고한 형태(「이미 끝난 일을 가리키면 레인이 조용해진다」)의 두 번째 재현이다.
+- 사용자 영향: 없음(코드 0줄). 다음 발권자가 같은 중복을 다시 밟지 않는다.
+- 후속 추천: `rustjava-null-guard-string-init-and-arraycopy`(P2·S) 발권 — 「①의 뒤」 선행 조건이 충족됐고
+  레인이 굶고 있다(케이스 8건·완료 정의는 STATE.md ③-2 에 이미 확정돼 있다).
+
 ## [2026-09-07] 파리티 락의 repo 별 «파서 축» 설계 — ★공용 파서를 만들지 않는다 (rustjava-parity-lock-per-repo-parser-axis-design)
 - 무엇을: 채택 제안 `2026-09-04-parity-sibling-repo-survey#p2` 의 **설계 회차**다. 형제 repo(`wie`·`qts`)를
   각 `origin/main` 에서 실측해 ⑴제안이 말한 «막는 것» 5축을 확인/반증하고 ⑵파서 축 ⒜~⒟ + 합격선 2개를 정하고

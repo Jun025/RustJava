@@ -1,28 +1,21 @@
 # STATE
 
 ## 진행중
-- [rustjava-upstream-sync-squash-defeats-convergence] ★**S1~S4 가 착지하고도 fork 가 upstream 에
-  한 걸음도 가까워지지 않은 근인을 확정하고 계보를 기록했다.** 근인 = 게이트③ 제품 repo **`--squash`**.
-  증명은 **머지커밋 부모 수**다 — `6bfe97c4`·`11ef5010`·`4bb796de`·`3a597768` **전건 1개**(커밋 7·10·15·21이
-  각각 1로 접힘). ★**반증 시도는 실패했다(= 가설이 맞다)**: 브랜치 `34a4235` 는 부모 **2개**
-  (`c80638a`+`3296139`)인 진짜 머지 ⇒ **계보는 브랜치에 있었고 스쿼시가 버렸다**(cherry-pick 가설 기각).
-  처방 = `origin/main` 위 `git merge -s ours 3296139` — **트리 오브젝트 SHA 동일**(`c4f57d10…`)로 트리 변경 0.
-  ★`git diff --stat` 빈 출력은 `-s ours` 정의상 항상 참이라 근거로 쓰지 않았다(S4 교훈).
-  효과: `merge-base` **`62cf0c6a` → `3296139c`** · behind **33 → 18** · 컷 조상 **0/4 → 4/4**.
-  ★★**이 PR 이 `--squash` 로 착지하면 위 전부가 무효다** — 반드시 `gh pr merge --merge`.
-  ★**회차마다 `-s ours` 를 다시 넣는 지금 방식은 러닝머신이다** — S4 의 `c80638a` 가 정확히 그 처방이었는데
-  PR #17 의 스쿼시에 함께 지워졌다(이 리니지에서 네 번 반복). **PR 대기 — 게이트③ 미착지.**
-- [rustjava-upstream-sync-s4] upstream 컷 `3296139`(#184 GlobalRef · CLI classpath · CDC text) 머지 —
-  충돌 **2** 해소(`java/lang/thread.rs` · `jvm/src/jvm.rs`). ★**첫 조치가 `git merge -s ours --no-ff 822504b`**
-  — 그것이 ★**충돌 20 → 2**를 만들었다. **PR 대기 — 게이트③ 미착지.**
-  ★★**계획서의 「S4 새 충돌 0」 예측은 틀렸다 — 실측 2건**이고, `thread.rs` 는 **S1·S3 에 이어 세 번째**다.
-  ★**`test_timer_periodic` 여백을 넓혔다(500→2000ms) — ★«회귀»가 아니라 «만성 경계 테스트»다**(단정 불변).
-  ★**컷 양쪽이 같은 비율로 흔들린다**(조건 맞춘 교대 실측 · ①절) — 전 판본의 「컷이 들여왔다」는 **틀렸다**.
-- [rustjava-coverage-workflow-codecov-token-red] `coverage` 상시 red 해소 —
-  `fail_ci_if_error: false`. ★**실증: 착지 전 브랜치에서 «이 저장소 최초의 green coverage»**
-  (25번째 run, 앞선 24건 전부 red). **PR 대기 — 게이트③ 미착지.**
+(없음 — 2026-09-11 실측: 열린 PR **0** · 진행 티켓 0)
 
 ## 완료
+- [rustjava-upstream-sync-s5-java12-api] ★★**중복 발권 판정 — S5 는 «이미 착지»다(대전제 ⓒ 경로 · `status: blocked`).**
+  실측(2026-09-11): `c4665b0` 은 `origin/main` 의 **조상** · PR #21 **MERGED**(2026-09-03T22:12:43Z · 머지커밋 `a0b5d3c`) —
+  같은 일을 `rustjava-upstream-sync-s5-with-remeasured-conflicts` 가 이미 완주했다. S6(#22)·S7(#23)·S8(#24)도 착지해
+  `merge-base` = **`bd42427`** · behind **1**(`2ce4717` · dependabot encoding_rs 0.8.35→0.8.40 · 임계 20 미만 ⇒ 동기 회차 불요).
+  ★**근인 = 이 파일 `## 다음` 이 「다음은 S5」인 채 8일 낡아** LANE_IDLE 처방(「STATE.md 의 «다음»을 읽어라」)이 그것을 읽었다 —
+  아래 ③ 절이 경고한 「이미 끝난 일을 가리키면」 형태의 ★**두 번째 재현**이다. ⇒ 이 회차가 `## 다음`·`진행중` 을 오늘 값으로 닫았다(코드 0줄 · 문서 전용).
+- [rustjava-upstream-sync-squash-defeats-convergence] ★게이트③ 착지 — **PR #18 `--merge`**(2026-08-27T08:47:35Z).
+  `-s ours` 계보 복원 + 「스쿼시가 족보를 접는다」 확정. 상세 = `docs/upstream-sync-approach.md`. ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
+- [rustjava-upstream-sync-s4] ★게이트③ 착지 — **PR #17 MERGED**(2026-08-27T01:28:44Z · 스쿼시 — 그 계보 절단을 #18 이 복원).
+  컷 `3296139` 머지 · 충돌 2 해소 · `test_timer` 여백 500→2000ms(«회귀» 아님 단정 불변 · 사료는 아래 ① 절). ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
+- [rustjava-coverage-workflow-codecov-token-red] ★게이트③ 착지 — **PR #12 MERGED**(2026-08-17T05:34:32Z).
+  `fail_ci_if_error: false` 로 coverage 상시 red 해소. ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
 - [rustjava-parity-lock-per-repo-parser-axis-design] ★**파리티 락의 repo 별 «파서 축» 설계 — 결론: 공용 파서를 만들지 않고 «공용 계약»만 남긴다.**
   채택 제안 `2026-09-04-parity-sibling-repo-survey#p2`. ★**형제 repo 파일 편집 0 · 검사기 본체 변경 0 · 발권 0** · 측정 트리 = 각 repo `origin/main`.
   ★★**전제가 무너졌다** — `wie` 가 제안 «다음날»(2026-09-05) 스스로 포팅했고(`wie_cli/tests/dod_ci_parity.rs` +
@@ -347,19 +340,17 @@
 
 ## 다음
 
-### ①(최우선) upstream 동기화 — ★**S1~S4 착지 완료 · 계보 복원 완료(2026-09-03)**. 정본 = `docs/upstream-sync-approach.md`
+### ①(최우선이 «아니게 됐다») upstream 동기화 — ★★**[2026-09-11 갱신] 캠페인 «종료». 동기 회차를 열지 마라.**
 
-★★**[2026-09-03 갱신] 구판 「S4 착지 대기」는 낡았다** — PR #17(S4)·#18(계보 기록)이 **전건 머지**됐고
-★**#18 은 `--merge` 로 착지해** `merge-base origin/main upstream/main` = **`3296139c`** · behind **30** ·
-열린 PR **0**. ⇒ ★**「앞 회차가 착지하면 뒤 회차의 기준선이 바뀐다」가 이제 처음으로 참이다.**
+★실측(2026-09-11): **S5(#21)·S6(#22)·S7(#23)·S8(#24) 전건 `--merge` 착지** · `merge-base origin/main
+upstream/main` = **`bd42427`** · behind **1**(`2ce4717` · dependabot encoding_rs bump) · ahead 87 · 열린 PR **0**.
+★**behind 1 < 임계 20**(PR #29 판정) ⇒ 다음 동기는 «계획된 컷»이 아니라 임계 도달 시다 — 재는 주체는
+주 1회 `.github/workflows/upstream-behind.yml`(PR #31)이고, **기계가 재고 사람(총괄)이 발권한다**.
+★★**구판 「다음은 S5」는 8일 낡은 채 이 절에 남아 2026-09-11 중복 발권**(`rustjava-upstream-sync-s5-java12-api` ·
+blocked)**을 만들었다** — ③ 절 「이미 끝난 일을 가리키면 레인이 조용해진다 · 닫히는 즉시 닫아라」의 두 번째 재현.
+⇒ ★**다음 실작업 = ③의 null-guard 티켓**(①의 뒤라는 선행 조건이 이제 충족됐다).
 
-★**다음은 S5(`c4665b0` · Java 1.2 API 확장). 단 「충돌 0 물량」이 «아니다»** — 2026-09-03 재측정(base = 현 `main`
-`8c1238b` · `merge-base 3296139c`)으로 **새 충돌 3건**: `Cargo.lock`(재생성) ·
-`java_runtime/src/classes/java/lang/string.rs`(★**설계 판단** · upstream `3296139`→`c4665b0` **+285/−31** ↔
-우리 `3296139`→`origin/main` **+8/−28**) ·
-`java_runtime/tests/classes/java/util/test_timer.rs`(**S4 가 넣은 500→2000ms 여백을 다시 얹는 기계 작업**).
-**S6 새 충돌 0 · S7 새 충돌 1**(`thread.rs`). ★상세·근거·세 base 대조표 = `docs/upstream-sync-approach.md` §5 「[2026-09-03 재측정]」.
-★★**충돌 수를 적을 때는 base 를 반드시 병기하라 — §5 상시 규칙이다.**
+---- 이하 사료(S4 회차 실측 · 타이머 여백 근거 — 단정 불변이라 보존) ----
 
 **S4 실측(2026-08-27)**: 착수 시 `merge-base origin/main upstream/main` = ★**`62cf0c6`**(최초 공통조상) ·
 `1f356ae`·`af4f6f8`·`822504b` 가 `origin/main` 의 조상 **전건 NO** — ★**스쿼시 3회가 족보를 원점으로 되돌렸다.**
@@ -454,12 +445,8 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 
 ⇒ **재부여된 순서**(위 0번이 빠지고 1→3 이 한 칸씩 올라온다):
 
-1. ★**`rustjava-upstream-sync-s5` … `-s7`**(S1~S4 **완료** · 구판 `-32-commits` **폐기**) — ①의 머지를
-   `docs/upstream-sync-approach.md` §5 의 **7회차**로 쪼갠다. **한 티켓 = 한 컷**이고,
-   ★**순서대로**다 — **다음은 S5(`c4665b0`)**. ★**착수 첫 조치는 `git merge -s ours --no-ff 3296139`**
-   (S4 착지가 또 스쿼시라 족보가 다시 끊긴다 — S2·S3·S4 가 전부 같은 형태였다). 각 회차 완료 정의 = 그 컷의 충돌 해소 + CI `rust.yml` 4종 green
-   + 문서 §5 의 회차별 추가 조건(S1 tracing 0건 / S2 charset 잠금 / S3 `test_class_format.rs` /
-   S4~S7 해소분 0 증명). ★**착수 시 충돌을 재측정하라** — 앞 회차 착지로 기준선이 바뀐다.
+1. ~~`rustjava-upstream-sync-s5` … `-s7`~~ → ★★**[2026-09-11] 해소 — S5~S8 전건 착지**(① 참조).
+   ★**발권하지 마라** — 2026-09-11 에 실제로 중복 발권됐다(`rustjava-upstream-sync-s5-java12-api` · blocked).
 2. **`rustjava-null-guard-string-init-and-arraycopy`**(P2·S·low) — ②의 유효 잔존 2건 + 형제 전수.
    ★**①의 뒤**여야 한다 — ★**근거 정정(2026-08-16)**: 선행 이유는 **`string.rs` 가 충돌 목록에 있기 때문**이다.
    ★**`system.rs` 는 충돌 목록에 «없다»**(`merge-tree` 출력에서 `Auto-merging` 만 있고 `CONFLICT` 줄이 없다) —
@@ -533,10 +520,8 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 | `feat/rustjava-upstream-sync-s3` | PR #16 의 head — 게이트③ 집행 중 | 머지와 함께 자동 삭제(`deleteBranchOnMerge`) |
 | `wie-ktf-hardening` | 보존 판정(2026-07-25) | 위 ②로 **잔존 가치가 2건까지 줄었다** — 브리프 ③-2 가 그 2건을 새 브랜치로 옮겨 심으면 ★**보존 근거가 소멸**한다 |
 
-⇒ ~~★**다음은 S4(`3296139`)** — 남은 upstream 커밋 **26**~~ → ★★**[2026-09-03 갱신] 다음은 S5(`c4665b0`)** —
-남은 upstream 커밋 **30**(`ba5797b` 뒤로 **12** 가 더 붙었다 · 헤드 `bd42427`). 열린 PR **0** · 원격 브랜치 = `main` · `wie-ktf-hardening`.
-★**「7회차」로는 헤드에 닿지 않는다 — S8 발권이 필요하고, 그것이 남은 회차 중 제일 크다**
-(ⓒ 누적 충돌 **11** · `java_runtime/`→`rustjava-runtime/` · `test_data/`→`test-data/` **개명 스윕**이 우리 픽스처에 꽂힌다).
+⇒ ~~다음은 S4 / 다음은 S5~~ → ★★**[2026-09-11 갱신] S8 까지 전건 착지 — 동기 캠페인 종료**(① 참조).
+behind **1** · 열린 PR **0** · 원격 브랜치 = `main` · `wie-ktf-hardening`. 다음 실작업 = ③의 null-guard.
 
 - ★PR 발권 시 `--repo Jun025/RustJava` 명시(2026-07-22 upstream 오발행 사고 재발 방지).
 - ★upstream 발신(PR·이슈·코멘트·push)은 **티켓이 명시 허가할 때만**. 기본은 조회뿐.
