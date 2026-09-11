@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-09-11",
+  "title": "S5 중복 발권 판정 — 낡은 STATE.md «다음» 절이 만든 두 번째 재현을 닫았다",
+  "services": ["RustJava"],
+  "taskId": "rustjava-upstream-sync-s5-java12-api",
+  "summary": "티켓이 요구한 S5(c4665b0) 동기화는 이미 착지돼 있었다 — PR #21(rustjava-upstream-sync-s5-with-remeasured-conflicts)이 2026-09-03 에 --merge 착지했고 S6~S8 도 완주해 behind 1(임계 20 미만)이다. 대전제 ⓒ 경로로 blocked. 근인 = STATE.md ## 다음 이 「다음은 S5」인 채 8일 낡아 LANE_IDLE 처방이 그것을 읽고 발권했다(STATE.md 자신이 경고한 형태의 두 번째 재현). 이 회차는 문서 전용으로 그 절을 오늘 값으로 닫았다(코드 0줄).",
+  "proposals": [
+    {
+      "title": "rustjava-null-guard-string-init-and-arraycopy 발권",
+      "plainSummary": "null 인자를 넘기면 JVM 이 NullPointerException 대신 호스트 프로세스 abort(패닉)로 죽는 8개 경로에 가드를 넣는 티켓을 발권한다. 범위·재현 케이스·완료 정의는 STATE.md ③-2 에 이미 확정돼 있다.",
+      "userBenefit": "게스트 Java 코드의 null 실수가 에뮬레이터 전체를 죽이지 않고 Java 예외로 잡히게 된다.",
+      "why": "이 티켓의 선행 조건(「upstream 동기 ①의 뒤」)이 S5~S8 착지로 충족됐고, 레인 큐가 0 이라 지금이 발권 시점이다. String.<init> 10건 전수 대조로 가드 없는 7건 + System.arraycopy 가 이미 실측돼 있다.",
+      "tradeoff": "없음에 가깝다 — upstream 기존 방식(진입부 is_null() 가드)을 그대로 따르므로 설계 판단이 없다.",
+      "effort": "S(케이스 8건 픽스처 + 가드 8곳)",
+      "target": "RustJava rustjava-runtime (String.<init> 7건 · System.arraycopy)"
+    }
+  ],
+  "adoptedProposals": [],
+  "declinedProposals": [],
+  "issues": [
+    "★[게이트③ 집행] PR #35 를 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다: #11·#13·#16·#17 4회 실증). 게이트② approve · 핀 c980ef0d 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 착지 diff 5파일 전건 문서(.md/.json)이고 이 저장소의 배포 워크플로는 0개 ⇒ 배포 0 · 코드(.rs) 변경 0 · upstream 쓰기 0.",
+    "★이 리니지는 게이트② 를 3회차(초판 → -fix → -fix2) 거쳤고 반려 둘이 전부 «산출물이 아니라 회신»의 결함이었다 — F1(낡은 base 에서 자름 + CONFLICTING 미신고) · F1-⑶(절차 수정이 회신에만 있고 지속 산출물 0). 그 대가로 AGENTS.md §Git Workflow 에 2줄이 남았다."
+  ]
+}
