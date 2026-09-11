@@ -15,6 +15,14 @@
   ★**픽스처 컴파일 = `javac --release 8`**(major **52** = 기존 픽스처와 동일 · ★`invokedynamic`·CP 태그 15~18 **0건** — javac 9+ 함정을 피했다).
   ★**컴파일은 «스크래치»에서 했다** — `test-data/` 에서 치면 그 디렉터리의 `Exception.class` 가 `java.lang.Exception` 을 **가려** compile error 가 난다(실측).
   ⇒ ★**STATE ③-2 의 「유효 잔존 2건」이 닫혔다** · ②의 «가드 없음 7건» 표도 전건 닫혔다.
+  ★**게이트③ 착지 — PR #36 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `9ba6db48` **불이동**(동봉 전 실측) · `ci-presence` **rc=0 CI_GREEN** ·
+  자식 PR **0건** · 착지 diff 9파일(`.rs` 2 · 픽스처 3 · 원장 4) · ★**배포 워크플로 0개 ⇒ 배포 0**.
+  ★★**검수자가 «자기 자리»에서 개악을 다시 쟀고, 회차보다 강한 결과를 냈다** — 가드를 **1개씩** 빼도 픽스처가 문다
+  (A: `system.rs` `dest` 만 제거 → `class_instance.rs:114` `DerefMut` · B: `init_with_string_buffer` 만 제거 → `:108` `Deref`).
+  ⇒ ★**위 본문이 `:108` 을 유일 지점처럼 인용한 것은 부정확하다 — 축이 둘(`Deref`/`DerefMut`)이다**(검수 minor · 문면은 사료로 보존).
+  ★검수 부수 실측 1건: `ClassInstanceRef` 인자를 받는 fn **899개 중 560개**가 그 인자에 `is_null()` 가드가 없다(★**상한값** — 대부분 null 이 안 닿거나 deref 하지 않는다)
+  ⇒ 후속 `rustjava-null-guard-audit-remaining-runtime-entrypoints`(P3)의 「열거가 아니라 세는 것」에 **근거가 생겼다**.
 - [rustjava-upstream-sync-s5-java12-api] ★★**중복 발권 판정 — S5 는 «이미 착지»다(대전제 ⓒ 경로 · `status: blocked`).**
   실측(2026-09-11): `c4665b0` 은 `origin/main` 의 **조상** · PR #21 **MERGED**(2026-09-03T22:12:43Z · 머지커밋 `a0b5d3c`) —
   같은 일을 `rustjava-upstream-sync-s5-with-remeasured-conflicts` 가 이미 완주했다. S6(#22)·S7(#23)·S8(#24)도 착지해

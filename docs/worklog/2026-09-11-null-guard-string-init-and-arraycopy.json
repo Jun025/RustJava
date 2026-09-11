@@ -18,6 +18,9 @@
     "픽스처 형식: javac --release 8 ⇒ major 52(기존 픽스처와 동일) · invokedynamic/CP 태그 15~18 0건 · NullPointerException 이 FQN 으로 20회 박힘"
   ],
   "issues": [
+    "★[게이트③ 집행] PR #36 을 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다: #11·#13·#16·#17 4회 실증). 게이트② 1회차 approve(반려 0) · 핀 9ba6db48 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 착지 diff 9파일이고 이 저장소의 배포 워크플로는 0개 ⇒ 배포 0 · upstream 쓰기 0.",
+    "★[검수 minor · 정정] 이 워크로그와 REPORT/STATE 가 패닉 지점을 jvm/src/class_instance.rs:108 «하나»로 인용했는데 축이 둘이다 — arraycopy dest 축은 :114 의 DerefMut(self.instance.as_mut().unwrap()) 이고 나머지는 :108 의 Deref 다. 검수자가 가드를 1개씩만 빼는 개악 2건(A: system.rs dest · B: init_with_string_buffer)으로 각각 재현했다. ⇒ :108 을 유일 지점으로 인용하지 마라. 실질 차이는 없다(같은 타입의 짝 impl).",
+    "★[검수 부수 실측] rustjava-runtime/src 크루드 스캔 — this 외 ClassInstanceRef 인자를 받는 fn 899개 중 560개가 그 인자에 is_null() 가드가 없다. ★상한값이다(대부분 null 이 닿지 않거나 deref 하지 않는다) ⇒ proposals[0] 의 「열거가 아니라 세는 것」 요구에 근거가 생겼다.",
     "이 회차는 STATE ② 가 «열거한» 범위만 닫았다 — 같은 형태(ClassInstanceRef 를 받아 곧장 deref 하는 진입점)가 런타임 전체에 몇 개 남았는지는 세지 않았다. 처분 = proposals[0].",
     "픽스처를 test-data/ 안에서 컴파일하면 그 디렉터리의 Exception.class 가 java.lang.Exception 을 가려 compile error 가 난다(실측) — 스크래치에서 쳐서 복사해야 한다. 이 맥에는 시스템 JDK 가 없어 /opt/homebrew/opt/openjdk/bin/javac(26.0.1)를 썼다."
   ],
