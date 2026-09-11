@@ -119,6 +119,10 @@ impl RandomAccessFile {
     async fn read(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, buf: ClassInstanceRef<Array<i8>>) -> Result<i32> {
         tracing::debug!("java.io.RandomAccessFile::read({this:?}, {buf:?})");
 
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
+
         let length = jvm.array_length(&buf).await?;
         let read = jvm
             .invoke_virtual(&this, "java/io/RandomAccessFile", "read", "([BII)I", (buf, 0, length as i32))
@@ -137,6 +141,10 @@ impl RandomAccessFile {
     ) -> Result<i32> {
         tracing::debug!("java.io.RandomAccessFile::read({this:?}, {buf:?}, {offset:?}, {length:?})");
 
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
+
         let fd = jvm.get_field(&this, "fd", "Ljava/io/FileDescriptor;").await?;
         let mut rust_file = FileDescriptor::file(jvm, context, fd).await?;
 
@@ -152,6 +160,10 @@ impl RandomAccessFile {
 
     async fn write(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, buf: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.io.RandomAccessFile::write({this:?}, {buf:?})");
+
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
 
         let length = jvm.array_length(&buf).await?;
         let _: () = jvm
@@ -170,6 +182,10 @@ impl RandomAccessFile {
         length: i32,
     ) -> Result<()> {
         tracing::debug!("java.io.RandomAccessFile::write({this:?}, {buf:?}, {offset:?}, {length:?})");
+
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
 
         let fd = jvm.get_field(&this, "fd", "Ljava/io/FileDescriptor;").await?;
         let mut rust_file = FileDescriptor::file(jvm, context, fd).await?;

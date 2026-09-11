@@ -74,6 +74,10 @@ impl Reader {
     async fn read(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, buf: ClassInstanceRef<Array<JavaChar>>) -> Result<i32> {
         tracing::debug!("java.io.Reader::read({this:?}, {buf:?})");
 
+        if buf.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "buf is null").await);
+        }
+
         let len = jvm.array_length(&buf).await? as i32;
         let result = jvm.invoke_virtual(&this, "java/io/Reader", "read", "([CII)I", (buf, 0, len)).await?;
 

@@ -4,6 +4,22 @@
 (없음 — 2026-09-11 실측: 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 PR(#35) 착지 시점 기준**이다 — 회신 시점에는 #35 자신이 열려 있다)
 
 ## 완료
+- [rustjava-null-guard-audit-remaining-runtime-entrypoints] ★★**런타임 전체를 «세고»(감사) 그중 «데이터 전송 버퍼» 18곳에 가드를 넣었다.**
+  채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`. 픽스처 `test-data/NullBufferGuards` 10케이스.
+  ★★**감사 표(측정 2026-09-11 · 트리 `origin/main` `6da7d66f`)**: **N 1,163**(`this`·`_` 제외 `ClassInstanceRef` 인자)
+  → **M 58**(deref 강제 sink 에 미가드 도달) → **K 46**(그중 `as_proto` 등재 = 게스트 도달 가능) ⇒ 이 회차가 **18** 을 닫아 **K 28 → 실측 20**.
+  ★**판정 술어를 적어 둔다**(「보아하니」 금지): sink = `jvm/src/jvm.rs` 가 **`&Box<dyn ClassInstance>`/`impl AsClassInstance`** 로 받는 **17개 메서드**
+  (`array_length`·`load_array`·`store_array`·`get_field`·`put_field`·`invoke_virtual`·`invoke_special`·`monitor_*` …) — 그 인자에 `&p`/`&mut p` 로 넘기면 **Deref/DerefMut 가 강제**된다.
+  ★★**계측기를 «먼저 검증»했다 — 그리고 초판이 틀렸다.** 선행 회차가 닫은 **9곳**을 정답지로 삼아 가드 전/후 트리에 같은 자를 댔는데
+  초판은 **3/9** 만 되찾았다(근인 = 정규식을 `"\n"+src` 에 돌리고 인덱스를 `src` 에 적용한 **off-by-one** — 괄호 스캔이 한 칸 밀렸다).
+  고친 뒤 **8/9**. ★**남은 1건(`init_with_string`)은 `Self::value_range` «안»에서 deref 한다** ⇒ ★★**이 계측은 절차간(interprocedural)을 못 본다 — 그래서 K 는 «하한»이다.**
+  ★**검수자의 「899 중 560 · 상한값」과 방향이 반대다**: 그쪽은 fn 단위 크루드 스캔(상한), 이쪽은 sink 한정 + 절차내(하한).
+  ★★**세 번째 패닉 impl 을 찾았다** — `Deref`(:108)·`DerefMut`(:114) 외에 **`AsClassInstance::as_class_instance`**(`as_deref().unwrap()`)가 있다(monitor 계열이 그 경로다).
+  ★**범위를 «좁게» 골랐다 — 「전부 고쳐라」가 아니다**: `java/io` **데이터 전송**(read/write 버퍼) + `String.getChars` **18곳**.
+  ★★**생성자류를 «일부러» 뺐다 — 일괄 가드가 «틀리는» 자리가 실재한다**: `URL(context, spec, handler)` 는 JDK 규격상 **handler == null 이 «합법»**(기본 핸들러를 쓰라는 뜻)이다.
+  ⇒ ★**잔여 20건은 «가드를 넣을지»가 아니라 «null 이 합법인지»를 규격으로 먼저 가려야 한다** — 후속의 본체가 그것이다.
+  ★개악 대조 **양방향**: 18곳 전건 되돌림 → `test_class` **FAILED**(`:108`) · ★**단일 가드**(`get_chars(dst)`)만 제거해도 **FAILED**(`:114` `DerefMut`) ↔ 복원 **ok**.
+  ★`cargo test --all` **554 / 0 / 1**(증감 0 이 맞다 — `test_class` 는 픽스처를 한 함수가 순회한다) · DoD 7종 rc=0.
 - [rustjava-null-guard-string-init-and-arraycopy-p0] ★★**null 인자 8경로의 «호스트 abort» 를 `NullPointerException` 으로 바꿨다.**
   채택 제안 `2026-09-11-s5-duplicate-issuance-stale-next-close#p0`. ★**가드 9곳**(`string.rs` 7 · `system.rs` 2) · 픽스처 `test-data/NullArgGuards` 9케이스.
   ★**제안은 「8경로」라 했는데 실측은 «9곳»이다** — `System.arraycopy` 가 `src`·`dest` **둘 다** 뚫려 있었고(제안·STATE ③-2 는 `src` 만 셌다) 그 둘은 다른 인자다.

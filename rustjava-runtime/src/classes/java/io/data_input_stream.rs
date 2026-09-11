@@ -248,6 +248,10 @@ impl DataInputStream {
     async fn read_fully(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>, b: ClassInstanceRef<Array<i8>>) -> Result<()> {
         tracing::debug!("java.io.DataInputStream::readFully({this:?}, {b:?})");
 
+        if b.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "b is null").await);
+        }
+
         let length = jvm.array_length(&b).await?;
 
         let _: () = jvm

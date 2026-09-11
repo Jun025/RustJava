@@ -599,6 +599,10 @@ impl String {
     ) -> Result<()> {
         tracing::debug!("java.lang.String::getChars({this:?}, {src_begin}, {src_end}, {dst:?}, {dst_begin})");
 
+        if dst.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "dst is null").await);
+        }
+
         let (value, offset, count) = Self::value_range(jvm, &this).await?;
         if src_begin < 0 || src_begin > src_end || src_end as usize > count {
             return Err(jvm

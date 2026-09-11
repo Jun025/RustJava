@@ -1,5 +1,22 @@
 # REPORT
 
+## [2026-09-11] null 가드 «감사» — 세고, 그중 데이터 전송 버퍼 18곳을 닫았다 (rustjava-null-guard-audit-remaining-runtime-entrypoints)
+- 무엇을: 런타임 전체에서 `ClassInstanceRef` 인자를 받아 **곧바로 역참조하는** 진입점을 **셌고**(N 1,163 → M 58 → K 46),
+  그중 **`java/io` 데이터 전송 버퍼 + `String.getChars` 18곳**에 선행 회차와 **같은 모양**의 진입부 `is_null()` 가드를 넣었다.
+  회귀 잠금 = 픽스처 `test-data/NullBufferGuards`(10케이스). 채택 제안 `2026-09-11-null-guard-string-init-and-arraycopy#p0`.
+- 왜: 선행 회차가 닫은 것은 **손으로 열거한** 9곳이었고, ★그 열거 자신이 `arraycopy` 의 `dest` 를 빠뜨렸다.
+  ⇒ 이번엔 **열거가 아니라 술어로 셌다**. sink 는 `jvm.rs` 가 `&Box<dyn ClassInstance>`/`impl AsClassInstance` 로 받는 **17개 메서드**다.
+- 사용자 영향: 게스트가 스트림·Writer·`String.getChars` 에 **null 버퍼**를 넘겨도 에뮬레이터가 죽지 않고 `NullPointerException` 이 난다.
+  정상 입력 동작 **불변**(가드 앞에서 패닉하던 입력만 예외로 바뀐다) · 예외 종류·메시지 형태는 선행 회차와 동일.
+- 검증: ★**양방향** — 18곳 전건 되돌림 → `test_class` **FAILED**(`class_instance.rs:108`) · ★**단일 가드**(`get_chars(dst)`)만 빼도 **FAILED**(`:114` `DerefMut`) ↔ 복원 **ok**.
+  DoD 7종 rc=0 · `cargo test --all` **554/0/1**(계수 불변이 맞다).
+- ★★**계측기를 먼저 검증했고, 초판이 틀렸다**: 선행 9곳을 정답지로 대니 **3/9** 만 잡혔다(근인 = `"\n"+src` 에 정규식을 돌리고 인덱스는 `src` 에 쓴 **off-by-one**).
+  고쳐서 **8/9**. 남은 1건은 helper **안**에서 deref 하므로 ★**이 계측은 절차간을 못 보고, 따라서 K 는 «하한»이다**(검수자의 「899/560 상한」과 방향이 반대다).
+- ★**잔여 20건을 «일괄 가드»로 닫지 마라** — `URL(context, spec, handler)` 는 JDK 규격상 **null handler 가 합법**이다.
+  ⇒ 후속의 본체는 「가드를 넣는 것」이 아니라 **「null 이 합법인지 규격으로 가르는 것」**이다.
+- 후속 추천: `rustjava-null-guard-spec-triage-for-constructor-and-collection-params`(P3) — 잔여 20건을 **규격 기준으로 삼분**
+  (NPE 의무 / null 합법 / 도달 불가)하고 첫 갈래만 닫는다.
+
 ## [2026-09-11] null 인자가 호스트를 죽이던 9경로에 가드 (rustjava-null-guard-string-init-and-arraycopy-p0)
 - 무엇을: `String.<init>` 7개 오버로드와 `System.arraycopy`(`src`·`dest`)에 진입부 `is_null()` 가드를 넣어,
   null 을 넘겼을 때 **Rust 패닉(= 호스트 프로세스 abort)** 대신 **`NullPointerException`** 이 나게 했다.
