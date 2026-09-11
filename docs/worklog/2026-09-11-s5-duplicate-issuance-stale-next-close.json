@@ -17,5 +17,9 @@
     }
   ],
   "adoptedProposals": [],
-  "declinedProposals": []
+  "declinedProposals": [],
+  "issues": [
+    "★[게이트③ 집행] PR #35 를 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다: #11·#13·#16·#17 4회 실증). 게이트② approve · 핀 c980ef0d 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 착지 diff 5파일 전건 문서(.md/.json)이고 이 저장소의 배포 워크플로는 0개 ⇒ 배포 0 · 코드(.rs) 변경 0 · upstream 쓰기 0.",
+    "★이 리니지는 게이트② 를 3회차(초판 → -fix → -fix2) 거쳤고 반려 둘이 전부 «산출물이 아니라 회신»의 결함이었다 — F1(낡은 base 에서 자름 + CONFLICTING 미신고) · F1-⑶(절차 수정이 회신에만 있고 지속 산출물 0). 그 대가로 AGENTS.md §Git Workflow 에 2줄이 남았다."
+  ]
 }

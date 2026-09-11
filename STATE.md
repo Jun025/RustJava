@@ -12,6 +12,12 @@
   아래 ③ 절이 경고한 「이미 끝난 일을 가리키면」 형태의 ★**두 번째 재현**이다. ⇒ 이 회차가 `## 다음`·`진행중` 을 오늘 값으로 닫았다(코드 0줄 · 문서 전용).
   ★-fix 회차(게이트② F1): 초판 PR #35 가 «2일 낡은 로컬 `main`»에서 잘려 `CONFLICTING` — ★**이 회차가 고치는 병(낡은 것을 읽는다)을 자신이 밟았다.**
   `origin/main` 머지로 재해소(#33·#34 항목 보존 · force-push 0).
+  ★-fix2 회차(게이트② F1-⑶): 「절차를 어떻게 고쳤는가」가 회신에만 있어 반려 — ★**다음 세션이 읽는 자리**(`AGENTS.md` §Git Workflow)에
+  2줄을 박았다: ⒜브랜치는 `origin/main` 에서 자른다(로컬 `main` 신선도에 의존하지 않는 형태) ⒝PR 오픈 직후 `mergeable` 조회.
+  ★근인 정정: 그 repo 는 **이미** 「sync local `main`」을 MANDATORY 로 적고 있었다 ⇒ 진짜 근인은 «현행 조항을 조회하지 않은 것».
+  ★**게이트③ 착지 — PR #35 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② approve · 핀 `c980ef0d` **불이동**(동봉 전 실측) · `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** ·
+  착지 diff 5파일 **전건 문서** · ★**이 저장소 배포 워크플로 0개 ⇒ 배포 0** · `.rs` **0줄**.
 - [rustjava-upstream-sync-squash-defeats-convergence] ★게이트③ 착지 — **PR #18 `--merge`**(2026-08-27T08:47:35Z).
   `-s ours` 계보 복원 + 「스쿼시가 족보를 접는다」 확정. 상세 = `docs/upstream-sync-approach.md`. ※구 «PR 대기» 기재 폐기(2026-09-11 정리).
 - [rustjava-upstream-sync-s4] ★게이트③ 착지 — **PR #17 MERGED**(2026-08-27T01:28:44Z · 스쿼시 — 그 계보 절단을 #18 이 복원).
