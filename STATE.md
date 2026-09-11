@@ -4,6 +4,25 @@
 (없음 — 2026-09-11 실측: 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 PR(#35) 착지 시점 기준**이다 — 회신 시점에는 #35 자신이 열려 있다)
 
 ## 완료
+- [rustjava-null-guard-string-init-and-arraycopy-p0] ★★**null 인자 8경로의 «호스트 abort» 를 `NullPointerException` 으로 바꿨다.**
+  채택 제안 `2026-09-11-s5-duplicate-issuance-stale-next-close#p0`. ★**가드 9곳**(`string.rs` 7 · `system.rs` 2) · 픽스처 `test-data/NullArgGuards` 9케이스.
+  ★**제안은 「8경로」라 했는데 실측은 «9곳»이다** — `System.arraycopy` 가 `src`·`dest` **둘 다** 뚫려 있었고(제안·STATE ③-2 는 `src` 만 셌다) 그 둘은 다른 인자다.
+  ★**대가 = 없음에 가깝다**(제안 문면 그대로 물려받되 재확인): upstream 관용구(진입부 `is_null()`)를 그대로 썼고 **삽입만**(`--numstat` 삭제행 **0** · 치환 아님) ·
+  ★**의미 변경 0** — 가드 «앞»에서 패닉하던 입력만 예외로 바뀐다(정상 입력은 도달 경로가 동일).
+  ★★**개악 대조로 공허하지 않음을 증명했다** — 가드 전건 되돌리면 `test_class` **FAILED**
+  (`called Option::unwrap() on a None value` at `jvm/src/class_instance.rs:108` = STATE ② 가 지목한 `ClassInstanceRef::deref` 그 자리) ↔ 가드 복원 시 **ok**.
+  ★`cargo test --all` **554 / 0 / 1** — ★**증감 0 이고 그것이 맞다**: `test_class` 는 픽스처를 «한 테스트 함수»가 순회하므로 픽스처가 늘어도 계수는 불변이다.
+  ★**픽스처 컴파일 = `javac --release 8`**(major **52** = 기존 픽스처와 동일 · ★`invokedynamic`·CP 태그 15~18 **0건** — javac 9+ 함정을 피했다).
+  ★**컴파일은 «스크래치»에서 했다** — `test-data/` 에서 치면 그 디렉터리의 `Exception.class` 가 `java.lang.Exception` 을 **가려** compile error 가 난다(실측).
+  ⇒ ★**STATE ③-2 의 「유효 잔존 2건」이 닫혔다** · ②의 «가드 없음 7건» 표도 전건 닫혔다.
+  ★**게이트③ 착지 — PR #36 · `--merge`**(등재 repo · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `9ba6db48` **불이동**(동봉 전 실측) · `ci-presence` **rc=0 CI_GREEN** ·
+  자식 PR **0건** · 착지 diff 9파일(`.rs` 2 · 픽스처 3 · 원장 4) · ★**배포 워크플로 0개 ⇒ 배포 0**.
+  ★★**검수자가 «자기 자리»에서 개악을 다시 쟀고, 회차보다 강한 결과를 냈다** — 가드를 **1개씩** 빼도 픽스처가 문다
+  (A: `system.rs` `dest` 만 제거 → `class_instance.rs:114` `DerefMut` · B: `init_with_string_buffer` 만 제거 → `:108` `Deref`).
+  ⇒ ★**위 본문이 `:108` 을 유일 지점처럼 인용한 것은 부정확하다 — 축이 둘(`Deref`/`DerefMut`)이다**(검수 minor · 문면은 사료로 보존).
+  ★검수 부수 실측 1건: `ClassInstanceRef` 인자를 받는 fn **899개 중 560개**가 그 인자에 `is_null()` 가드가 없다(★**상한값** — 대부분 null 이 안 닿거나 deref 하지 않는다)
+  ⇒ 후속 `rustjava-null-guard-audit-remaining-runtime-entrypoints`(P3)의 「열거가 아니라 세는 것」에 **근거가 생겼다**.
 - [rustjava-upstream-sync-s5-java12-api] ★★**중복 발권 판정 — S5 는 «이미 착지»다(대전제 ⓒ 경로 · `status: blocked`).**
   실측(2026-09-11): `c4665b0` 은 `origin/main` 의 **조상** · PR #21 **MERGED**(2026-09-03T22:12:43Z · 머지커밋 `a0b5d3c`) —
   같은 일을 `rustjava-upstream-sync-s5-with-remeasured-conflicts` 가 이미 완주했다. S6(#22)·S7(#23)·S8(#24)도 착지해
@@ -426,8 +445,8 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 | `ByteArrayInputStream.<init>([B)` null 가드 | `is_null()` 가드 존재(`be77dc6`) | **삼킴 → 무효** |
 | `Class.forName` null/not-found 가드 | 둘 다 존재 | **삼킴 → 무효** |
 | `Integer.byteValue()/shortValue()` | `java/lang/Number` 가 **구현 제공**, Integer 가 상속(`#176`) | **삼킴 → 무효** |
-| `System.arraycopy` null 가드 | **부재** | ★**유효 잔존** |
-| `String.<init>([B)` / `([C)` null 가드 | **부재** | ★**유효 잔존** |
+| `System.arraycopy` null 가드 | ~~**부재**~~ → ★**해소**(`src`·`dest` **둘 다** · 2026-09-11) | ~~유효 잔존~~ → **닫힘** |
+| `String.<init>([B)` / `([C)` null 가드 | ~~**부재**~~ → ★**해소**(아래 7건 전부 · 2026-09-11) | ~~유효 잔존~~ → **닫힘** |
 
 ★유효 잔존 2건의 **파괴력 근거**(추정 아님): `ClassInstanceRef::deref` 가
 `self.instance.as_ref().unwrap()` 이라 **null 참조를 넘기면 Rust 패닉 = 호스트 프로세스 abort**다
@@ -471,7 +490,10 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 
 1. ~~`rustjava-upstream-sync-s5` … `-s7`~~ → ★★**[2026-09-11] 해소 — S5~S8 전건 착지**(① 참조).
    ★**발권하지 마라** — 2026-09-11 에 실제로 중복 발권됐다(`rustjava-upstream-sync-s5-java12-api` · blocked).
-2. **`rustjava-null-guard-string-init-and-arraycopy`**(P2·S·low) — ②의 유효 잔존 2건 + 형제 전수.
+2. ~~`rustjava-null-guard-string-init-and-arraycopy`~~ → ★★**[2026-09-11] 해소 — `…-p0` 로 착수해 가드 9곳 + 픽스처 9케이스로 닫았다**(완료 절 참조).
+   ★**발권하지 마라.** ★아래 범위 서술은 **사료**다 — 단 ★**「가드 없음 7건」은 «8곳»이었다**: `System.arraycopy` 의
+   `dest` 가 `src` 와 **별개로** 뚫려 있었고 이 절이 그것을 «1건»으로 셌다. 다음에 이런 표를 쓸 땐 **인자 단위로** 세라.
+   ---- 이하 사료 ----
    ★**①의 뒤**여야 한다 — ★**근거 정정(2026-08-16)**: 선행 이유는 **`string.rs` 가 충돌 목록에 있기 때문**이다.
    ★**`system.rs` 는 충돌 목록에 «없다»**(`merge-tree` 출력에서 `Auto-merging` 만 있고 `CONFLICT` 줄이 없다) —
    구판이 두 파일 다 충돌이라고 적은 것은 오류이니 **충돌 해소 대상으로 잡지 마라.**

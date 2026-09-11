@@ -1,5 +1,22 @@
 # REPORT
 
+## [2026-09-11] null 인자가 호스트를 죽이던 9경로에 가드 (rustjava-null-guard-string-init-and-arraycopy-p0)
+- 무엇을: `String.<init>` 7개 오버로드와 `System.arraycopy`(`src`·`dest`)에 진입부 `is_null()` 가드를 넣어,
+  null 을 넘겼을 때 **Rust 패닉(= 호스트 프로세스 abort)** 대신 **`NullPointerException`** 이 나게 했다.
+  회귀 잠금 = 픽스처 `test-data/NullArgGuards`(9케이스). 채택 제안 `2026-09-11-s5-duplicate-issuance-stale-next-close#p0`.
+- 왜: `ClassInstanceRef::deref` 가 `self.instance.as_ref().unwrap()` 이라 **null 이 닿는 순간 되돌릴 수 없다** —
+  게스트 Java 코드의 흔한 실수가 JVM 전체를 죽였다. 가드가 **짝이 안 맞는** 것이 급소였다:
+  `([CII)`·`(II[C)` 만 막혀 있고 `[B` 계열은 전부 뚫려 있었다.
+- 사용자 영향: 에뮬레이터가 게스트의 null 실수로 **죽지 않는다**. 정상 입력의 동작은 **불변**(가드 «앞»에서
+  패닉하던 입력만 예외로 바뀐다) · API 시그니처·의미 변경 **0**.
+- 검증: ★**개악 대조** — 가드 전건 되돌리면 `test_class` **FAILED**(`Option::unwrap()` on `None` at
+  `jvm/src/class_instance.rs:108`) ↔ 복원 시 **ok** ⇒ 픽스처가 공허하지 않다.
+  DoD 7종 rc=0 · `cargo test --all` **554/0/1**(★`test_class` 가 픽스처를 한 함수로 순회하므로 **계수 불변이 맞다**).
+- ★**제안의 「8경로」는 «9곳»이었다**: `System.arraycopy` 는 `src`·`dest` **둘 다** 뚫려 있었는데 STATE ③-2 가
+  그것을 1건으로 셌다. ⇒ 다음에 그런 표를 쓸 땐 **인자 단위로** 세라.
+- 후속 추천: `rustjava-null-guard-audit-remaining-runtime-entrypoints`(P3) — 이 회차는 **STATE ②가 열거한 범위만** 닫았다.
+  같은 형태(`ClassInstanceRef` 를 받아 곧장 deref)가 런타임 전체에 몇 개나 남았는지는 **아무도 세지 않았다**.
+
 ## [2026-09-11] S5 중복 발권 판정 + 낡은 «다음» 절 폐쇄 (rustjava-upstream-sync-s5-java12-api)
 - 무엇을: 티켓이 요구한 S5(`c4665b0`) 동기화는 **이미 착지돼 있었다** — `c4665b0` 은 `origin/main` 의 조상이고
   PR #21 이 `rustjava-upstream-sync-s5-with-remeasured-conflicts` 로 2026-09-03 에 `--merge` 착지했다(S6~S8 도 완주 ·

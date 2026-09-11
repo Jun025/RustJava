@@ -175,6 +175,13 @@ impl System {
     ) -> Result<()> {
         tracing::debug!("java.lang.System::arraycopy({src:?}, {src_pos}, {dest:?}, {dest_pos}, {length})");
 
+        if src.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "src is null").await);
+        }
+        if dest.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "dest is null").await);
+        }
+
         // TODO i think we can make it faster
         let src: Vec<JavaValue> = jvm.load_array(&src, src_pos as _, length as _).await?;
         jvm.store_array(&mut dest, dest_pos as _, src).await?;
