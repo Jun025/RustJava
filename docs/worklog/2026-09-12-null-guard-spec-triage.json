@@ -24,11 +24,14 @@
     "픽스처 형식: javac --release 8 ⇒ major 52 · invokedynamic/CP 태그 15~18 0건"
   ],
   "issues": [
+    "★[게이트③ 집행] PR #38 을 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 계보를 지운다). 게이트② 1회차 approve · 핀 934b3944 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 배포 워크플로 0개 ⇒ 배포 0.",
     "★미커버 3곳은 «테스트를 안 쓴 것»이 아니라 «픽스처로 도달 불가»다 — JarURLConnection·URLStreamHandler 는 ABSTRACT 라 게스트 서브클래스가 필요하고, ZipFile.getInputStream 은 살아 있는 ZipFile 이 있어야 하는데 이 런타임에 ZipOutputStream 이 없어 픽스처가 zip 을 만들 수 없다. ⇒ proposals.",
     "★규격 근거를 참조 JVM 26 에서 쟀다 — 타깃은 8 이다. null 인자 계약이 그 사이 불변이라고 «가정»했고 그 가정을 표에 적었다. 반증되면 ⒜/⒝ 가 흔들린다.",
     "★⒞ 는 «도달 불가»가 아니라 «규격 적합 게스트 코드로는 도달 불가»다 — 이 런타임은 접근 플래그도 java.* 패키지 금지도 강제하지 않으므로(실측 0건) 손으로 만든 바이트코드는 package-private 멤버를 부를 수 있다.",
     "★감사 도구의 섀도잉 오탐이 2건 확인됐다(Pattern.matches·split) — docstring 이 선언한 한계가 실제로 물렸다. 도구를 고치지는 않았다(이 티켓 범위 밖이고, 한계가 이미 선언돼 있다).",
-    "★org/rustjava/net/FileURLHandler 는 JDK 클래스가 아니라 이 repo 고유라 «적용할 JDK 규격이 없다» — 삼분 축이 원리적으로 닿지 않는 자리이고, 그래서 ⒞ 로 두되 사유를 «규격 부재»로 따로 적었다."
+    "★org/rustjava/net/FileURLHandler 는 JDK 클래스가 아니라 이 repo 고유라 «적용할 JDK 규격이 없다» — 삼분 축이 원리적으로 닿지 않는 자리이고, 그래서 ⒞ 로 두되 사유를 «규격 부재»로 따로 적었다.",
+    "★[검수 minor ⑴ · 기록] ⒜ 표 열머리 「규격이 NPE 를 «요구»」는 6자리 중 3자리(readUTF · FileInputStream(File) · JarURLConnection(URL))에서 Java 8 Javadoc 보다 강하다 — 그 자리의 실제 근거는 «관측된 구현 거동»이다(zip 2자리는 Javadoc 이 실제로 요구한다). ★처분은 바뀌지 않는다(현 거동이 호스트 abort 라 어느 축으로도 오답). ⇒ 다음 회차가 이 표를 「전건 명문 규격」으로 인용하지 마라.",
+    "★[검수 minor ⑶ · 승계] ⒝ url.rs 의 handler 는 «가드를 넣으면 규격 위반»인 자리인데 그 사유가 코드에 없고 worklog 에만 있다 ⇒ 다음 회차가 «빠진 가드»로 오인할 위험이 남는다. 이 머지 회차는 계약 7 로 손대지 않았다 — 총괄 승계 판정 몫."
   ],
   "proposals": [
     {
