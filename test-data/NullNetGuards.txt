@@ -1,0 +1,4 @@
+URLStreamHandler.setURL(URL,...):
+caught NPE
+JarURLConnection(URL):
+caught NPE

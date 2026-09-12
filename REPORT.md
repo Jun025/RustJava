@@ -12,6 +12,29 @@
   `#[ignore]` 로만 막혀 있다는 것이 ★**내가 그 제안을 쓸 때 확인하지 않은 자리**다.
 - 후속 추천: 병렬 러너를 **실제로 도입하는 회차**가 **선행 조건으로** 픽스처별 작업 디렉터리를 함께 넣는다.
 
+## [2026-09-12] 게스트 서브클래싱은 «된다» — `java/net` 가드 2곳 잠금 (rustjava-fixture-subclassing-abstract-runtime-classes)
+- 무엇을: 「게스트 픽스처가 **추상 런타임 클래스**를 상속할 수 있는가」를 **먼저 쟀고**(미확인이었다), ★**된다**로 판정해
+  `URLStreamHandler.setURL` · `JarURLConnection(URL)` 두 가드를 픽스처 `test-data/NullNetGuards` 로 **잠갔다**. ★**`.rs` 변경 0줄.**
+- 왜: 그 2곳은 가드가 있어도 **지워도 아무도 모르는** 상태였다 — `protected` 진입점이라 **서브클래스 없이는 도달할 수 없다**.
+- 사용자 영향: 런타임 동작 **불변**(시험만 늘었다). ★두 가드가 사라지면 이제 **CI 가 말한다**.
+- 검증: ★**양방향 · 자리마다** — 픽스처를 **일시 제거**하면 두 개악이 **둘 다 green**(안 잠김) ↔ 있으면 **둘 다 RED**.
+  `cargo test --all` **554/0/1**(전체 실행) · DoD 7종 rc=0.
+- ★**부수 발견**: 기존 픽스처가 이미 **`ClassLoader`** 를 상속하고 있었다 ⇒ 진짜 미확인은 「런타임 클래스 상속」이 아니라
+  **«추상 + `protected` 진입점» 조합**뿐이었다. 조사 전제를 좁혔으면 더 쌌다.
+- 후속 추천: 이 축의 **미커버가 0 이 됐다**는 사실 자체를 기록(다음 사람이 같은 20곳을 다시 세지 않도록).
+
+## [2026-09-12] `ZipFile.getInputStream` 가드 잠금 — ★`ZipOutputStream` 을 만들지 않았다 (rustjava-zip-output-stream-minimal-for-fixture-reachability)
+- 무엇을: 규격 근거로 넣었으나 **잠기지 않던** `ZipFile.getInputStream(ZipEntry)` 가드를 픽스처 `test-data/ZipGuards` 로 **잠갔다**.
+  ★**런타임(`.rs`) 변경 0줄 · `ZipOutputStream` 구현 0줄 · 추가 바이너리 0.**
+- 왜: ★**제안의 근인 진단이 틀렸다** — 「근인은 `ZipOutputStream` 부재」였으나 필요한 것은 **«zip 파일 하나»**이지 «zip 을 만드는 런타임»이 아니었다.
+  ⇒ 이미 있는 `test-data/test.jar`(**jar 은 zip 이다**)를 열어 살아 있는 `ZipFile` 을 얻었다.
+- 사용자 영향: 런타임 동작 **불변**(시험만 늘었다). ★그 가드가 사라지면 이제 **CI 가 말한다**.
+- 검증: ★**양방향** — 착수 시 같은 개악이 **green**(안 잠김) ↔ 이 회차 뒤 **red**(호스트 abort) · 복원 **ok**.
+  `cargo test --all` **554/0/1**(전체 실행) · DoD 7종 rc=0.
+- ★**남은 한계를 «섞지 마라»**: 게스트가 zip 을 «쓰는» 경로는 여전히 없다(`ZipOutputStream` 부재).
+  그것은 「게스트가 zip 을 만든다」는 요구가 생길 때의 일이지 **가드 잠금 때문이 아니다**.
+- 후속 추천: `ZipFile.close()` 등재 — 게스트가 흔히 부르는데 `NoSuchMethodError` 가 난다(이 회차가 픽스처에서 실제로 밟았다).
+
 ## [2026-09-12] 파일 기반 IO 가드 6곳을 회귀로 묶었다 (rustjava-null-guard-fixture-for-file-backed-io)
 - 무엇을: 살아 있는 파일 핸들이 있어야 도달하는 가드 **6곳**(`FileInputStream`·`FileOutputStream`·`RandomAccessFile`)을
   임시 파일 픽스처 `test-data/NullFileIoGuards`(7케이스)로 **잠갔다**. ★**`.rs` 는 한 줄도 바꾸지 않았다.**
