@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-09-12",
+  "title": "파일 기반 IO 가드 6곳을 회귀로 묶었다 — .rs 변경 0, 산출물은 «가드를 지키는 시험»",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-null-guard-fixture-for-file-backed-io",
+  "summary": "「가드가 있다」와 「가드가 잠겨 있다」는 다른 문장이다. FileInputStream.read([BII) · FileOutputStream.write([BII) · RandomAccessFile 의 read([B)/read([BII)/write([B)/write([BII) 6곳은 가드가 들어간 뒤에도 «지워도 아무도 모르는» 상태였다 — 픽스처가 살아 있는 파일 핸들을 만들 수 없었기 때문이다. 이 회차는 test-data/NullFileIoGuards 픽스처(7케이스 = 6곳 + 정리 확인 1건)를 세워 그 6곳을 묶었고 ★.rs 는 한 줄도 바꾸지 않았다. ★판정선은 「가드를 지웠을 때 시험이 실제로 진다」 하나이고, 자리마다 개악해 6/6 전건 red 를 확인했다(한 자리로 일반화하지 않았다). ★정리를 시험의 일부로 만들었다 — 끝에서 delete() 후 exists() 를 출력하므로 스크래치 파일이 남으면 그 자체로 시험이 진다. 흔들림 술어(SKIP · command -v · OS 분기 · 절대경로)는 전건 0 이고 3회 재실행이 동일했다.",
+  "changes": [
+    "test-data/src/NullFileIoGuards.java + test-data/NullFileIoGuards.class + test-data/NullFileIoGuards.txt — 7케이스 회귀 픽스처(6 가드 + 정리 단언)",
+    "docs/worklog/2026-09-12-null-guard-file-io-fixture.md — 전수표·개악 대조·정리 확인",
+    "STATE.md · REPORT.md — 회차 기록"
+  ],
+  "verification": [
+    "정상 → green: cargo test --test test_class ok · cargo fmt --check rc=0 · clippy stable/beta/wasm32 rc=0 · cargo test --all 554 passed / 0 failed / 1 ignored(★전체 실행) · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
+    "★개악 대조 — 자리마다: 가드 6곳을 하나씩 제거하고 각각 빌드·실행 → 6/6 전건 red(file_input_stream.read_array · file_output_stream.write_bytes_offset · random_access_file 의 read/read_offset_length/write/write_offset_length)",
+    "★정리 확인: 시험 후 null-file-io-guards.tmp 부재 · git status 에 0건 · 픽스처 마지막 케이스가 exists() 로 «gone» 을 단언한다",
+    "★흔들림 0: SKIP 0 · command -v 0 · OS 분기/System.getProperty 0 · 절대경로 0 · 3회 재실행 전건 ok",
+    "★범위: git status rustjava-runtime/ = 0 (.rs 무접촉) · 기존 픽스처 감소 0",
+    "픽스처 형식: javac --release 8 ⇒ major 52 · invokedynamic/CP 태그 15~18 0건"
+  ],
+  "issues": [
+    "★이 픽스처가 «파일을 쓰는 첫 시험»이다 — 고정 이름(null-file-io-guards.tmp)을 쓰므로 test_class 가 병렬화되면 충돌한다. 오늘은 단일 테스트 함수가 순회하므로 무해하지만, 병렬 실행을 도입하는 회차가 이름 난수화 또는 작업 디렉터리 격리를 함께 해야 한다.",
+    "★스크래치 파일을 .gitignore 에 넣지 «않았다» — 넣으면 「남아도 안 보인다」가 되어 픽스처의 정리 단언이 무력해진다. 의도적 선택이다.",
+    "★개악 실행 중에는 패닉이 정리 코드 도달을 막아 스크래치 파일이 남는다 — 개악 하네스가 회차마다 지웠다. 이 성질은 «가드가 없을 때만» 나타나므로 정상 경로에는 영향이 없다."
+  ],
+  "proposals": [
+    {
+      "title": "rustjava-test-class-parallel-and-scratch-isolation",
+      "plainSummary": "test_class 를 픽스처별 병렬로 돌릴 때를 대비해, 파일을 쓰는 픽스처의 스크래치 경로를 격리한다(이름 난수화 또는 per-fixture 작업 디렉터리).",
+      "userBenefit": "픽스처가 늘어 테스트가 느려졌을 때 병렬화를 «안전하게» 켤 수 있다 — 지금 켜면 파일 픽스처끼리 충돌한다.",
+      "why": "이번에 파일을 쓰는 첫 픽스처가 들어왔고 고정 이름을 쓴다. test_class 는 현재 한 함수가 순회하므로 무해하나, 그 형태가 병렬화의 «숨은 전제»가 됐다 — 전제는 적어 두지 않으면 깨진다.",
+      "tradeoff": "오늘 얻는 것이 없다(무해한 상태를 미리 고치는 일이다) ⇒ 병렬화를 실제로 검토할 때 함께 하는 것이 옳고, 그 전에는 이 기록으로 충분하다.",
+      "effort": "S",
+      "target": "RustJava tests/test_class.rs + test-data"
+    }
+  ],
+  "adoptedProposals": [
+    "2026-09-11-null-guard-audit-and-io-buffer-guards#p1"
+  ],
+  "declinedProposals": []
+}

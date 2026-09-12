@@ -1,5 +1,16 @@
 # REPORT
 
+## [2026-09-12] 파일 기반 IO 가드 6곳을 회귀로 묶었다 (rustjava-null-guard-fixture-for-file-backed-io)
+- 무엇을: 살아 있는 파일 핸들이 있어야 도달하는 가드 **6곳**(`FileInputStream`·`FileOutputStream`·`RandomAccessFile`)을
+  임시 파일 픽스처 `test-data/NullFileIoGuards`(7케이스)로 **잠갔다**. ★**`.rs` 는 한 줄도 바꾸지 않았다.**
+  채택 제안 `2026-09-11-null-guard-audit-and-io-buffer-guards#p1`.
+- 왜: ★**「가드가 있다」와 「가드가 잠겨 있다」는 다른 문장이다** — 그 6곳은 **지워도 아무도 모르는** 상태였다.
+- 사용자 영향: 런타임 동작 **불변**(시험만 늘었다). ★그 6개 가드가 나중에 사라지면 이제 **CI 가 말한다**.
+- 검증: ★**개악 대조를 «자리마다»** — 가드를 하나씩 지워 **6/6 전건 red**. `cargo test --all` **554/0/1**(전체 실행) · DoD 7종 rc=0.
+  ★**흔들림 0**: `SKIP`·`command -v`·OS 분기·절대경로 **0** · **3회 재실행 동일**.
+- ★**정리를 시험의 일부로 만들었다**: 끝에서 `delete()` 후 `exists()` 를 단언하므로 스크래치 파일이 남으면 **시험이 진다**. 실행 후 잔여 **0**.
+- 후속 추천: `test_class` 병렬화 시 스크래치 경로 격리(오늘은 단일 함수 순회라 무해 — ★그 «숨은 전제»를 기록해 둔다).
+
 ## [2026-09-11] null 가드 «감사» — 세고, 그중 데이터 전송 버퍼 18곳을 닫았다 (rustjava-null-guard-audit-remaining-runtime-entrypoints)
 - 무엇을: 런타임 전체에서 `ClassInstanceRef` 인자를 받아 **곧바로 역참조하는** 진입점을 **셌고**
   (★**트리 병기 · 재측 2026-09-12** — base `6da7d66f`: **N 1,175 · M 52 · K 38** → head: **M 34 · K 20** · **ΔK 18**),

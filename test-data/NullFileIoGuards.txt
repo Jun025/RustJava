@@ -1,0 +1,14 @@
+FileInputStream.read(byte[],int,int):
+caught NPE
+FileOutputStream.write(byte[],int,int):
+caught NPE
+RandomAccessFile.read(byte[]):
+caught NPE
+RandomAccessFile.read(byte[],int,int):
+caught NPE
+RandomAccessFile.write(byte[]):
+caught NPE
+RandomAccessFile.write(byte[],int,int):
+caught NPE
+scratch removed:
+gone
