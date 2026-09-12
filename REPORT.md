@@ -10,6 +10,20 @@
   ★**흔들림 0**: `SKIP`·`command -v`·OS 분기·절대경로 **0** · **3회 재실행 동일**.
 - ★**정리를 시험의 일부로 만들었다**: 끝에서 `delete()` 후 `exists()` 를 단언하므로 스크래치 파일이 남으면 **시험이 진다**. 실행 후 잔여 **0**.
 - 후속 추천: `test_class` 병렬화 시 스크래치 경로 격리(오늘은 단일 함수 순회라 무해 — ★그 «숨은 전제»를 기록해 둔다).
+## [2026-09-12] 남은 20곳 «규격 삼분» — ⒜ 11 · ⒝ 1 · ⒞ 8, 그중 «미충족» 9곳만 닫았다 (rustjava-null-guard-spec-triage-for-constructor-and-collection-params)
+- 무엇을: 감사가 남긴 20곳을 **JDK 규격 기준 세 갈래**로 가르고 ★**⒜ 이면서 런타임이 «미충족»인 9곳만** 닫았다.
+  ★**주 산출물은 전수 분류표**(`docs/worklog/2026-09-12-null-guard-spec-triage.md`)이고 가드는 그 뒤다.
+  회귀 잠금 = 픽스처 `test-data/NullSpecGuards`(6케이스). 채택 제안 `2026-09-11-null-guard-audit-and-io-buffer-guards#p0`.
+- 왜: ★**null 이 «합법»인 자리에 가드를 넣으면 규격 위반이고, 도달 불가에 넣으면 죽은 코드다.**
+  실제로 `URL(context, spec, handler)` 의 `handler` 는 참조 JVM 에서 **null 이 정상 통과**한다 ⇒ 손대지 않았다.
+- 사용자 영향: 게스트가 `FileInputStream`·`ZipFile`·`readUTF` 등에 null 을 넘겨도 **에뮬레이터가 죽지 않고** `NullPointerException` 이 난다.
+  정상 입력 동작 **불변** · ⒝⒞ 갈래 **무접촉**.
+- 검증: ★**착수 «전»에 런타임을 먼저 쟀다**(사이트별 개별 픽스처 8회) — 6곳 **호스트 abort** ↔ `Pattern` 2곳 **이미 NPE**.
+  ⇒ ★**후자는 가드를 넣지 «않았다»**(감사의 섀도잉 오탐 · 넣으면 죽은 코드). 가드별 커버리지도 단일 개악으로 **측정**: **6 red · 3 green**.
+  DoD 7종 rc=0 · `cargo test --all` **554/0/1**(전체 실행).
+- ★**규격 근거를 «관측»으로 댔다** — `AGENTS.md` 가 OpenJDK 소스 참조를 금지하므로 `src.zip` 을 **열지 않고** 참조 JVM(26.0.1) 거동을 쟀다.
+  ★**대가**: 측정 판본 26 ↔ 타깃 8(가정을 명시했다).
+- 후속 추천 2건: `ZipOutputStream` 최소 구현(미커버 가드 1개 잠금 + zip 왕복) · 추상 클래스 서브클래싱 픽스처(미커버 2개 잠금).
 
 ## [2026-09-11] null 가드 «감사» — 세고, 그중 데이터 전송 버퍼 18곳을 닫았다 (rustjava-null-guard-audit-remaining-runtime-entrypoints)
 - 무엇을: 런타임 전체에서 `ClassInstanceRef` 인자를 받아 **곧바로 역참조하는** 진입점을 **셌고**

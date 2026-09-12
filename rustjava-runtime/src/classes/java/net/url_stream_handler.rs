@@ -66,6 +66,10 @@ impl URLStreamHandler {
             &r#ref
         );
 
+        if url.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "u is null").await);
+        }
+
         let _: () = jvm
             .invoke_virtual(
                 &url,
