@@ -10,6 +10,7 @@
 - ★**부수 발견**: 기존 픽스처가 이미 **`ClassLoader`** 를 상속하고 있었다 ⇒ 진짜 미확인은 「런타임 클래스 상속」이 아니라
   **«추상 + `protected` 진입점» 조합**뿐이었다. 조사 전제를 좁혔으면 더 쌌다.
 - 후속 추천: 이 축의 **미커버가 0 이 됐다**는 사실 자체를 기록(다음 사람이 같은 20곳을 다시 세지 않도록).
+
 ## [2026-09-12] `ZipFile.getInputStream` 가드 잠금 — ★`ZipOutputStream` 을 만들지 않았다 (rustjava-zip-output-stream-minimal-for-fixture-reachability)
 - 무엇을: 규격 근거로 넣었으나 **잠기지 않던** `ZipFile.getInputStream(ZipEntry)` 가드를 픽스처 `test-data/ZipGuards` 로 **잠갔다**.
   ★**런타임(`.rs`) 변경 0줄 · `ZipOutputStream` 구현 0줄 · 추가 바이너리 0.**
