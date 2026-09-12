@@ -7,6 +7,13 @@ use jvm::Result;
 use test_helper::{run_class, run_jar};
 
 // TODO parameterized tests..
+//
+// `#[ignore]` is load-bearing beyond "this needs a real `java` on PATH": this function
+// walks the same `test-data/` directory as `tests/test_class.rs`, and some fixtures write
+// a fixed-name scratch file into the working directory. Un-ignoring it is fine while cargo
+// runs test binaries sequentially, but under a runner that executes tests concurrently
+// (`cargo nextest`, say) the two walks would race on that path. See the note above
+// `test_class` before removing this attribute.
 #[tokio::test]
 #[ignore]
 async fn test_real_jvm() -> Result<()> {

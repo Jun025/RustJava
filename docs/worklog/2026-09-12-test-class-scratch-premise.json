@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-09-12",
+  "title": "병렬화의 «숨은 전제»를 테스트 소스에 못박았다 — 격리는 넣지 않았다(제안의 유보를 재판정해 유지)",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-test-class-parallel-and-scratch-isolation",
+  "summary": "이 티켓의 1순위는 «격리 구현»이 아니라 «판단»이었다 — 제안 자신이 「오늘 얻는 것이 없다 ⇒ 병렬화를 검토할 때 함께 하는 것이 옳고 그 전에는 이 기록으로 충분하다」고 유보했고 티켓이 그것을 재판정하라 했다. ★재판정 결과 유보는 «옳다»: 충돌이 안 나는 전제가 코드로 확인되고, 지금 격리를 넣으면 픽스처 관용만 하나 늘고 그것을 지킬 축이 없어 다음 사람이 또 고정 이름을 쓴다. ★그러나 제안이 전제를 «하나»로 적은 것은 틀렸다 — 실측하니 셋이다: ⑴test_class 가 그 바이너리의 유일한 테스트 함수 ⑵★tests/test_real_jvm.rs 가 «같은 test-data/ 를 순회»하는데 #[ignore] ⑶cargo 가 테스트 바이너리를 순차 실행. ★2번이 제안이 몰랐던 가장 얇은 전제다(#[ignore] 한 줄을 지우면 같은 디렉터리를 도는 함수가 둘이 된다). ⇒ 계약 2 가 시킨 대로 기록을 «테스트가 읽는 자리»에 뒀다: test_class 순회 함수 위 주석(세 전제 + 깨지면 무엇이 일어나는지 + 병렬화의 선행 조건)과 test_real_jvm 의 #[ignore] 바로 위 주석(그 속성이 막고 있는 것). 대조쌍은 «없다» — 구현하지 않았고 모의 병렬을 세우려면 계약 3 이 금지한 병렬화를 먼저 해야 한다.",
+  "changes": [
+    "tests/test_class.rs — 순회 함수 위에 세 전제·파손 양상·병렬화 선행 조건 주석(삽입만)",
+    "tests/test_real_jvm.rs — #[ignore] 위에 «그 속성이 두 번째 순회를 막는다» 주석(삽입만)",
+    "docs/worklog/2026-09-12-test-class-scratch-premise.md — 판정 근거"
+  ],
+  "verification": [
+    "ⓐ 전제 3개 실측: test_class.rs 의 #[test] 계수 1 · test_real_jvm.rs 가 같은 read_dir(\"test-data\") 루프 + #[ignore] 실재 · cargo test 실행 로그가 Running→result 를 하나씩 내어 바이너리 순차 실행 확인",
+    "기존 스위트 green: cargo test --all 554 passed / 0 failed / 1 ignored(★전체 실행) · fmt rc=0 · clippy stable/beta/wasm32 rc=0 · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
+    "★대조쌍 «없음» — 구현하지 않았으므로(Acceptance 가 허용한 경로). 모의 병렬을 세우려면 계약 3 이 금지한 병렬화를 먼저 해야 해서 억지 픽스처를 만들지 않았다",
+    "범위: 변경은 tests/ 주석 2곳뿐(14 0 · 7 0 · 삽입만) · test_class 병렬화 0 · 픽스처·런타임 무접촉"
+  ],
+  "issues": [
+    "★[게이트③ 집행] PR #42 를 --merge 로 착지시켰다(등재 repo). 게이트② 1회차 approve · 핀 8f8443ea 불이동(해소·동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 배포 0. ★착수 시 CONFLICTING(PR #40·#41 선착지) 이었고 원장 2파일뿐·코드 충돌 0 이라 합집합으로 해소했다.",
+    "★제안이 전제를 «하나»로 적은 것은 부정확했다 — 실측 셋이고, 그중 test_real_jvm 의 #[ignore] 가 가장 얇다(한 줄 삭제로 깨진다). 내가 그 제안을 쓸 때 같은 디렉터리를 도는 두 번째 함수의 존재를 확인하지 않았다.",
+    "★오늘 cargo 는 테스트 바이너리를 «순차» 실행하므로 #[ignore] 를 지워도 즉시 깨지지는 않는다 — 그러나 cargo nextest 처럼 테스트마다 프로세스를 띄우는 러너로 옮기면 그 방어가 사라진다. 두 전제를 «함께» 읽어야 한다.",
+    "★격리를 넣지 않았으므로 가드가 아니라 «주석»이 방어다 — 기계 강제가 아니다. 이것은 알고 고른 값이고(ⓒ 의 비용), 병렬 러너 도입 회차가 선행 조건으로 함께 해결해야 한다.",
+    "★[직전 회차 규율 적용] «마커가 구분선이었는지»를 해소 전/후 경계 계수로 확인해 이 회차가 만든 절 구분 결손 1곳을 복원했다(선재 4곳은 계약 7 로 그대로). ⇒ 그 규율이 «다음 회차에서 바로» 값을 했다는 실증이다."
+  ],
+  "proposals": [
+    {
+      "title": "rustjava-parallel-test-runner-requires-per-fixture-cwd",
+      "plainSummary": "병렬 테스트 러너(cargo nextest 등)를 실제로 도입하는 회차가, 선행 조건으로 픽스처별 작업 디렉터리를 함께 넣는다.",
+      "userBenefit": "픽스처가 늘어 테스트가 느려졌을 때 병렬화를 «안전하게» 켤 수 있다 — 지금 켜면 파일을 쓰는 픽스처가 고정 경로에서 경합한다.",
+      "why": "이 회차는 전제를 기록만 했고 기계로 막지 않았다(오늘 얻는 것이 없어서다). 그 전제를 실제로 깨는 것은 «병렬 러너 도입»이므로, 방어는 그 회차에 속한다.",
+      "tradeoff": "병렬화 자체가 오늘 필요하지 않다 — 이 제안은 «그때가 오면»의 조건부이고, 오지 않으면 영원히 열려 있어도 손해가 없다.",
+      "effort": "M",
+      "target": "RustJava tests/ + test-data"
+    }
+  ],
+  "adoptedProposals": [
+    "2026-09-12-null-guard-file-io-fixture#p0"
+  ],
+  "declinedProposals": []
+}
