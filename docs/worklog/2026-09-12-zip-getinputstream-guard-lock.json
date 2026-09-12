@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-09-12",
+  "title": "ZipFile.getInputStream 가드 잠금 — ZipOutputStream 을 «만들지 않았다»(런타임 0줄)",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-zip-output-stream-minimal-for-fixture-reachability",
+  "summary": "제안의 근인 진단이 틀렸다. 제안은 「픽스처가 ZipFile 을 못 만들어 가드가 안 잠긴다 · 근인은 ZipOutputStream 부재」라 했으나, ZipFile 인스턴스를 만들려면 zip 이 하나 있으면 되고 그것을 «런타임이 만들» 필요가 없다. ⇒ ZipOutputStream 구현 0줄 · .rs 변경 0줄 · 산출물은 픽스처 하나다(티켓 대전제 ⓑ 가 이 결말을 미리 허용했다). ★더 싼 경로를 두 단계 내려갔다: ⑴미리 만든 zip 을 커밋하니 왕복이 성립했고 ⑵그런데 test-data/test.jar 가 이미 있고 jar 은 zip 이라 새 바이너리조차 필요 없었다 ⇒ 임시로 만든 ziptest.zip 을 지웠다(추가 바이너리 0). 픽스처는 아카이브 «내용»에 의존하지 않는다 — getEntry 를 부르지 않고 열리기만 하면 되므로 test.jar 내용이 바뀌어도 안 깨진다. ★양방향: 착수 시 같은 개악이 green(안 잠김)이었고 이 회차 뒤 red(class_instance.rs:108 호스트 abort)다.",
+  "changes": [
+    "test-data/src/ZipGuards.java + test-data/ZipGuards.class + test-data/ZipGuards.txt — ZipFile.getInputStream 가드 잠금 픽스처(기존 test-data/test.jar 재사용)",
+    "docs/worklog/2026-09-12-zip-getinputstream-guard-lock.md — 근인 반증·두 단계 경로·양방향 대조"
+  ],
+  "verification": [
+    "ⓐ 착수 시 재현: zip_file.get_input_stream(entry) 가드만 제거 → cargo test --test test_class ok(★잠기지 않았다는 직접 증거)",
+    "★이 회차 뒤 같은 개악 → FAILED @ jvm/src/class_instance.rs:108(호스트 abort) · 복원 → ok ⇒ 픽스처가 실제로 그 가드를 문다",
+    "정상 → green: cargo test --all 554 passed / 0 failed / 1 ignored(★전체 실행) · cargo fmt --check rc=0 · clippy stable/beta/wasm32 rc=0 · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
+    "★런타임 무접촉: git status rustjava-runtime/ = 0 · ZipOutputStream 0줄 · 추가 바이너리 0",
+    "픽스처 형식: javac --release 8 ⇒ major 52 · invokedynamic/CP 태그 15~18 0건"
+  ],
+  "issues": [
+    "★[게이트③ 집행] PR #40 을 --merge 로 착지시켰다(upstream-sync 등재 repo). 게이트② 1회차 approve · 핀 c7874993 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 배포 워크플로 0개 ⇒ 배포 0. ★형제 PR #41·#42 가 이 착지로 원장 2파일에서 충돌한다(계약 2-c 의 정상 형태 · 코드 충돌 0).",
+    "★제안의 근인 진단(「근인은 ZipOutputStream 부재」)은 틀렸다 — 필요한 것은 «zip 파일 하나»이지 «zip 을 만드는 런타임»이 아니었다. 티켓 대전제 ⓑ 가 정확히 이 갈래를 미리 열어 두었고 그대로 따랐다.",
+    "★계약 2 가 요구한 「잃는 것 = deflate 미구현」은 애초에 발생하지 않는다 — 구현을 안 했으므로 잃은 기능이 없다. 다만 게스트가 zip 을 «쓰는» 경로는 여전히 없고(ZipOutputStream 부재), 그것이 필요해지는 것은 「게스트가 zip 을 만든다」는 요구가 실제로 생길 때이지 «가드 잠금» 때문이 아니다 — 두 축을 섞지 마라.",
+    "★부수 관측(고치지 않았다): java/util/zip/ZipFile.close() 가 등재돼 있지 않아 픽스처 초판이 NoSuchMethodError 를 맞았다. 범위 밖이라 호출을 빼고 사유를 주석으로 남겼다 ⇒ proposals[0].",
+    "★임시로 만들었던 test-data/ziptest.zip 은 «지웠다» — test.jar 재사용이 더 싸기 때문이다. 최종 diff 에 그 파일은 없다."
+  ],
+  "proposals": [
+    {
+      "title": "rustjava-zipfile-close-not-registered",
+      "plainSummary": "java/util/zip/ZipFile 에 close() 를 등재한다 — 게스트가 흔히 부르는데 지금은 NoSuchMethodError 가 난다.",
+      "userBenefit": "zip 을 읽는 평범한 게스트 코드(try-with-resources 포함)가 그대로 돈다 — 지금은 close() 한 줄에 죽는다.",
+      "why": "이 회차 픽스처 초판이 zf.close() 를 부르다 NoSuchMethodError 를 맞았다(실측). 읽기 경로는 이미 동작하므로 빠진 것은 «해제» 표면 하나다.",
+      "tradeoff": "이 런타임의 ZipFile 은 열 때 전체를 읽어 두는 형태라 close() 가 실제로 해제할 자원이 없을 수 있다 — 그러면 no-op 등재가 맞는지(관측 가능한 거동을 바꾸지 않는지) 먼저 재야 한다.",
+      "effort": "S",
+      "target": "RustJava rustjava-runtime java/util/zip/zip_file.rs"
+    }
+  ],
+  "adoptedProposals": [
+    "2026-09-12-null-guard-spec-triage#p0"
+  ],
+  "declinedProposals": []
+}
