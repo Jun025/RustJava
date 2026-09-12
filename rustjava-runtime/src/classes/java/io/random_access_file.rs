@@ -101,6 +101,10 @@ impl RandomAccessFile {
     ) -> Result<()> {
         tracing::debug!("java.io.RandomAccessFile::<init>({this:?}, {file:?}, {mode:?})");
 
+        if file.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "file is null").await);
+        }
+
         let name: ClassInstanceRef<String> = jvm.invoke_virtual(&file, "java/io/File", "getPath", "()Ljava/lang/String;", ()).await?;
 
         let _: () = jvm

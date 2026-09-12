@@ -53,6 +53,10 @@ impl ZipEntry {
     ) -> Result<()> {
         tracing::debug!("java.util.zip.ZipEntry::<init>({this:?}, {zip_entry:?})");
 
+        if zip_entry.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "e is null").await);
+        }
+
         let _: () = jvm.invoke_special(&this, "java/lang/Object", "<init>", "()V", ()).await?;
 
         let name: ClassInstanceRef<String> = jvm.get_field(&zip_entry, "name", "Ljava/lang/String;").await?;

@@ -241,6 +241,10 @@ impl DataInputStream {
 
     async fn read_utf_from_input(jvm: &Jvm, _: &mut RuntimeContext, input: ClassInstanceRef<DataInput>) -> Result<ClassInstanceRef<String>> {
         tracing::debug!("java.io.DataInputStream::readUTF({input:?})");
+
+        if input.is_null() {
+            return Err(jvm.exception("java/lang/NullPointerException", "in is null").await);
+        }
         jvm.invoke_virtual(&input, &input.class_definition().name(), "readUTF", "()Ljava/lang/String;", ())
             .await
     }

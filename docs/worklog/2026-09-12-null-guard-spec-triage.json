@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "date": "2026-09-12",
+  "title": "남은 20곳 규격 삼분 — ⒜ 11 · ⒝ 1 · ⒞ 8 · 그중 «미충족» 9곳만 닫았다",
+  "services": [
+    "RustJava"
+  ],
+  "taskId": "rustjava-null-guard-spec-triage-for-constructor-and-collection-params",
+  "summary": "이 회차의 산출물은 «가드»가 아니라 «분류»다. 감사가 남긴 20곳(내가 다시 세어 20 확인 · base b50d7d0c 에서 N 1,175 · M 34 · K 20)을 JDK 규격 기준 세 갈래로 갈랐다: ⒜ NPE 의무 11 · ⒝ null 합법 1 · ⒞ 규격 적합 게스트 코드로는 도달 불가 8. ★규격 근거는 «관측»으로 댔다 — AGENTS.md 가 OpenJDK 소스 참조를 금지하므로(src.zip 이 로컬에 있으나 열지 않았다) 허용 축인 observable behavior 를 썼고, 참조 JVM(OpenJDK 26.0.1)에 같은 호출을 넣어 쟀다(★대가: 측정 판본 26 ↔ 타깃 8 — null 계약이 그 사이 불변이라는 가정을 명시한다). ★⒜ 11 중 «가드를 넣은 것은 9»다 — Pattern.matches/split 은 규격상 NPE 의무이나 런타임이 이미 NPE 를 던지므로(감사의 섀도잉 오탐이었다) 가드가 죽은 코드가 된다. 즉 「⒜ = 가드」가 아니라 「⒜ 이면서 미충족일 때만」이다. ★⒞ 판정은 오늘의 호출부가 아니라 «등재 클래스·멤버가 public/protected 인가»로 했고, 이 런타임이 접근 제어를 강제하지 않는다는 실측(IllegalAccessError 0건 · java.* 금지 0건)을 근거로 ⒞ 를 «도달 불가»가 아니라 «규격 적합 게스트 코드로는 도달 불가»로 좁혀 읽도록 적었다. K 20 → 11 이고 남은 11 은 ⒝ 1 + ⒞ 8 + 감사 오탐 2 라 규격상 닫을 것이 0 이다.",
+  "changes": [
+    "rustjava-runtime/src/classes/java/io/{data_input_stream,file_input_stream,file_output_stream,random_access_file}.rs — ⒜ 가드 4곳",
+    "rustjava-runtime/src/classes/java/net/{jar_url_connection,url_stream_handler}.rs — ⒜ 가드 2곳",
+    "rustjava-runtime/src/classes/java/util/zip/{zip_entry,zip_file}.rs — ⒜ 가드 3곳",
+    "test-data/src/NullSpecGuards.java + .class + test-data/NullSpecGuards.txt — 6케이스 회귀 픽스처",
+    "docs/worklog/2026-09-12-null-guard-spec-triage.md — ★주 산출물인 전수 분류표(20곳 · 갈래 · 규격 근거)",
+    "STATE.md · REPORT.md — 회차 기록"
+  ],
+  "verification": [
+    "정상 → green: cargo test --test test_class ok · cargo fmt --check rc=0 · clippy stable/beta/wasm32 rc=0 · cargo test --all 554 passed / 0 failed / 1 ignored(★전체 실행) · check-worklog-json.py rc=0 · check-dod-ci-parity.py rc=0",
+    "★착수 «전» 런타임 실측(가드 넣기 전 · 사이트별 개별 픽스처 8회): readUTF·FileInputStream·FileOutputStream·RandomAccessFile·ZipEntry·ZipFile 은 ★호스트 abort(class_instance.rs 패닉) · Pattern.matches·Pattern.split 은 ★이미 NPE ⇒ 후자 2곳은 가드 불요로 판정",
+    "★가드별 커버리지 측정(추론 아님): 9곳을 하나씩 제거하고 각각 빌드·실행 → 6곳 red · 3곳 green(jar_url_connection · url_stream_handler · zip_file.get_input_stream)",
+    "참조 JVM 관측(OpenJDK 26.0.1): ⒜ 11자리 전건 NullPointerException · ⒝ URL(null,spec,null) 은 NO EXCEPTION",
+    "감사 재실행: K 20 → 11(9 닫음) · N·M 은 1,175 · 25",
+    "픽스처 형식: javac --release 8 ⇒ major 52 · invokedynamic/CP 태그 15~18 0건"
+  ],
+  "issues": [
+    "★[게이트③ 집행] PR #38 을 --merge 로 착지시켰다(upstream-sync 등재 repo — 스쿼시는 계보를 지운다). 게이트② 1회차 approve · 핀 934b3944 불이동(원장 동봉 «전» 실측) · ci-presence rc=0 CI_GREEN · 자식 PR 0건 · 배포 워크플로 0개 ⇒ 배포 0.",
+    "★미커버 3곳은 «테스트를 안 쓴 것»이 아니라 «픽스처로 도달 불가»다 — JarURLConnection·URLStreamHandler 는 ABSTRACT 라 게스트 서브클래스가 필요하고, ZipFile.getInputStream 은 살아 있는 ZipFile 이 있어야 하는데 이 런타임에 ZipOutputStream 이 없어 픽스처가 zip 을 만들 수 없다. ⇒ proposals.",
+    "★규격 근거를 참조 JVM 26 에서 쟀다 — 타깃은 8 이다. null 인자 계약이 그 사이 불변이라고 «가정»했고 그 가정을 표에 적었다. 반증되면 ⒜/⒝ 가 흔들린다.",
+    "★⒞ 는 «도달 불가»가 아니라 «규격 적합 게스트 코드로는 도달 불가»다 — 이 런타임은 접근 플래그도 java.* 패키지 금지도 강제하지 않으므로(실측 0건) 손으로 만든 바이트코드는 package-private 멤버를 부를 수 있다.",
+    "★감사 도구의 섀도잉 오탐이 2건 확인됐다(Pattern.matches·split) — docstring 이 선언한 한계가 실제로 물렸다. 도구를 고치지는 않았다(이 티켓 범위 밖이고, 한계가 이미 선언돼 있다).",
+    "★org/rustjava/net/FileURLHandler 는 JDK 클래스가 아니라 이 repo 고유라 «적용할 JDK 규격이 없다» — 삼분 축이 원리적으로 닿지 않는 자리이고, 그래서 ⒞ 로 두되 사유를 «규격 부재»로 따로 적었다.",
+    "★[검수 minor ⑴ · 기록] ⒜ 표 열머리 「규격이 NPE 를 «요구»」는 6자리 중 3자리(readUTF · FileInputStream(File) · JarURLConnection(URL))에서 Java 8 Javadoc 보다 강하다 — 그 자리의 실제 근거는 «관측된 구현 거동»이다(zip 2자리는 Javadoc 이 실제로 요구한다). ★처분은 바뀌지 않는다(현 거동이 호스트 abort 라 어느 축으로도 오답). ⇒ 다음 회차가 이 표를 「전건 명문 규격」으로 인용하지 마라.",
+    "★[검수 minor ⑶ · 승계] ⒝ url.rs 의 handler 는 «가드를 넣으면 규격 위반»인 자리인데 그 사유가 코드에 없고 worklog 에만 있다 ⇒ 다음 회차가 «빠진 가드»로 오인할 위험이 남는다. 이 머지 회차는 계약 7 로 손대지 않았다 — 총괄 승계 판정 몫."
+  ],
+  "proposals": [
+    {
+      "title": "rustjava-zip-output-stream-minimal-for-fixture-reachability",
+      "plainSummary": "ZipOutputStream 을 최소 구현해, 픽스처가 zip 을 만들어 ZipFile 왕복과 getInputStream 가드를 실제로 잠글 수 있게 한다.",
+      "userBenefit": "게스트가 zip 을 쓰는 경로가 테스트로 덮이고, 이번에 넣었지만 잠기지 않은 가드 1개가 회귀로 묶인다.",
+      "why": "ZipFile.getInputStream 가드는 규격 근거로 넣었으나 픽스처가 ZipFile 인스턴스를 만들 수 없어 잠기지 않는다(단일 제거해도 green). 근인은 ZipOutputStream 부재다.",
+      "tradeoff": "deflate 구현 범위를 정해야 한다 — STORED 만으로도 왕복 테스트는 성립하므로 거기서 끊는 것이 싸다.",
+      "effort": "M",
+      "target": "RustJava rustjava-runtime java/util/zip"
+    },
+    {
+      "title": "rustjava-fixture-subclassing-abstract-runtime-classes",
+      "plainSummary": "게스트 픽스처가 JarURLConnection·URLStreamHandler 같은 추상 런타임 클래스를 상속해 protected 진입점을 부를 수 있는지 확인하고, 되면 그 가드 2개를 잠근다.",
+      "userBenefit": "protected 확장점이 회귀로 덮인다 — 지금은 가드가 조용히 사라져도 아무도 모른다.",
+      "why": "이번 회차의 미커버 3곳 중 2곳이 이 형상이다. 게스트 서브클래싱이 이 런타임에서 되는지 자체가 미확인이라 먼저 재는 것이 순서다.",
+      "tradeoff": "서브클래싱이 안 되면 그 사실이 산출물이고 가드는 잠기지 않은 채 남는다 — 그래도 «된다/안 된다»를 아는 것이 값이다.",
+      "effort": "S",
+      "target": "RustJava test-data + java/net"
+    }
+  ],
+  "adoptedProposals": [
+    "2026-09-11-null-guard-audit-and-io-buffer-guards#p0"
+  ],
+  "declinedProposals": []
+}
