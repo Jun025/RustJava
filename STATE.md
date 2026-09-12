@@ -4,6 +4,19 @@
 (없음 — 2026-09-11 실측: 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 PR(#35) 착지 시점 기준**이다 — 회신 시점에는 #35 자신이 열려 있다)
 
 ## 완료
+- [rustjava-zip-output-stream-minimal-for-fixture-reachability] ★★**`ZipFile.getInputStream` 가드를 잠갔다 — 그런데 ★`ZipOutputStream` 을 «만들지 않았다»(런타임 0줄).**
+  채택 제안 `2026-09-12-null-guard-spec-triage#p0`. 픽스처 `test-data/ZipGuards`.
+  ★★**제안의 «근인 진단»이 틀렸다** — 「근인은 `ZipOutputStream` 부재」였으나, `ZipFile` 인스턴스를 만들려면
+  ★**zip 이 «하나 있으면» 되고 그것을 «런타임이 만들» 필요가 없다.** ⇒ 구현 **0줄**.
+  ★**티켓이 이 결말을 미리 허용했다**(대전제 ⓑ: 「다른 경로가 있으면 **런타임을 구현하지 않는 것이 더 싼 답**」).
+  ★★**더 싼 경로를 «두 단계» 내려갔다**: ⑴미리 만든 zip 을 커밋하니 왕복 성립 ⇒ `ZipOutputStream` 불요 판명
+  ⑵★**그런데 새 바이너리조차 불요** — `test-data/test.jar` 가 **이미 있고 jar 은 zip 이다** ⇒ 임시 `ziptest.zip` 을 **지웠다**(추가 바이너리 **0**).
+  ★**아카이브 «내용»에 의존하지 않는다** — `getEntry` 를 부르지 않고 **열리기만** 하면 된다(결합도를 일부러 낮췄다).
+  ★★**양방향**: 착수 시 같은 개악이 ★**green**(안 잠김) ↔ 이 회차 뒤 ★**red**(`class_instance.rs:108` 호스트 abort) · 복원 **ok**.
+  ★`cargo test --all` **554 / 0 / 1**(전체 실행) · DoD 7종 rc=0 · ★`.rs` **무접촉** · deflate·`ZipEntry` 메타 **무접촉**(계약 3).
+  ★**남은 한계는 «다른 축»이다** — 게스트가 zip 을 «쓰는» 경로는 여전히 없다. 그것이 필요해지는 것은
+  「게스트가 zip 을 만든다」는 요구가 생길 때이지 **가드 잠금 때문이 아니다**.
+  ★**부수 관측(고치지 않았다)**: `ZipFile.close()` 가 **미등재**라 픽스처 초판이 `NoSuchMethodError` 를 맞았다 ⇒ 후속 제안.
 - [rustjava-null-guard-fixture-for-file-backed-io] ★★**파일 기반 IO 가드 6곳을 «회귀로 묶었다» — `.rs` 변경 0.**
   채택 제안 `2026-09-11-null-guard-audit-and-io-buffer-guards#p1`. 픽스처 `test-data/NullFileIoGuards`(**7케이스** = 6곳 + ★**정리 단언 1**).
   ★★**「가드가 있다」와 「가드가 잠겨 있다」는 다른 문장이다** — 그 6곳은 가드가 들어간 뒤에도 **지워도 아무도 모르는** 상태였다

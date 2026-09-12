@@ -1,0 +1,2 @@
+ZipFile.getInputStream(ZipEntry):
+caught NPE
