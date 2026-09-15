@@ -14,6 +14,7 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
         || class.super_class.as_ref().is_some_and(|name| !is_internal_class_name(name))
         || class.interfaces.iter().any(|name| !is_internal_class_name(name))
         || !validate_constant_pool(&class.constant_pool)
+        || !constant_pool_tags_fit_the_class_file_version(class)
     {
         return Err(ClassFileError::InvalidFormat);
     }
@@ -67,6 +68,33 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
     }
 
     Ok(())
+}
+
+/// JVMS 4.4: a constant kind is legal only from the class file version that introduced it.
+///
+/// This lives here rather than in `validate_constant_pool` because it needs `major_version`,
+/// which is on `ClassInfo` and not in the pool.
+///
+/// It exists because widening what `ldc` accepts took away an accidental backstop. Before the
+/// method-handle family resolved at all, `from_constant_pool` returned `None` for these tags and
+/// the `ldc` arm turned that into a parse failure — so a file carrying one at an impossible
+/// version was reported as corrupt, which is what OpenJDK says too. It was reported as corrupt
+/// for the wrong reason, but it *was* reported. Widening the arms removed that by-product with
+/// nothing in its place, and the class went from "corrupt" to "this runtime does not support
+/// that yet" — a sentence this lineage exists to make true, applied to a file no JVM can read.
+/// `test-data/ldc/LdcDynamicOldMajor.class` holds that case.
+fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
+    class.constant_pool.values().all(|item| {
+        let minimum_major_version = match item {
+            // Java 7 (JSR 292) introduced the method handle family.
+            ConstantPoolItem::MethodHandle { .. } | ConstantPoolItem::MethodType { .. } | ConstantPoolItem::InvokeDynamic { .. } => 51,
+            // Java 11 (JEP 309) added dynamically-computed constants.
+            ConstantPoolItem::Dynamic { .. } => 55,
+            _ => return true,
+        };
+
+        class.major_version >= minimum_major_version
+    })
 }
 
 fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {

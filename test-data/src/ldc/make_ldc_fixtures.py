@@ -76,8 +76,23 @@ def method_type(cp, _attributes):
     return cp.add(u1(16) + u2(cp.utf8("()V")))
 
 
-def unknown_tag(cp, _attributes):
-    return cp.add(u1(19) + u2(cp.utf8("()V")))
+def unknown_tag(tag):
+    """A tag `parse_tagged` rejects, in the same 3-byte shape as a MethodType so the entry
+    `ldc` names is the mutated one and nothing after it shifts."""
+
+    def build(cp, _attributes):
+        return cp.add(u1(tag) + u2(cp.utf8("()V")))
+
+    return build
+
+
+def dynamic_without_bootstrap_methods(cp, _attributes):
+    """A Dynamic entry naming bootstrap method 0 of an attribute that is not there. JVMS 4.7.23
+    requires the attribute whenever the pool holds a Dynamic/InvokeDynamic entry, so this is a
+    corrupt file — OpenJDK 26 says `ClassFormatError: Missing BootstrapMethods attribute`.
+    Bounding the index needs the attribute parsed, which is a different round's work, so this
+    fixture pins what we answer *today* rather than what we should."""
+    return cp.add(u1(17) + u2(0) + u2(cp.name_and_type("x", "Ljava/lang/Object;")))
 
 
 def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor):
@@ -105,9 +120,11 @@ null_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP)
 long_constant = dynamic("MAX_VALUE", "J", "getStaticFinal", LOOKUP)
 
 
-# JVMS 4.4: tags 15/16 need major >= 51, tag 17 needs major >= 55. Emitting tag 17 at 52
-# makes a real JVM answer "ClassFormatError: Class file version does not support constant
-# tag 17" — a version complaint, which would hide the axis this fixture is here to test.
+# JVMS 4.4 ties each constant kind to a minimum class file version: tags 15/16/18 need
+# major >= 51, tag 17 needs major >= 55. That is why LdcDynamic is major 55 while the rest are
+# 52 — emitting tag 17 at 52 makes a real JVM answer "Class file version does not support
+# constant tag 17", a *version* complaint that would hide the axis those fixtures test.
+# LdcDynamicOldMajor below is that complaint on purpose.
 
 
 ldc = lambda i: u1(0x12) + u1(i) + b"\x57"  # ldc <i>; pop
@@ -123,10 +140,20 @@ FIXTURES = {
     # Negative control 1: JVMS 6.5 lets `ldc2_w` load only long/double(-typed) constants,
     # so a MethodType there is a corrupt file and must stay one.
     "Ldc2WMethodType.class": ("Ldc2WMethodType", method_type, ldc2_w, 2),
-    # Negative control 2: same shape, but the entry `ldc` names carries tag 19 (Module —
-    # same 3-byte width as MethodType, legal only in a module-info). A tag that cannot
-    # appear here is still a corrupt file.
-    "LdcUnknownTag.class": ("LdcUnknownTag", unknown_tag, ldc, 1),
+    # Negative control 2: same shape, but the entry `ldc` names carries a tag that cannot
+    # appear in a class file at all — 13 and 14 are unassigned by JVMS 4.4, and 19 (Module) is
+    # assigned but legal only inside a module-info. A tag that cannot appear here is still a
+    # corrupt file, whatever `ldc` was widened to accept.
+    "LdcTag13.class": ("LdcTag13", unknown_tag(13), ldc, 1),
+    "LdcTag14.class": ("LdcTag14", unknown_tag(14), ldc, 1),
+    "LdcUnknownTag.class": ("LdcUnknownTag", unknown_tag(19), ldc, 1),
+    # Negative control 3: a *valid* condy shape at a class file version that predates it
+    # (JVMS 4.4 ties tag 17 to major >= 55). OpenJDK 26: "Class file version does not support
+    # constant tag 17". Widening `ldc` removed the accidental backstop that used to catch this.
+    "LdcDynamicOldMajor.class": ("LdcDynamicOldMajor", null_constant, ldc, 1, 52),
+    # The band this round does NOT close: a Dynamic entry whose bootstrap method does not
+    # exist. Bounding that index needs BootstrapMethods parsed, which is another round's work.
+    "LdcDynamicNoBSM.class": ("LdcDynamicNoBSM", dynamic_without_bootstrap_methods, ldc, 1, 55),
 }
 
 if __name__ == "__main__":

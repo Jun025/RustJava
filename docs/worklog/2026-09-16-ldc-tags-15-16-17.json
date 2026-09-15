@@ -2,13 +2,16 @@
   "schema": "worklog/v1",
   "date": "2026-09-16",
   "taskId": "rustjava-ldc-tags-15-16-17-still-malformed",
-  "summary": "`ldc`/`ldc_w`/`ldc2_w` of CONSTANT_MethodHandle (15), MethodType (16) and Dynamic (17) reported `ClassFormatError: Invalid class file`. They now report `UnsupportedOperationException: Unsupported class file feature: ldc of a …`, matching the shape PR #43 established for `invokedynamic`. Measured first: javac emits no such `ldc` (27,902 JDK classes / 1,252,714 ldc sites / zero), so the fixtures are synthetic and labelled as such.",
+  "summary": "`ldc`/`ldc_w`/`ldc2_w` of CONSTANT_MethodHandle (15), MethodType (16) and Dynamic (17) reported `ClassFormatError: Invalid class file`. They now report `UnsupportedOperationException: Unsupported class file feature: ldc of a …`, matching the shape PR #43 established for `invokedynamic`. Measured first: javac emits no such `ldc` (27,902 JDK classes / 1,252,714 ldc sites / zero), so the fixtures are synthetic and labelled as such. Gate-② returned request-changes: widening the ldc arms had removed an accidental backstop, so two genuinely corrupt condy files (tag 17 below major 55; a Dynamic naming an absent bootstrap method) answered 'unsupported' where OpenJDK 26 cannot read them at all. The -fix round adds the JVMS 4.4 tag-vs-class-file-version table to validate_class — measured to be four rows, not the one that was reported — and leaves one named band open.",
   "changes": [
     "classfile/src/constant_pool.rs — three payload-free ConstantPoolReference variants + their from_constant_pool arms",
     "classfile/src/opcode.rs — 0x12/0x13 accept all three; 0x14 accepts only Dynamic (JVMS 6.5 wide/narrow split)",
     "jvm-bytecode/src/verifier.rs — one new arm returning UnsupportedFeature; the Invokedynamic line is untouched",
     "test-data/src/ldc/make_ldc_fixtures.py + test-data/ldc/*.class — six synthetic fixtures (4 positive, 2 negative controls)",
-    "tests/test_class_format.rs — two tests, one per direction"
+    "tests/test_class_format.rs — two tests, one per direction",
+    "classfile/src/validation.rs — constant_pool_tags_fit_the_class_file_version: tags 15/16/18 need major >= 51, tag 17 needs >= 55 (JVMS 4.4). No attribute parsing, so it does not collide with the BootstrapMethods round.",
+    "test-data/src/ldc/make_ldc_fixtures.py + 4 new fixtures — LdcTag13, LdcTag14 (the 'tags 13/14 cannot be constructed' claim was false), LdcDynamicOldMajor (the regression), LdcDynamicNoBSM (the band left open)",
+    "tests/test_class_format.rs — the version table locked across four rows including one real javac class, and the remaining band asserted as it behaves today"
   ],
   "verification": [
     "before/after captured by running each fixture end to end through run_class, not by reading source",
@@ -17,22 +20,31 @@
     "M2 from_constant_pool back to None / M3 ldc arms back to the old set -> positives red",
     "M4 let ldc2_w take a MethodType -> negative control red",
     "M5 constant-pool tag switch made a pass-through -> red, but via the classfile unit test, NOT via the new end-to-end test",
-    "cargo test --all: 558/0/1 -> 560/0/1 (+2, zero regressions); DoD 6 commands rc=0"
+    "cargo test --all: 558/0/1 -> 560/0/1 (+2, zero regressions); DoD 6 commands rc=0",
+    "regression reproduced independently in an isolated worktree: before ab872b7 both fixtures were ClassFormatError, after 3304f752 both were UnsupportedOperationException; OpenJDK 26 rejects both",
+    "the defect was wider than the reported row: tags 15 and 16 at major 50 showed the same inversion, so the fix is a four-row table rather than a tag-17 special case",
+    "cost: 0 of OpenJDK 26's 27,902 classes violate the table — but every class in that corpus is major 69/70, so it cannot exercise the >= 51 rows at all",
+    "M1 remove the new check -> corrupt-side tests red, positives green; M2 revert the ldc widening instead -> the four positives red, so 'turn everything back into corrupt' is not a passing strategy",
+    "measurement trap: two worktrees sharing CARGO_TARGET_DIR made cargo link a stale binary and report the opposite 'before'; caught with strings and a clean target dir",
+    "cargo test --all: 560/0/1 -> 562/0/1 (+2, zero regressions)"
   ],
   "issues": [
-    "The fixtures are synthetic. No javac construct emits ldc of these tags — measured over the JDK's own jmods, over targeted sources at --release 21/25/26+preview, and over this repo's test-data. No third-party jar corpus (where condy does occur) exists on this machine, so 'no bytecode generator in the wild does this either' was NOT measured.",
-    "The new LdcUnknownTag test does not actually detect a pass-through constant-pool tag switch (M5); it passes for an adjacent reason. That axis is locked one layer down, by the previous round's classfile unit test.",
+    "One band stays open: LdcDynamicNoBSM answers 'unsupported' where OpenJDK says 'Missing BootstrapMethods attribute'. Bounding bootstrap_method_attr_index needs the attribute parsed, which belongs to the invokedynamic round. It is committed and asserted as it behaves today, so closing it will fail the assertion loudly.",
+    "The zero-cost measurement cannot exercise the >= 51 rows of the version table: every class in the 27,902-class corpus is major 69 or 70, and no class file older than Java 7 exists on this machine to test against.",
+    "The -fix round's own correction: the claim that 3,493 impossible operands bound the walker's error at 0.28% was wrong — that counts only *detectable* misdecodes, so it is an observation, not an upper bound. The conclusion survives because gate-② disassembled java.base independently with javap (7,401 classes, 92,659 ldc sites) and got zero.",
+    "The positive fixtures are synthetic. No javac construct emits ldc of these tags — measured over the JDK's own jmods, over targeted sources at --release 21/25/26+preview, and over this repo's test-data. No third-party jar corpus (where condy does occur) exists on this machine, so 'no bytecode generator in the wild does this either' was NOT measured.",
+    "The LdcUnknownTag/LdcTag13/LdcTag14 tests do not actually detect a pass-through constant-pool tag switch (M5); they pass for an adjacent reason. That axis is locked one layer down, by the previous round's classfile unit test.",
     "Our runtime answers ClassFormatError where OpenJDK answers VerifyError for Ldc2WMethodType — we reject at parse time, earlier than the JVM's verification pass."
   ],
   "proposals": [
     {
-      "title": "Teach validation.rs the two class-file rules OpenJDK caught and we do not check",
-      "plainSummary": "Two structural rules of the class file format are not checked by our parser. A real JVM rejected our first-draft fixtures for both; our parser accepted them happily.",
-      "userBenefit": "A file that is genuinely malformed in either of these ways is currently accepted and fails later — or not at all — instead of being named as broken at load time.",
-      "why": "Found by accident, not by design: the first-draft LdcDynamic fixture was rejected by OpenJDK 26 twice, first for using constant tag 17 in a major-52 file (JVMS 4.4 ties tags 15/16 to major >= 51 and 17/18 to >= 55), then for a Dynamic entry with no BootstrapMethods attribute (JVMS 4.7.23). Our validate_constant_pool checks neither — its own comment admits the second one, since BootstrapMethods is still an unparsed byte blob. That we needed a real JVM to notice is the finding.",
-      "tradeoff": "The version-vs-tag check is a handful of lines and pure gain. The BootstrapMethods check is not: it requires parsing that attribute, which STATE 4-1 assigns to the invokedynamic-execution round. Doing it here would take a bite out of that round's scope for no runtime benefit today. Consider splitting: version check now, attribute check with the parser that needs it.",
+      "title": "Bound bootstrap_method_attr_index against the BootstrapMethods attribute",
+      "plainSummary": "A class file can name a bootstrap method that is not there. A real JVM refuses to read such a file; we still say we simply do not support the feature.",
+      "userBenefit": "The one remaining case where a genuinely unreadable file is described as merely unsupported gets the right sentence.",
+      "why": "The -fix round closed the other half of this (the tag-vs-class-file-version table) because that needs only ClassInfo.major_version. This half genuinely needs the BootstrapMethods attribute parsed, so it belongs with the invokedynamic work rather than here. JVMS 4.7.23 requires the attribute whenever the pool holds a Dynamic/InvokeDynamic entry, and requires the index to be in range; OpenJDK 26 enforces both ('Missing BootstrapMethods attribute'). test-data/ldc/LdcDynamicNoBSM.class is committed with an assertion pinning today's wrong answer, so this work will fail that test rather than land silently.",
+      "tradeoff": "It is a behaviour change — files that parse today start being rejected — so it wants its own fixtures and its own cost measurement. It also cannot be done independently of the round that parses the attribute, which means sequencing, not just scope.",
       "effort": "S",
-      "target": "classfile/src/validation.rs, classfile/src/class.rs"
+      "target": "classfile/src/validation.rs, classfile/src/class.rs, classfile/src/attribute.rs"
     },
     {
       "title": "Make the constant-pool tag switch's pass-through mutation detectable end to end",

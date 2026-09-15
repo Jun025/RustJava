@@ -28,8 +28,24 @@
   `tests/test_class_format.rs` 는 **전건 green**(내 `LdcUnknownTag` 는 «인접한 이유»로 통과한다). 실제로 무는 것은
   ★**직전 회차의 `classfile::constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected`** 다.
   ⇒ ★**축은 잠겨 있으나 «내가 단언한 층»이 아니다.**
-  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **6종 rc=0** ·
+  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **7줄**(= 파리티 검사기 기준 **명령 6개**) 전건 rc=0 ·
   ★`verifier.rs` 의 `Invokedynamic` 줄 **무접촉** · ★`interpreter.rs` **무접촉**(`git diff --stat` 부재).
+  ★★**[-fix 회차 2026-09-16 · 게이트② `request-changes` 승계] ★이 회차가 «구멍을 만들었다» — 검수자가 만들어서 쟀고, 내가 재현했다.**
+  ★**넓힌 수용집합이 «우연한 백스톱»을 대체 없이 걷어냈다** ⇒ 참조 JVM «도» 못 읽는 파손 condy 2종이 「미지원」이라 답했다
+  (`LdcDynamicOldMajor` 태그 17 @ major 52 · `LdcDynamicNoBSM` BSM 부재). ★**before `ab872b7` 는 둘 다 `ClassFormatError`** 였다 — 내가 격리 worktree 로 재측.
+  ★★**그 재측에서 «계측 함정»을 하나 밟았다 — 적어 둔다**: 두 워크트리가 **`CARGO_TARGET_DIR` 를 공유**하면
+  cargo 가 **낡은 테스트 바이너리를 그대로 링크**해 ★**정반대 답**(before 가 「미지원」)을 준다. 깨끗한 타깃으로 다시 재서야 `ClassFormatError` 가 나왔다.
+  ⇒ ★**worktree 간 측정은 타깃 디렉터리를 «분리»하고, 빌드 결과에 그 판본의 문자열이 있는지 `strings` 로 확인하라.**
+  ★**고른 갈래 = ⒜ major 버전 축**(`validation.rs` +28줄 · **속성 파싱 0** · `attribute.rs` 무접촉 ⇒ PR #45 와 겹치지 않는다).
+  ★★**검수자의 1행을 «4행 표»로 넓혔다 — 추측이 아니라 실측이 시켰다**: 같은 결함이 **태그 15·16 에도** 있었다(major 50 실측).
+  ⇒ **15·16·18 ≥ 51 · 17 ≥ 55**(JVMS 4.4). ★**대가 0**: jmods **27,902 클래스 위반 0**
+  (★그 corpus 는 전부 major 69·70 이라 ≥51 행을 **시험하지 못한다** — 숨기지 않는다).
+  ★**양방향**: M1 새 검사 제거 → 「파손」 축 **2 red**(양성 4종은 ok) · ★**M2 「전부 파손으로 되돌리기」**(수용집합 원복) → ★**양성 4종 red**
+  ⇒ ★**되돌리기는 통과 방법이 아니다**(Acceptance ⑶) · 복원 green · `git diff --stat` 으로 `opcode.rs` 원복 확인.
+  ★**픽스처 +4**(`LdcTag13`·`LdcTag14`·`LdcDynamicOldMajor`·`LdcDynamicNoBSM`) — ★검수자가 「태그 13·14 로는 구성 불가」가
+  **거짓**임을 만들어서 보였다(같은 `_ => Err` 한 줄이 19 에도 적용되므로 자기 증거로 자기를 반증한다). ⇒ **Acceptance 문면을 글자 그대로 덮는다.**
+  ★**남는 대역 = 1**(`LdcDynamicNoBSM`) · ★**문안 정정 3건**(0.28% 는 «상한»이 아니라 «탐지 가능 오디코드 관측치» · DoD 수 통일 · jmod **68개**).
+  ★`cargo test --all` **560 → 562 / 0 / 1**(신규 2 · 감소 0).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
@@ -742,8 +758,21 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    ⇒ ★**픽스처는 «합성»이다**(`test-data/src/ldc/make_ldc_fixtures.py` · 6종). ★**그렇게 적었다 — 「평범한 코드」로 적지 마라.**
    ★**정당화는 «도달성»이 아니라 «인접성»이다**: 그 셋이 ④-1 이 필요로 할 바로 그 상수들이다.
    ★**참조 JVM 이 양성 4종을 전부 로드·실행**한다 ⇒ 「못 읽는 파일」이 아님이 실측으로 선다.
-   ★**남긴 것 셋**: ⑴★`validation.rs` 가 **「태그↔major 버전」과 「Dynamic ↔ BootstrapMethods 존재」를 «둘 다» 검사하지 않는다**
-   (참조 JVM 이 내 픽스처를 그 둘로 반려해서 알았다 — 후속) ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
+   ★★**[갱신 2026-09-16 · `-fix` · 게이트② request-changes] 위 「남긴 것 ⑴」은 «미검사»가 아니라 «오진»이었다 — 이 회차가 만든 구멍이다.**
+   ★**수용집합을 넓히면서 «우연한 백스톱»을 대체 없이 걷어냈다**: 전에는 `Dynamic → None → opcode 파싱 실패` 라서
+   **참조 JVM «도» 못 읽는 파손 condy** 가 `ClassFormatError` 로 끊겼는데, 넓힌 뒤 ★**「미지원」이라고 답한다**
+   ⇒ ★**이 리니지의 문장(「못 «읽는» 파일이 아니라 못 «하는» 파일이다」)이 정확히 반대로 뒤집힌 대역**이다.
+   ★**공정하게**: before 가 옳았던 것은 «검사해서»가 아니다 — 검사는 애초에 없었다. 그래도 **커버리지 삭제**다.
+   ★★**고른 갈래 = ⒜ «major 버전 축»**(`validation.rs` 의 `constant_pool_tags_fit_the_class_file_version` · **속성 파싱 0**).
+   ★**그리고 이 회차가 「검수자의 1행」을 «4행 표»로 넓혔다 — 실측이 시켰다**: 같은 결함이 태그 **15·16** 에도 있었다
+   (major 50 에서 `ldc of a method handle`/`method type` ↔ 참조 JVM 은 `Class file version does not support constant tag 15/16`).
+   ⇒ 표 = **15·16·18 ≥ 51 · 17 ≥ 55**(JVMS 4.4). ★**대가 «0»**: OpenJDK 26 jmods **27,902 클래스 중 위반 0**
+   (★단 그 corpus 는 전부 major 69·70 이라 ≥51 행을 «시험하지 못한다» — 숨기지 않는다) · 이 repo `test-data` 위반은 **이 회차가 만든 픽스처 1건뿐**.
+   ★★**남는 대역 = «1»**: **`LdcDynamicNoBSM`**(`bootstrap_method_attr_index` 가 가리키는 `BootstrapMethods` 가 **없다**) —
+   참조 JVM 은 `Missing BootstrapMethods attribute` 인데 우리는 **여전히 「미지원」**이다.
+   ★그 경계 검사는 **속성 파싱이 정말로 필요**하므로 ④-1(PR #45 리니지) 몫이다 — ★**픽스처와 테스트로 «현재 답»을 잠가 뒀으니
+   그 회차가 닫으면 그 단언이 «시끄럽게» 진다.**
+   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
    `test_class_format` 이 **못 잡는다**(무는 것은 `classfile` 단위 테스트) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
 3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
 
