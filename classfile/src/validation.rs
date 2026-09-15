@@ -97,6 +97,28 @@ fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bo
             name.is_some_and(|name| !name.is_empty())
                 && descriptor.is_some_and(|descriptor| is_field_descriptor(&descriptor) || is_method_descriptor(&descriptor))
         }
+        // JVMS 4.4.8: the reference kind selects which kind of member reference is legal.
+        ConstantPoolItem::MethodHandle {
+            reference_kind,
+            reference_index,
+        } => matches!(
+            (reference_kind, constant_pool.get(reference_index)),
+            (1..=4, Some(ConstantPoolItem::Fieldref { .. }))
+                | (
+                    5..=8,
+                    Some(ConstantPoolItem::Methodref { .. } | ConstantPoolItem::InterfaceMethodref { .. })
+                )
+                | (9, Some(ConstantPoolItem::InterfaceMethodref { .. }))
+        ),
+        ConstantPoolItem::MethodType { descriptor_index } => constant_pool
+            .get(descriptor_index)
+            .and_then(ConstantPoolItem::utf8)
+            .is_some_and(|descriptor| is_method_descriptor(&descriptor)),
+        // The bootstrap method index is not checked here: `BootstrapMethods` is still an
+        // unparsed byte blob, so there is nothing to bound it against.
+        ConstantPoolItem::Dynamic { name_and_type_index, .. } | ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => {
+            constant_pool.get(name_and_type_index).and_then(ConstantPoolItem::name_and_type).is_some()
+        }
         _ => true,
     })
 }

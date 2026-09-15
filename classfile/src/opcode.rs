@@ -322,7 +322,14 @@ impl Opcode {
                 _ => Err(()),
             })
             .parse(data),
-            0xba => map_res((be_u16, be_u16), |_: (u16, u16)| Err::<Opcode, _>(())).parse(data),
+            0xba => map_res(
+                (be_u16, be_u16),
+                |(index, zero): (u16, u16)| match ConstantPoolReference::from_constant_pool(constant_pool, index) {
+                    Some(reference @ ConstantPoolReference::InvokeDynamic { .. }) if zero == 0 => Ok(Opcode::Invokedynamic(reference)),
+                    _ => Err(()),
+                },
+            )
+            .parse(data),
             0xb9 => map_res((be_u16, u8, u8), |(x, count, zero)| {
                 match ConstantPoolReference::from_constant_pool(constant_pool, x) {
                     Some(reference @ ConstantPoolReference::InterfaceMethodref(_)) if count != 0 && zero == 0 => {
@@ -515,7 +522,7 @@ mod test {
     use alloc::{collections::BTreeMap, string::ToString, sync::Arc};
 
     use super::Opcode;
-    use crate::constant_pool::ConstantPoolItem;
+    use crate::constant_pool::{ConstantPoolItem, ConstantPoolReference};
 
     fn constant_pool() -> BTreeMap<u16, ConstantPoolItem> {
         [
@@ -544,6 +551,13 @@ mod test {
                     name_and_type_index: 5,
                 },
             ),
+            (
+                8,
+                ConstantPoolItem::InvokeDynamic {
+                    bootstrap_method_attr_index: 0,
+                    name_and_type_index: 5,
+                },
+            ),
         ]
         .into_iter()
         .collect()
@@ -557,9 +571,31 @@ mod test {
         assert!(matches!(opcode, Opcode::Invokeinterface(_, 1, 0)));
     }
 
+    // Renamed from `test_invokedynamic_is_rejected`: 0xba is now parsed, so what this asserts
+    // is the operand check — index 7 is a Methodref, not a CONSTANT_InvokeDynamic.
     #[test]
-    fn test_invokedynamic_is_rejected() {
+    fn test_invokedynamic_with_a_non_invokedynamic_operand_is_rejected() {
         assert!(Opcode::parse(&[0xba, 0x00, 0x07, 0x00, 0x00], 0, &constant_pool()).is_err());
+        // ...and the two trailing bytes must be zero (JVMS 6.5 invokedynamic)
+        assert!(Opcode::parse(&[0xba, 0x00, 0x08, 0x00, 0x01], 0, &constant_pool()).is_err());
+    }
+
+    #[test]
+    fn test_invokedynamic_resolves_its_call_site_name_and_descriptor() {
+        let (remaining, opcode) = Opcode::parse(&[0xba, 0x00, 0x08, 0x00, 0x00], 0, &constant_pool()).unwrap();
+
+        assert!(remaining.is_empty());
+        let Opcode::Invokedynamic(ConstantPoolReference::InvokeDynamic {
+            bootstrap_method_attr_index,
+            name,
+            descriptor,
+        }) = opcode
+        else {
+            panic!("expected an invokedynamic call site, got {opcode:?}");
+        };
+        assert_eq!(bootstrap_method_attr_index, 0);
+        assert_eq!(name.as_str(), "bar");
+        assert_eq!(descriptor.as_str(), "()V");
     }
 
     #[test]

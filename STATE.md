@@ -1,9 +1,28 @@
 # STATE
 
 ## 진행중
-(없음 — 2026-09-11 실측: 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 PR(#35) 착지 시점 기준**이다 — 회신 시점에는 #35 자신이 열려 있다)
+(없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
+  ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
+  픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
+  ★★**티켓 ① 의 급소 지목이 «한 칸 모자랐다» — 이 회차의 가장 값진 산출물이다.**
+  상수풀 태그 15~18 을 **전부 살려 둔 채** `classfile/src/opcode.rs` 의 `0xba` 분기(`map_res(…, |_| Err(()))`)만
+  옛 판본으로 되돌리면 픽스처는 ★**다시 `Malformed`** 로 죽는다(개악 **M3**) ⇒ ★**파서 수정은 «둘»이고 티켓은 «하나»를 적었다.**
+  ★**분할 판단 자체는 «지지된다»**(⓪) — 「거부 → 지원」 앞에 칸이 하나 더 있다는 것은 맞고, 그 칸의 **내용**이 한 항목 넓었다.
+  ★★**`todo!()` 미도달을 «측정»했다 — 추론이 아니다**(⓪⒝): verifier 의 `Opcode::Invokedynamic(_)` 분기만 일시 제거하면
+  ★`panicked at jvm-bytecode/src/interpreter.rs:631: not yet implemented`(**호스트 abort**) ↔ 현 트리는 게스트 예외(**M4**).
+  ⇒ ★**그 `todo!()` 와 픽스처 사이에 선 것은 «정확히 verifier 한 줄»이고, 그것이 서 있다**(유일 진입점 `from_classfile` 의 두 번째 문장).
+  ★★**대가를 치르지 않았다**(②): `parse_tagged` 의 `_ =>` 분기 **불변** · `validate_constant_pool` 에 새 태그 3종 정합성 검사 추가(JVMS 4.4.8).
+  ★**기존 회귀 테스트가 «태그 18 = 미지원»을 사례로 쓰고 있었다** — 이 회차가 그것을 지원하게 만들었으므로 **13·14·19** 로 바꿔 같은 단언을 유지했다.
+  ★개악 **4종 전건 red**(M1 태그15 제거 · M2 태그18 제거 · M3 `0xba` 원복 · M4 verifier 분기 제거) · **복원 green**.
+  ★`cargo test --all` **554 → 558 / 0 failed / 1 ignored**(신규 4 · ★**감소 0**) · DoD **6종 rc=0** · ★**`interpreter.rs` 무접촉**(`git diff --stat` 부재).
+  ★**`BootstrapMethods` 를 «파싱하지 않았다»** — 이미 `Vec<u8>` 로 받아 두고 있고, 그 인덱스를 **역참조하는 코드가 이 회차에 없다**
+  (verifier 가 정의 시점에 끊으므로 링크가 일어나지 않는다). `ConstantPoolReference::InvokeDynamic` 이 인덱스를 **원문 그대로** 든다.
+  ★**신규 관측 1건**: `ldc` 로 실린 태그 15·16·17 은 ★**여전히 `Malformed`** 다(④-2) — 같은 종류의 거짓말이 한 자리 더 남아 있다.
+  ★**알고 남긴 잡음**: `rustfmt` 가 `ConstantPoolItem` 의 **기존 변형 6개를 여러 줄로 펼쳤다**(새 변형이 `struct_variant_width` 35 를 넘겨 enum 전체가 확장형).
+  필드 이름을 줄이면 피하지만 JVMS 용어를 버리게 되어 받아들였다.
 - [rustjava-test-class-parallel-and-scratch-isolation] ★★**병렬화의 «숨은 전제»를 테스트 소스에 못박았다 — ★격리는 «넣지 않았다».**
   채택 제안 `2026-09-12-null-guard-file-io-fixture#p0`. ★**변경 = `tests/` 주석 2곳뿐**(삽입만 · 런타임·픽스처 무접촉).
   ★**1순위가 «구현»이 아니라 «판단»이었다** — 제안 자신이 「오늘 얻는 것이 없다」로 유보했고 티켓이 **재판정**을 시켰다. ⇒ ★**유보는 옳다.**
@@ -653,7 +672,14 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
      `new String((byte[])null,0,0)` · `new String((byte[])null,"UTF-8")` · `new String((byte[])null,0,0,"UTF-8")` ·
      `new String((String)null)` · `new String((StringBuffer)null)` → 전부 현재 **패닉**, 기대 `NullPointerException`.
    - **완료 정의**: 8케이스 픽스처 잠금 + 3종 green. ★가드 스타일은 upstream 기존 방식(진입부 `is_null()`)에 맞춘다.
-3. **`rustjava-invokedynamic-cp-tags-15-18-support`**(P2·M·med) — 아래 ④ 참조.
+3. ~~`rustjava-invokedynamic-cp-tags-15-18-support`~~ → ★★**[2026-09-16] 절반 해소 — «파손 → 거부» 칸을 닫았다**
+   (`rustjava-cp-tags-15-18-parse-and-honest-diagnosis` · 완료 절·`docs/worklog/2026-09-16-cp-tags-15-18-parse.md`).
+   ★**태그 15~18 파싱 «만»으로는 안 됐다** — `classfile/src/opcode.rs` 의 `0xba` 분기가 **opcode 파싱에서 무조건 실패**해
+   그대로 `Malformed` 로 이어졌다(개악 M3 이 그 자리에서 증명). ⇒ ★**「한 티켓으로 묶는다」는 «세 칸»이었다**:
+   ⒜상수풀 태그 ⒝opcode `0xba` ⒞실행. **⒜⒝ 착지 · ⒞ 미착수.**
+   ★**`todo!()` 는 도달하지 않는다 — 측정했다**(verifier 분기만 빼면 `interpreter.rs:631` 호스트 abort · 넣으면 게스트 예외).
+   ⇒ ★**남은 것은 ④ 의 새 1번 항목**(아래).
+   ---- 이하 사료 ----
    ★**「한 티켓으로 묶는 이유」가 2026-08-16 로 바뀌었다.** 구판 논거(「파서만 고치면 인터프리터가
    `todo!()` 로 죽는다」)는 ★**①머지 뒤 성립하지 않는다** — upstream 이 `jvm_rust/src/verifier.rs` 로
    **패닉 축을 이미 제거**했기 때문이다(④ 참조). 그리고 ③은 ① 뒤에 도는 티켓이다.
@@ -667,6 +693,27 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    - ★**범위 축소 권고 불변**: 크면 「파서 태그 수용 + 명확한 미지원 예외」까지로 자른다.
 
 ### ④미해결 — ★「이미 처리됐다」는 통설은 실측으로 **거짓**이다
+
+★★**[2026-09-16 갱신] 아래 절의 «태그 15~18 이 없다»·«크레이트 경로 `jvm_rust/`» 는 «낡았다» — 사료로 읽어라.**
+경로는 **`jvm-bytecode/src/`** 로 개명됐고, 태그 15~18 은 **파싱된다**(아래 1번). 살아 있는 것은 **디코더 축**(3번)뿐이다.
+
+1. ★★**`invokedynamic` «실행» — 다음 실작업이자 이 절의 유일한 큰 조각**(⇐ ③-3 의 ⒞ 칸).
+   착지분(2026-09-16): 상수풀 태그 **15·16·17·18** · opcode **`0xba`** · `ConstantPoolReference::InvokeDynamic`
+   (★`bootstrap_method_attr_index` 를 **원문 그대로** 들고 있다 — 링크 회차가 파서를 다시 고칠 필요가 없다).
+   ★**미착수**: `BootstrapMethods` 속성 파싱(오늘 `Vec<u8>` 로 받아만 둔다) · `MethodHandle` 결정 ·
+   콜사이트 링크 · `StringConcatFactory`/`LambdaMetafactory` 런타임.
+   ★**한 티켓으로 묶지 마라** — 표준 라이브러리 쪽이 파서보다 훨씬 무겁다. 최소 둘로 갈라라:
+   ⒜BootstrapMethods 파싱 + MethodHandle 결정 ⒝`StringConcatFactory` **한 종류만** 링크.
+   ★**착수 전 실측 의무**: `verifier.rs` 의 `Opcode::Invokedynamic(_)` 분기를 **언제 뺄지**가 이 회차의 게이트다 —
+   그것을 빼는 순간 `interpreter.rs:631` 의 `todo!()` 가 **도달 가능해진다**(2026-09-16 에 M4 로 측정했다).
+   ⇒ ★**분기 제거와 인터프리터 구현은 «같은 커밋»이어야 한다.** 따로 하면 그 사이에 호스트 abort 가 산다.
+2. ★**`ldc` 로 실린 태그 15·16·17 은 «여전히 `Malformed`» 다**(2026-09-16 신규 관측 · S).
+   `ConstantPoolReference::from_constant_pool` 이 그 셋에 `None` 을 돌려주고 `0x12`/`0x13`/`0x14` 분기가
+   그 `None` 을 파싱 실패로 바꾼다. ★**이번 회차가 고친 것과 «같은 종류의 거짓말»이 한 자리 더 남아 있다.**
+   ★**먼저 «재라»** — javac 가 그 형태를 내는 평범한 코드를 확인하지 못했다. 재현 불가면 그 사실이 산출물이다.
+3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
+
+---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----
 - ★`jvm_rust/src/interpreter.rs` `Opcode::Invokedynamic(_) => todo!()` 는
   **origin/main·upstream/main 양쪽에 그대로 살아 있다** — ★**문자열로는 참이지만 «도달 가능성»이 다르다**
   (2026-08-16 정정. 구판은 여기서 멈춰 «양쪽 동일»로 읽었는데 **틀렸다**).
