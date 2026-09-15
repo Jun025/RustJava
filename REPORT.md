@@ -1,5 +1,25 @@
 # REPORT
 
+## [2026-09-16] javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 (rustjava-cp-tags-15-18-parse-and-honest-diagnosis)
+- 무엇을: 상수풀 태그 **15·16·17·18** 과 ★**opcode `0xba`** 를 파싱하게 해서, javac 9+ 산출물의 진단을
+  `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`
+  으로 바꿨다. ★**`invokedynamic` 실행은 0줄**(범위 밖) · ★**`interpreter.rs` 무접촉.**
+- 왜: 두 실패가 한 이름을 쓰고 있었다. 「파일이 깨졌다」(내 잘못)와 「런타임이 못 한다」(도구의 한계)는
+  ★**사용자에게 전혀 다른 문장**이고, javac 9+ 는 **문자열 `+` 한 줄**조차 invokedynamic 으로 낸다.
+- 사용자 영향: 정상 동작 **불변**(오늘도 그 클래스는 못 돈다). ★**바뀐 것은 «왜 못 도는지»를 말하는 문장이다.**
+- ★★**티켓 ① 의 급소 지목이 «한 칸 모자랐다» — 이 회차의 가장 값진 실측**: 태그 15~18 을 **전부 살려 둔 채**
+  `0xba` 분기(`map_res(…, |_| Err(()))`)만 옛 판본으로 되돌리면 픽스처는 ★**다시 `Malformed`** 로 죽는다(개악 M3).
+  ⇒ 「파손 → 거부」 칸에 필요한 파서 수정은 **둘**이고 티켓은 **하나**를 적었다. ★**분할 판단 자체는 옳다.**
+- ★★**`todo!()` 미도달을 «측정»했다**(추론 아님): verifier 의 `Opcode::Invokedynamic(_)` 분기만 일시 제거하면
+  ★`panicked at jvm-bytecode/src/interpreter.rs:631: not yet implemented` **호스트 abort** 가 난다(M4) ↔ 현 트리는 게스트 예외.
+  ⇒ 그 `todo!()` 와 픽스처 사이에 선 것은 **정확히 verifier 한 줄**이고, 그것이 서 있다.
+- 검증: 픽스처 `test-data/indy/StringConcat.class`(`javac --release 21` · major 65) · 개악 **4종 전건 red · 복원 green** ·
+  ★**미지 태그 축 유지**(13·14·19 로 `ClassFormatError` 재단언 — 기존 테스트가 «태그 18 = 미지원»을 사례로 쓰고 있었다) ·
+  `cargo test --all` **554 → 558 / 0 / 1**(신규 4 · 감소 0) · DoD 6종 rc=0.
+- 후속 추천: ⑴**invokedynamic 실행**(BootstrapMethods 파싱 + 콜사이트 링크 · L · 갈라야 한다)
+  ⑵`ldc` 로 실린 태그 15·16·17 은 ★**여전히 `Malformed`** — 같은 종류의 거짓말이 한 자리 더 남아 있다(재현 픽스처를 먼저 재라)
+  ⑶태그 16·17 은 실행 픽스처가 없다(단위 테스트만). 상세 = `docs/worklog/2026-09-16-cp-tags-15-18-parse.md`.
+
 ## [2026-09-12] 병렬화의 «숨은 전제»를 못박았다 — 격리는 넣지 않았다 (rustjava-test-class-parallel-and-scratch-isolation)
 - 무엇을: 파일을 쓰는 픽스처가 «고정 이름»을 쓰는 것이 **안전한 이유**(전제 3개)와 **깨지면 무엇이 일어나는지**를
   ★**테스트 소스 «안»에** 적었다(`tests/test_class.rs`·`tests/test_real_jvm.rs` 주석 2곳). ★**격리 구현 0 · 런타임 무접촉.**

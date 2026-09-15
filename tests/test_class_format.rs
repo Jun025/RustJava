@@ -41,14 +41,43 @@ async fn test_truncated_class_raises_class_format_error() {
 
 #[tokio::test]
 async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
-    let mut bytes = hello_class();
-    // offset 10 is the first constant pool tag; 10 (Methodref) in the committed fixture
-    assert_eq!(bytes[10], 10, "test-data/Hello.class layout changed; adjust the mutation offset");
-    bytes[10] = 18; // CONSTANT_InvokeDynamic, unsupported
-    let (dir, path) = fixture("BadTagHello.class", &bytes);
+    // 13 and 14 are unassigned by JVMS 4.4; 19 (Module) is assigned but only legal inside a
+    // module-info. Widening the parser to the method-handle tags (15..=18) must not have
+    // widened it to "anything goes" — a file carrying a tag that cannot appear here is still
+    // a corrupt file, not a file using a feature we have not implemented.
+    for tag in [13u8, 14, 19] {
+        let mut bytes = hello_class();
+        // offset 10 is the first constant pool tag; 10 (Methodref) in the committed fixture
+        assert_eq!(bytes[10], 10, "test-data/Hello.class layout changed; adjust the mutation offset");
+        bytes[10] = tag;
+        let (dir, path) = fixture(&format!("BadTag{tag}Hello.class"), &bytes);
 
-    let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
-    assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
+        let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "tag {tag}: expected ClassFormatError, got: {err}"
+        );
+    }
+}
+
+// javac 9+ emits `invokedynamic` for something as ordinary as string `+`, so the constant
+// pool tags it needs (15 MethodHandle, 18 InvokeDynamic) decide which of two very different
+// sentences the user reads: "your file is broken" or "this runtime cannot do that yet".
+// Before the tags were parsed this fixture died as `ClassFormatError: Invalid class file`.
+#[tokio::test]
+async fn test_invokedynamic_class_reports_unsupported_feature_not_malformed() {
+    let path = Path::new("test-data/indy/StringConcat.class");
+
+    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+    assert!(
+        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+        "expected the unsupported-feature diagnosis, got: {err}"
+    );
+    assert!(
+        !err.contains("ClassFormatError"),
+        "a class javac emits for `a` + int is not malformed, got: {err}"
+    );
 }
 
 #[tokio::test]

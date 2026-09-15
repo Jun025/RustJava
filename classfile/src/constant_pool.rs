@@ -20,12 +20,43 @@ pub enum ConstantPoolItem {
     Float(f32),
     Long(i64),
     Double(f64),
-    Class { name_index: u16 },
-    String { string_index: u16 },
-    Fieldref { class_index: u16, name_and_type_index: u16 },
-    Methodref { class_index: u16, name_and_type_index: u16 },
-    InterfaceMethodref { class_index: u16, name_and_type_index: u16 },
-    NameAndType { name_index: u16, descriptor_index: u16 },
+    Class {
+        name_index: u16,
+    },
+    String {
+        string_index: u16,
+    },
+    Fieldref {
+        class_index: u16,
+        name_and_type_index: u16,
+    },
+    Methodref {
+        class_index: u16,
+        name_and_type_index: u16,
+    },
+    InterfaceMethodref {
+        class_index: u16,
+        name_and_type_index: u16,
+    },
+    NameAndType {
+        name_index: u16,
+        descriptor_index: u16,
+    },
+    MethodHandle {
+        reference_kind: u8,
+        reference_index: u16,
+    },
+    MethodType {
+        descriptor_index: u16,
+    },
+    Dynamic {
+        bootstrap_method_attr_index: u16,
+        name_and_type_index: u16,
+    },
+    InvokeDynamic {
+        bootstrap_method_attr_index: u16,
+        name_and_type_index: u16,
+    },
 }
 
 impl ConstantPoolItem {
@@ -102,6 +133,37 @@ impl ConstantPoolItem {
                         descriptor_index,
                     },
                 ))
+            }
+            15 => {
+                let (data, reference_kind) = u8(data)?;
+                let (data, reference_index) = be_u16(data)?;
+                Ok((
+                    data,
+                    Self::MethodHandle {
+                        reference_kind,
+                        reference_index,
+                    },
+                ))
+            }
+            16 => {
+                let (data, descriptor_index) = be_u16(data)?;
+                Ok((data, Self::MethodType { descriptor_index }))
+            }
+            17 | 18 => {
+                let (data, bootstrap_method_attr_index) = be_u16(data)?;
+                let (data, name_and_type_index) = be_u16(data)?;
+                let item = if tag == 17 {
+                    Self::Dynamic {
+                        bootstrap_method_attr_index,
+                        name_and_type_index,
+                    }
+                } else {
+                    Self::InvokeDynamic {
+                        bootstrap_method_attr_index,
+                        name_and_type_index,
+                    }
+                };
+                Ok((data, item))
             }
             _ => Err(nom::Err::Error(Error::new(data, ErrorKind::Switch))),
         }
@@ -188,6 +250,15 @@ pub enum ConstantPoolReference {
     Method(FieldMethodref),
     InterfaceMethodref(FieldMethodref),
     Field(FieldMethodref),
+    // The bootstrap method itself is not resolved: `BootstrapMethods` is still kept as raw
+    // bytes (see `AttributeInfo::BootstrapMethods`), and nothing links a call site yet — the
+    // verifier rejects every `invokedynamic` at class definition time. The index is carried
+    // verbatim so that linking can start from it without another parser change.
+    InvokeDynamic {
+        bootstrap_method_attr_index: u16,
+        name: Arc<String>,
+        descriptor: Arc<String>,
+    },
 }
 
 impl ConstantPoolReference {
@@ -223,6 +294,17 @@ impl ConstantPoolReference {
                 *class_index,
                 *name_and_type_index,
             )?)),
+            ConstantPoolItem::InvokeDynamic {
+                bootstrap_method_attr_index,
+                name_and_type_index,
+            } => {
+                let (name_index, descriptor_index) = constant_pool.get(name_and_type_index)?.name_and_type()?;
+                Some(Self::InvokeDynamic {
+                    bootstrap_method_attr_index: *bootstrap_method_attr_index,
+                    name: constant_pool.get(&name_index)?.utf8()?,
+                    descriptor: constant_pool.get(&descriptor_index)?.utf8()?,
+                })
+            }
             _ => None,
         }
     }
@@ -294,6 +376,59 @@ mod tests {
 
         assert!(constant_pool.is_empty());
         assert_eq!(remaining, &[0xff]);
+    }
+
+    #[test]
+    fn parses_method_handle_family_tags() {
+        // 15 MethodHandle, 16 MethodType, 17 Dynamic, 18 InvokeDynamic — each a distinct
+        // operand shape, so a copy-pasted arm reading the wrong width shifts every later entry.
+        let entries: &[(&[u8], fn(&ConstantPoolItem) -> bool)] = &[
+            (&[15, 6, 0x00, 0x2a], |x| {
+                matches!(
+                    x,
+                    ConstantPoolItem::MethodHandle {
+                        reference_kind: 6,
+                        reference_index: 42
+                    }
+                )
+            }),
+            (&[16, 0x00, 0x2a], |x| matches!(x, ConstantPoolItem::MethodType { descriptor_index: 42 })),
+            (&[17, 0x00, 0x01, 0x00, 0x2a], |x| {
+                matches!(
+                    x,
+                    ConstantPoolItem::Dynamic {
+                        bootstrap_method_attr_index: 1,
+                        name_and_type_index: 42
+                    }
+                )
+            }),
+            (&[18, 0x00, 0x01, 0x00, 0x2a], |x| {
+                matches!(
+                    x,
+                    ConstantPoolItem::InvokeDynamic {
+                        bootstrap_method_attr_index: 1,
+                        name_and_type_index: 42
+                    }
+                )
+            }),
+        ];
+
+        for (bytes, expected) in entries {
+            let (remaining, item) = ConstantPoolItem::parse_with_tag(bytes).unwrap();
+
+            assert!(remaining.is_empty(), "tag {} left {remaining:?} unconsumed", bytes[0]);
+            assert!(expected(&item), "tag {} parsed as {item:?}", bytes[0]);
+        }
+    }
+
+    #[test]
+    fn tags_outside_the_accepted_set_are_still_rejected() {
+        // 0, 2, 13, 14 and 21.. are unassigned by JVMS 4.4; 19/20 (Module/Package) are assigned
+        // but only legal in a module-info, which this parser does not read. Either way, widening
+        // the parser to 15..=18 must not have turned the tag switch into a pass-through.
+        for tag in [0u8, 2, 13, 14, 19, 20, 21, 255] {
+            assert!(ConstantPoolItem::parse_with_tag(&[tag, 0, 0, 0, 0]).is_err(), "tag {tag} must not parse");
+        }
     }
 
     #[test]
