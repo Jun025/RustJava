@@ -259,6 +259,14 @@ pub enum ConstantPoolReference {
         name: Arc<String>,
         descriptor: Arc<String>,
     },
+    // `ldc`-able constants (JVMS 6.5 ldc) that nothing resolves yet. No operand is carried:
+    // resolving a method handle, a method type or a condy needs machinery that does not exist,
+    // and the only consumer is the verifier, which turns them into "not implemented". They are
+    // here so the `ldc` family can say that instead of "corrupt class file" — a real JVM loads
+    // these files fine (test-data/ldc/, checked against OpenJDK 26).
+    MethodHandle,
+    MethodType,
+    Dynamic,
 }
 
 impl ConstantPoolReference {
@@ -305,6 +313,11 @@ impl ConstantPoolReference {
                     descriptor: constant_pool.get(&descriptor_index)?.utf8()?,
                 })
             }
+            // Shape already checked by `validation::validate_constant_pool` (reference kind vs.
+            // target, descriptor well-formedness), so there is nothing left to resolve here.
+            ConstantPoolItem::MethodHandle { .. } => Some(Self::MethodHandle),
+            ConstantPoolItem::MethodType { .. } => Some(Self::MethodType),
+            ConstantPoolItem::Dynamic { .. } => Some(Self::Dynamic),
             _ => None,
         }
     }

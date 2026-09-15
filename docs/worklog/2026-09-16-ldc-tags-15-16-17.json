@@ -1,0 +1,58 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-ldc-tags-15-16-17-still-malformed",
+  "summary": "`ldc`/`ldc_w`/`ldc2_w` of CONSTANT_MethodHandle (15), MethodType (16) and Dynamic (17) reported `ClassFormatError: Invalid class file`. They now report `UnsupportedOperationException: Unsupported class file feature: ldc of a …`, matching the shape PR #43 established for `invokedynamic`. Measured first: javac emits no such `ldc` (27,902 JDK classes / 1,252,714 ldc sites / zero), so the fixtures are synthetic and labelled as such.",
+  "changes": [
+    "classfile/src/constant_pool.rs — three payload-free ConstantPoolReference variants + their from_constant_pool arms",
+    "classfile/src/opcode.rs — 0x12/0x13 accept all three; 0x14 accepts only Dynamic (JVMS 6.5 wide/narrow split)",
+    "jvm-bytecode/src/verifier.rs — one new arm returning UnsupportedFeature; the Invokedynamic line is untouched",
+    "test-data/src/ldc/make_ldc_fixtures.py + test-data/ldc/*.class — six synthetic fixtures (4 positive, 2 negative controls)",
+    "tests/test_class_format.rs — two tests, one per direction"
+  ],
+  "verification": [
+    "before/after captured by running each fixture end to end through run_class, not by reading source",
+    "ground truth: OpenJDK 26.0.1 loads and runs all four positive fixtures; it rejects both negative controls",
+    "M1 remove the new verifier arm -> host abort at jvm-bytecode/src/interpreter.rs:1063 (unimplemented!) — the arm is load-bearing",
+    "M2 from_constant_pool back to None / M3 ldc arms back to the old set -> positives red",
+    "M4 let ldc2_w take a MethodType -> negative control red",
+    "M5 constant-pool tag switch made a pass-through -> red, but via the classfile unit test, NOT via the new end-to-end test",
+    "cargo test --all: 558/0/1 -> 560/0/1 (+2, zero regressions); DoD 6 commands rc=0"
+  ],
+  "issues": [
+    "The fixtures are synthetic. No javac construct emits ldc of these tags — measured over the JDK's own jmods, over targeted sources at --release 21/25/26+preview, and over this repo's test-data. No third-party jar corpus (where condy does occur) exists on this machine, so 'no bytecode generator in the wild does this either' was NOT measured.",
+    "The new LdcUnknownTag test does not actually detect a pass-through constant-pool tag switch (M5); it passes for an adjacent reason. That axis is locked one layer down, by the previous round's classfile unit test.",
+    "Our runtime answers ClassFormatError where OpenJDK answers VerifyError for Ldc2WMethodType — we reject at parse time, earlier than the JVM's verification pass."
+  ],
+  "proposals": [
+    {
+      "title": "Teach validation.rs the two class-file rules OpenJDK caught and we do not check",
+      "plainSummary": "Two structural rules of the class file format are not checked by our parser. A real JVM rejected our first-draft fixtures for both; our parser accepted them happily.",
+      "userBenefit": "A file that is genuinely malformed in either of these ways is currently accepted and fails later — or not at all — instead of being named as broken at load time.",
+      "why": "Found by accident, not by design: the first-draft LdcDynamic fixture was rejected by OpenJDK 26 twice, first for using constant tag 17 in a major-52 file (JVMS 4.4 ties tags 15/16 to major >= 51 and 17/18 to >= 55), then for a Dynamic entry with no BootstrapMethods attribute (JVMS 4.7.23). Our validate_constant_pool checks neither — its own comment admits the second one, since BootstrapMethods is still an unparsed byte blob. That we needed a real JVM to notice is the finding.",
+      "tradeoff": "The version-vs-tag check is a handful of lines and pure gain. The BootstrapMethods check is not: it requires parsing that attribute, which STATE 4-1 assigns to the invokedynamic-execution round. Doing it here would take a bite out of that round's scope for no runtime benefit today. Consider splitting: version check now, attribute check with the parser that needs it.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs, classfile/src/class.rs"
+    },
+    {
+      "title": "Make the constant-pool tag switch's pass-through mutation detectable end to end",
+      "plainSummary": "A test that is supposed to prove 'we still reject unknown constant pool tags' does not actually prove it — it passes for a different reason.",
+      "userBenefit": "None directly. It stops a future round from weakening the tag switch and believing a green test means the guard held.",
+      "why": "M5 in this round: replacing the tag switch's reject arm with a pass-through left tests/test_class_format.rs entirely green. The end-to-end fixture passes because the mutation's hardcoded descriptor index fails a different validation rule, not because the tag was rejected. The axis is genuinely locked by constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected, but a reader of the end-to-end test alone would draw the wrong conclusion.",
+      "tradeoff": "Arguably nothing to fix: the unit test is the right layer for a parser-level rule, and duplicating it end to end is redundancy. The cheaper fix may be a comment on the end-to-end test naming which layer actually owns the axis — but that is a judgement, and this round did not make it.",
+      "effort": "S",
+      "target": "tests/test_class_format.rs, classfile/src/constant_pool.rs"
+    },
+    {
+      "title": "Measure whether real-world bytecode generators emit ldc of tags 15/16/17",
+      "plainSummary": "We proved javac never produces the class shape this round fixed. We could not check whether the tools that generate bytecode directly — ASM, Kotlin, Scala, Lombok — produce it.",
+      "userBenefit": "It would say whether this round's fix is defensive-only or whether real jars on a user's classpath hit it, which changes how the invokedynamic work should be prioritised.",
+      "why": "This round's corpus was the JDK's own jmods plus this repo's test-data: 28,029 classes, all javac output, zero hits. A find over $HOME, ~/.m2, ~/.gradle, ~/.ivy2, ~/Library/Caches and /opt/homebrew/Cellar returned zero jars, so the ASM/Kotlin side is simply unmeasured. Condy is known to be used by such generators; whether it reaches an ldc operand is the open question.",
+      "tradeoff": "Needs jars this machine does not have, so it means downloading a corpus — which is an outbound fetch, and the round would have to be scoped to say what it may pull. Also a weak signal either way: 'some jar somewhere does it' does not by itself justify implementing condy. Low priority.",
+      "effort": "M",
+      "target": "test-data/src/ldc/, docs/"
+    }
+  ],
+  "adoptedProposals": [],
+  "declinedProposals": []
+}

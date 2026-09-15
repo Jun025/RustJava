@@ -4,6 +4,32 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-ldc-tags-15-16-17-still-malformed] ★★**`ldc` 태그 15·16·17 도 «미지원»이라고 말한다 — ★④-2 를 닫았다.**
+  ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: ldc of a method handle`(/`method type`/`dynamically-computed constant`).
+  ★**직전 회차와 «같은 관용»을 썼다**(파싱 → verifier 거부) — 새 관용을 만들지 않았다(티켓 ①).
+  ★★**⓪ 판정이 «둘»로 갈렸다 — 이 회차의 핵심이다**: ⒜**재현됐다**(4종 전건 `Malformed`)
+  ⒝★**javac 은 그 형태를 «내지 않는다» — 「재현 불가」가 아니라 «측정된 부재»다.**
+  JDK 자체 jmods **27,902 클래스 · `ldc`/`ldc_w`/`ldc2_w` 1,252,714 자리 · ★0건**
+  (★**계측기를 대조군으로 검증**: 같은 corpus 에서 String 1,176,232 · Integer 23,292 · Long 20,006 … 를 되찾았고 디코드 드리프트 **0.28%**) ·
+  `--release 21/25/26+preview` 로 문자열연결·람다·메서드참조·레코드·sealed/enum/pattern switch 등 **14종** → 태그 15·16 은
+  ★**부트스트랩 «인자»로만** 등장하고 태그 17 은 **0** · 이 repo `test-data/` 127클래스 500자리 **0건**.
+  ⇒ ★★**픽스처는 «합성»이고 3곳(생성기·테스트·worklog)에 그렇게 적었다.** ★**「평범한 코드에서 나온다」로 적지 않았다.**
+  ★**못 잰 축도 적는다**: ASM·Kotlin 류 서드파티 jar corpus 는 이 머신에 **0개**(`$HOME`·`.m2`·`.gradle`·`.ivy2`·Cellar 전수) ⇒ **미측정**.
+  ★**그럼에도 고친 정당화는 «도달성»이 아니라 «인접성»이다** — 그 셋이 ④-1(`invokedynamic` 실행)이 필요로 할 **바로 그 상수들**이다.
+  ★★**참조 JVM 이 근거다**(`AGENTS.md` 허용 축 = observable behavior · OpenJDK 소스 **미참조**):
+  OpenJDK 26.0.1 이 양성 픽스처 **4종을 전부 로드·실행**한다 ⇒ ★**「못 읽는 파일」이 아니라 「못 하는 파일」**임이 선다.
+  ★★**그 참조 JVM 이 내 픽스처를 «두 번» 반려했고 그것이 부수 산출물이다** — 태그 17 은 **major ≥ 55** 필요 ·
+  `Dynamic` 은 **`BootstrapMethods` 속성 필수**(JVMS 4.7.23). ★**우리 `validation.rs` 는 «둘 다» 검사하지 않는다**(④-2 에 남겼다).
+  ★**대가(②) 미지불을 «음성 대조군»으로 보였다**: `ldc2_w` 에 MethodType(JVMS 6.5 위반) · `ldc` 대상이 태그 19
+  ⇒ ★**둘 다 여전히 `ClassFormatError`**(참조 JVM 도 각각 VerifyError·ClassFormatError). ※우리는 파싱 시점에 끊어 phylum 이 다르다 — 단언하지 않았다.
+  ★개악 **5종**: M1 verifier 새 분기 제거 → ★`panicked at jvm-bytecode/src/interpreter.rs:1063`(**호스트 abort** = 직전 회차가 `todo!()` 에서 잰 것과 같은 형태) ·
+  M2 `from_constant_pool` 원복 · M3 opcode 분기 원복 · M4 `ldc2_w` 확장 → **전건 red** · 복원 green.
+  ★★**M5 는 «내 테스트가 못 잡았다» — 숨기지 않는다**: 상수풀 태그 switch 를 pass-through 로 만들어도
+  `tests/test_class_format.rs` 는 **전건 green**(내 `LdcUnknownTag` 는 «인접한 이유»로 통과한다). 실제로 무는 것은
+  ★**직전 회차의 `classfile::constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected`** 다.
+  ⇒ ★**축은 잠겨 있으나 «내가 단언한 층»이 아니다.**
+  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **6종 rc=0** ·
+  ★`verifier.rs` 의 `Invokedynamic` 줄 **무접촉** · ★`interpreter.rs` **무접촉**(`git diff --stat` 부재).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
@@ -678,7 +704,9 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    그대로 `Malformed` 로 이어졌다(개악 M3 이 그 자리에서 증명). ⇒ ★**「한 티켓으로 묶는다」는 «세 칸»이었다**:
    ⒜상수풀 태그 ⒝opcode `0xba` ⒞실행. **⒜⒝ 착지 · ⒞ 미착수.**
    ★**`todo!()` 는 도달하지 않는다 — 측정했다**(verifier 분기만 빼면 `interpreter.rs:631` 호스트 abort · 넣으면 게스트 예외).
-   ⇒ ★**남은 것은 ④ 의 새 1번 항목**(아래).
+   ★★**[2026-09-16 갱신] 칸은 «셋»이 아니라 «넷»이었다** — `rustjava-ldc-tags-15-16-17-still-malformed` 가
+   ⒜′**`ldc` 계열이 그 상수를 «집을» 때**를 닫았다(⒜ 는 상수풀 파싱이고 이것은 opcode 수용이다 — `0xba` 와 같은 형태의 별 칸).
+   ⇒ ★**⒜⒜′⒝ 착지 · ⒞ 미착수.** ★남은 것은 ④ 의 1번 항목뿐이다.
    ---- 이하 사료 ----
    ★**「한 티켓으로 묶는 이유」가 2026-08-16 로 바뀌었다.** 구판 논거(「파서만 고치면 인터프리터가
    `todo!()` 로 죽는다」)는 ★**①머지 뒤 성립하지 않는다** — upstream 이 `jvm_rust/src/verifier.rs` 로
@@ -707,10 +735,16 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    ★**착수 전 실측 의무**: `verifier.rs` 의 `Opcode::Invokedynamic(_)` 분기를 **언제 뺄지**가 이 회차의 게이트다 —
    그것을 빼는 순간 `interpreter.rs:631` 의 `todo!()` 가 **도달 가능해진다**(2026-09-16 에 M4 로 측정했다).
    ⇒ ★**분기 제거와 인터프리터 구현은 «같은 커밋»이어야 한다.** 따로 하면 그 사이에 호스트 abort 가 산다.
-2. ★**`ldc` 로 실린 태그 15·16·17 은 «여전히 `Malformed`» 다**(2026-09-16 신규 관측 · S).
-   `ConstantPoolReference::from_constant_pool` 이 그 셋에 `None` 을 돌려주고 `0x12`/`0x13`/`0x14` 분기가
-   그 `None` 을 파싱 실패로 바꾼다. ★**이번 회차가 고친 것과 «같은 종류의 거짓말»이 한 자리 더 남아 있다.**
-   ★**먼저 «재라»** — javac 가 그 형태를 내는 평범한 코드를 확인하지 못했다. 재현 불가면 그 사실이 산출물이다.
+2. ★★**[닫힘 2026-09-16 · `rustjava-ldc-tags-15-16-17-still-malformed`] `ldc` 태그 15·16·17 — «미지원»이라고 말한다.**
+   진단이 `ClassFormatError: Invalid class file` → `UnsupportedOperationException: Unsupported class file feature: ldc of a …`.
+   ★**판정은 «둘»이다 — 하나로 접지 마라**: ⒜**재현됐다** ⒝★**javac 은 그 형태를 내지 않는다**(측정된 부재 —
+   JDK jmods **27,902 클래스 · `ldc` 1,252,714 자리 · 0건** · `--release 21/25/26+preview` 14종 소스 0건).
+   ⇒ ★**픽스처는 «합성»이다**(`test-data/src/ldc/make_ldc_fixtures.py` · 6종). ★**그렇게 적었다 — 「평범한 코드」로 적지 마라.**
+   ★**정당화는 «도달성»이 아니라 «인접성»이다**: 그 셋이 ④-1 이 필요로 할 바로 그 상수들이다.
+   ★**참조 JVM 이 양성 4종을 전부 로드·실행**한다 ⇒ 「못 읽는 파일」이 아님이 실측으로 선다.
+   ★**남긴 것 셋**: ⑴★`validation.rs` 가 **「태그↔major 버전」과 「Dynamic ↔ BootstrapMethods 존재」를 «둘 다» 검사하지 않는다**
+   (참조 JVM 이 내 픽스처를 그 둘로 반려해서 알았다 — 후속) ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
+   `test_class_format` 이 **못 잡는다**(무는 것은 `classfile` 단위 테스트) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
 3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
 
 ---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----

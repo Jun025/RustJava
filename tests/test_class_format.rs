@@ -107,3 +107,51 @@ async fn test_missing_class_still_raises_no_class_def_found_error() {
         "not-found must stay distinct from unreadable, got: {err}"
     );
 }
+
+// Synthetic, by necessity: javac has no source construct that makes `ldc` name a
+// CONSTANT_MethodHandle/MethodType/Dynamic entry — measured over the 27,902 javac-compiled
+// classes of the JDK's own jmods (1.27M ldc sites, zero hits) and over targeted sources at
+// --release 21/25/26; see docs/worklog/2026-09-16-ldc-tags-15-16-17.md. So these fixtures are
+// assembled byte by byte (test-data/src/ldc/make_ldc_fixtures.py). OpenJDK 26 loads and runs
+// all four without complaint, which is the whole point: files this runtime cannot *do*, not
+// files it cannot *read*.
+#[tokio::test]
+async fn test_ldc_of_method_handle_family_reports_unsupported_feature_not_malformed() {
+    for (name, feature) in [
+        ("LdcMethodHandle", "ldc of a method handle"),
+        ("LdcMethodType", "ldc of a method type"),
+        ("LdcDynamic", "ldc of a dynamically-computed constant"),
+        ("Ldc2WDynamic", "ldc of a dynamically-computed constant"),
+    ] {
+        let path = PathBuf::from(format!("test-data/ldc/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains(feature),
+            "{name}: expected the unsupported-feature diagnosis, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: a file OpenJDK loads is not malformed, got: {err}"
+        );
+    }
+}
+
+// The other direction. Widening `ldc` must not have widened it to "anything the constant pool
+// holds": a wide `ldc2_w` still takes only wide constants, and a constant pool tag that cannot
+// appear in a class file at all is still a corrupt file. Without this, replacing the ldc arms
+// with a constant `Ok` would pass the test above.
+#[tokio::test]
+async fn test_ldc_of_an_illegal_constant_is_still_malformed() {
+    for name in ["Ldc2WMethodType", "LdcUnknownTag"] {
+        let path = PathBuf::from(format!("test-data/ldc/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "{name}: expected ClassFormatError, got: {err}"
+        );
+    }
+}

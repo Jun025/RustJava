@@ -1,5 +1,35 @@
 # REPORT
 
+## [2026-09-16] `ldc` 의 태그 15·16·17 도 «파손»이 아니라 «미지원»이라고 말한다 (rustjava-ldc-tags-15-16-17-still-malformed)
+- 무엇을: `ldc`/`ldc_w`/`ldc2_w` 가 **MethodHandle(15)·MethodType(16)·Dynamic(17)** 을 만났을 때의 진단을
+  `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: ldc of a …`
+  로 바꿨다. 직전 회차(PR #43)가 `invokedynamic` 에 쓴 것과 ★**같은 관용**(파싱 → verifier 거부) · ★**`interpreter.rs` 무접촉.**
+- 왜: `STATE.md` ④-2 가 직전 회차 자신의 산출물로 지목한 「같은 종류의 거짓말이 한 자리 더」다.
+  ★**그리고 이 셋은 ④-1(`invokedynamic` 실행)이 «필요로 할» 바로 그 상수들**이라 거기 닿는 사람이 먼저 만난다.
+- 사용자 영향: 정상 동작 **불변**(그 클래스는 오늘도 못 돈다). ★**바뀐 것은 «왜 못 도는지»를 말하는 문장이다.**
+- ★★**⓪ 판정이 «둘»로 갈렸다 — 흐리지 마라**: ⒜**재현됐다**(픽스처 4종 전건 `Malformed`)
+  ⒝★**그러나 javac 은 그 형태를 «내지 않는다» — 재현 불가가 아니라 «측정된 부재»다.**
+  JDK 자체 jmods **27,902 클래스 · `ldc` 계열 1,252,714 자리 · 0건**(계측기는 공허하지 않다 — 같은 corpus 에서
+  String 1,176,232 · Integer 23,292 … 를 되찾았고 디코드 드리프트는 **0.28%**) · `--release 21/25/26+preview` 로
+  문자열 연결·람다·메서드참조·레코드·패턴 switch 등 **14종** 컴파일 → 태그 15·16 은 **부트스트랩 인자로만** 등장 · 태그 17 은 **0**.
+  ⇒ ★**픽스처는 «합성»이고 그렇게 «적었다»**(생성기·테스트·worklog 3곳). ★**「평범한 코드에서 나온다」로 적지 않았다.**
+  ★**못 잰 것도 적는다**: ASM·Kotlin 류 서드파티 jar corpus 는 **이 머신에 0개**라 그쪽은 **미측정**이다.
+- ★★**참조 JVM 이 «근거»다**(소스 참조 아님 — 허용 축인 observable behavior): OpenJDK 26.0.1 이
+  양성 픽스처 **4종을 전부 로드·실행**한다 ⇒ ★**「못 읽는 파일」이 아니라 「못 하는 파일」임이 실측으로 선다.**
+  ★**그 참조 JVM 이 내 픽스처를 «두 번» 반려했고 그것이 부수 산출물이다**: 태그 17 은 **major ≥ 55** 필요 ·
+  `Dynamic` 은 **`BootstrapMethods` 속성 필수**(JVMS 4.7.23). ★**우리 `validation.rs` 는 «둘 다» 검사하지 않는다** ⇒ 후속 ⑴.
+- ★★**대가(②)를 지불하지 않았음을 «음성 대조군»으로 보였다**: `ldc2_w` 에 MethodType(JVMS 6.5 위반) ·
+  `ldc` 가 가리키는 자리에 태그 19 ⇒ ★**둘 다 여전히 `ClassFormatError`**(참조 JVM 도 각각 VerifyError·ClassFormatError 로 거부).
+- ★**개악 5종**: M1 verifier 새 분기 제거 → ★`panicked at jvm-bytecode/src/interpreter.rs:1063`(**호스트 abort** —
+  직전 회차가 `todo!()` 에서 잰 것과 **같은 형태**) · M2 `from_constant_pool` 원복 · M3 opcode 분기 원복 · M4 `ldc2_w` 확장 → **전건 red** ·
+  ★★**M5 는 «내 테스트가 못 잡았다»** — 상수풀 태그 switch 를 pass-through 로 만들어도 `test_class_format` 은 **전건 green** 이었고,
+  실제로 무는 것은 **직전 회차의 `classfile` 단위 테스트**다. ★**축은 잠겨 있으나 «내가 단언한 층»이 아니다 — 그대로 적는다.**
+- 검증: `cargo test --all` **558 → 560 / 0 / 1**(신규 2 · 감소 0) · DoD 6종 rc=0 ·
+  ★`verifier.rs` 의 `Invokedynamic` 줄 **무접촉** · `interpreter.rs` **무접촉**(`git diff --stat` 부재).
+- 후속 추천: ⑴**`validation.rs` 에 「태그↔major 버전」 검사 추가**(`BootstrapMethods` 축은 ④-1 몫이라 갈라라)
+  ⑵M5 가 드러난 층 어긋남 표기 ⑶서드파티 bytecode 생성기 corpus 측정(저우선).
+  상세 = `docs/worklog/2026-09-16-ldc-tags-15-16-17.md`.
+
 ## [2026-09-16] javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 (rustjava-cp-tags-15-18-parse-and-honest-diagnosis)
 - 무엇을: 상수풀 태그 **15·16·17·18** 과 ★**opcode `0xba`** 를 파싱하게 해서, javac 9+ 산출물의 진단을
   `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`

@@ -25,6 +25,17 @@ pub(crate) fn verify(class: &ClassInfo) -> Result<(), ClassDefinitionError> {
                         }
                     }
                     Opcode::Invokedynamic(_) => return Err(ClassDefinitionError::UnsupportedFeature("invokedynamic")),
+                    // The parser accepts these so a class carrying them is not called corrupt,
+                    // but nothing resolves them. Rejecting here keeps `Interpreter::constant_to_value`
+                    // unreachable for them — reaching it would abort the host, not the guest.
+                    Opcode::Ldc(reference) | Opcode::LdcW(reference) | Opcode::Ldc2W(reference) => match reference {
+                        ConstantPoolReference::MethodHandle => return Err(ClassDefinitionError::UnsupportedFeature("ldc of a method handle")),
+                        ConstantPoolReference::MethodType => return Err(ClassDefinitionError::UnsupportedFeature("ldc of a method type")),
+                        ConstantPoolReference::Dynamic => {
+                            return Err(ClassDefinitionError::UnsupportedFeature("ldc of a dynamically-computed constant"));
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
