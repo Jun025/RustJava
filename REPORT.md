@@ -1,5 +1,32 @@
 # REPORT
 
+## [2026-09-16] `BootstrapMethods` 를 «구조»로 읽는다 — 콜사이트 링크는 0줄 (rustjava-invokedynamic-bootstrapmethods-and-methodhandle)
+- 무엇을: `AttributeInfo::BootstrapMethods` 를 **`Vec<u8>` → `Vec<BootstrapMethod>`**(JVMS 4.7.23)로 파싱하고,
+  `CONSTANT_MethodHandle` 을 `MethodHandleRef`(`MethodHandleKind` 9종 + 클래스·이름·서술자)로 **해독**한다.
+  ★**`STATE.md` ④-1 이 「최소 둘로 갈라라」고 못박은 그 ⒜ «만»** — ⒝(콜사이트 링크·`StringConcatFactory` 런타임)는 **0줄**.
+- 왜: 채택 제안 `2026-09-16-cp-tags-15-18-parse#p0`. 직전 두 회차가 「파손 → 미지원」을 닫았고, 남은 칸이 「미지원 → 지원」이다.
+  그 첫 삽이 **부트스트랩 메서드를 «읽는» 것**이고, `ConstantPoolReference::InvokeDynamic` 이 인덱스를 원문 그대로 들고 있어 파서를 다시 고칠 필요가 없었다.
+- 사용자 영향: ★**없다 — 동작 불변**(그 클래스는 오늘도 `invokedynamic` 미지원으로 거부된다). 바뀐 것은 **다음 회차가 쓸 자료구조**다.
+- ★★**「MethodHandle 결정」의 «경계»를 이름으로 적었다 — ★「전부 된다」로 적지 않았다.**
+  되는 것 = **클래스파일에 적힌 (종류·클래스·이름·서술자) 해독**. 안 되는 것 = 클래스 로드 **0** · 멤버 조회 **0** ·
+  접근 검사 **0** · ★**`java.lang.invoke` 런타임 클래스 «0개»**(실측 — 디렉터리 부재 · 참조 0건) ⇒ **`MethodHandle` 객체 생성 불가** ·
+  종류↔대상 짝짓기는 **`validation.rs` 몫** · `bootstrap_method_attr_index` **경계 미검사** · 정적 인자 **미해석**.
+- ★★**급소 — 「정적 인자를 풀지 않는다」가 «선택»이고 그것을 측정했다**(개악 M3):
+  「인덱스를 `ConstantPoolReference` 로 풀어라」는 가장 자연스러운 다음 줄인데, `LambdaMetafactory.metafactory` 의 인자가
+  **MethodType·MethodHandle·MethodType** 이라 강제하면 ★**람다가 든 모든 클래스가 «파싱»에서 죽는다** —
+  `UnsupportedOperationException: … invokedynamic` → ★`ClassFormatError: Invalid class file` 로 **되돌아간다**.
+  ★★**그런데 M3 에서 `StringConcat` 은 «green» 이다**(그 인자는 String 하나뿐) ⇒ ★**기존 픽스처만으로는 이 회귀가 보이지 않는다.**
+  그래서 픽스처 **`test-data/indy/Lambda.class`**(javac `--release 21`)를 새로 넣고 **두 층**(파스·end-to-end)에서 물게 했다.
+- ★**개악 4종 전건 red · 복원 green**: M1 필드 폭 1개(`num_bootstrap_arguments` u16→u8) · M2 `bootstrap_method_ref` 인덱스 +1 ·
+  M3 정적 인자 해석 강제 · M4 verifier 분기 제거 → ★`panicked at jvm-bytecode/src/interpreter.rs:631`(**호스트 abort**)
+  ⇒ ★**`todo!()` 는 여전히 «도달 불가»이고 그것을 «측정»했다.**
+- 검증: `cargo test --all` **558 → 562 / 0 / 1**(신규 4 · 감소 0) · DoD 7줄 rc=0 ·
+  ★`verifier.rs`·`interpreter.rs` **무접촉**(`git diff --stat` 빈 출력) · ★낡은 주석 2곳을 **전수 계수로** 닫았다.
+- 후속 추천: ⑴**⒝ 콜사이트 링크**(`StringConcatFactory` 한 종류 · `java.lang.invoke` 패키지 신설 · L)
+  ⑵`bootstrap_method_attr_index` 경계 검사(④-2 의 「태그↔major 버전」과 한 회차)
+  ⑶`MethodHandleKind` 를 `constant_pool.rs` 로 옮길지 재판정(오늘은 소비자가 하나라 attribute.rs 에 뒀다).
+  상세 = `docs/worklog/2026-09-16-bootstrap-methods-and-method-handle.md`.
+
 ## [2026-09-16] javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 (rustjava-cp-tags-15-18-parse-and-honest-diagnosis)
 - 무엇을: 상수풀 태그 **15·16·17·18** 과 ★**opcode `0xba`** 를 파싱하게 해서, javac 9+ 산출물의 진단을
   `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`
