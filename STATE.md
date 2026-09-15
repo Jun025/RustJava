@@ -4,6 +4,29 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-cp-tags-16-17-execution-fixtures] ★★**javac 은 태그 17(condy)을 «낸다» — 직전 회차의 「못 찾았다」를 뒤집었다.** `.rs` 런타임 **0줄**.
+  채택 제안 `2026-09-16-cp-tags-15-18-parse#p2`(worklog json `adoptedProposals` 에 기록).
+  ★★**직전 회차 기록 정정이 아니라 «승계»다** — 그 회차는 「javac 가 그 둘을 내는 평범한 코드를 **찾지 못했다**」고
+  ★**정직하게** 적었다(거짓 단언이 아니다). ⇒ ★**이 회차가 찾았다.**
+  ★**태그 17 의 산출 조건(이 원장에 처음 박는다)**: ★**`switch` 의 case 라벨이 «정규화된 enum 상수»이고 선택자가 enum 이 아닐 때**(JEP 441).
+  javac 이 각 상수를 `java/lang/Enum$EnumDesc` 로 기술하며 `ConstantBootstraps.invoke` condy 를 낸다.
+  ★**평범한 enum switch 도, sealed 인터페이스 pattern switch 도 «0» 이다**(둘 다 실측 — 그 둘만 보고 「javac 은 condy 를 안 낸다」로 닫으면 틀린다).
+  ★★**희소도를 쟀다**: OpenJDK 26 자체 jmods **27,902 클래스 중 태그 17 보유 = «1»**(`jdk/jpackage/internal/PackageBuilder` · 3항목) ↔
+  태그 16 은 **1,747 클래스 · 8,434 항목**. ⇒ ★**16 은 흔하고 17 은 «사실상 없다»** — 그래서 실물 픽스처가 값을 한다.
+  ★**픽스처 `test-data/indy/ConstantKinds.class`**(javac `--release 21` · 소스 동봉) — ★**한 파일이 네 태그를 전부** 낸다
+  (MethodHandle **7** · MethodType **1** · Dynamic **3** · InvokeDynamic **3**). ★참조 JVM 이 **끝까지 실행**한다(`h3` · rc=0).
+  ★★**제안이 예측한 실패 형태가 «실재한다» — 그것을 측정한 것이 이 회차의 값이다.**
+  제안 문면: 「오프셋 실수가 **단위 테스트를 통과하고 실물에서만** 드러나는 형태가 이 파서에서 가능하다」.
+  ⇒ ★**가능하다**: `parse_all` 의 `is_double_entry` 에 `Dynamic`(또는 `MethodType`)을 더하면
+  ★**격리 단위 테스트 `parses_method_handle_family_tags` 는 «ok»**(그것은 `parse_tagged` 를 직접 부른다)인데
+  ★**실물 풀은 전 항목이 밀려 `ClassFormatError` 로 죽는다.**
+  ★★**양방향 — 출력으로**: ⒜**픽스처 테스트 제거 + 같은 개악** → 전 스위트 ★**558 passed / 0 failed(green)** = ★**그 축을 무는 것이 아무것도 없었다**
+  ⒝**픽스처 복원 + 같은 개악** → ★**2층 red**(`constant_pool` 단위 + end-to-end `ClassFormatError: Invalid class file`) · 복원 green.
+  ★**단언마다 무는 축**: 「실행이 미지원이라 말한다」 = end-to-end · ★**「픽스처가 그 태그를 «실제로 갖고 있다»」 = `constant_pool.rs` 단위 계수**
+  (이것이 없으면 javac 판올림으로 condy 가 사라져도 end-to-end 는 **초록인 채 아무것도 단언하지 않는다**).
+  ★**태그 15 는 이 회차 몫이 아니다**(형제 `rustjava-ldc-tags-15-16-17-still-malformed`) — 겹치는 단언을 쓰지 않았다.
+  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **7줄 전건 rc=0** ·
+  ★`verifier.rs`·`interpreter.rs` **무접촉** · ★`BootstrapMethods` 파싱 **0줄**(형제 L 티켓 몫).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).

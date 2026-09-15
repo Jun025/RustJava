@@ -107,3 +107,24 @@ async fn test_missing_class_still_raises_no_class_def_found_error() {
         "not-found must stay distinct from unreadable, got: {err}"
     );
 }
+
+// `StringConcat.class` above only exercises tags 15 and 18. This fixture is the other two read
+// from real javac output rather than hand-assembled bytes: tag 16 (MethodType) from a lambda's
+// bootstrap arguments, and tag 17 (Dynamic) from a switch with qualified enum constant labels,
+// which is rare enough that exactly one class in OpenJDK 26's own 27,902 carries it.
+// `constant_pool.rs` asserts the fixture really does carry both; this asserts what it does.
+#[tokio::test]
+async fn test_class_carrying_every_method_handle_family_tag_is_unsupported_not_malformed() {
+    let path = Path::new("test-data/indy/ConstantKinds.class");
+
+    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+    assert!(
+        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+        "expected the unsupported-feature diagnosis, got: {err}"
+    );
+    assert!(
+        !err.contains("ClassFormatError"),
+        "a class OpenJDK 26 runs to completion is not malformed, got: {err}"
+    );
+}

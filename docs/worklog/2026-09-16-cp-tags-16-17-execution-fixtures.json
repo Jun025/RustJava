@@ -1,0 +1,47 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-cp-tags-16-17-execution-fixtures",
+  "summary": "Constant pool tags 16 (MethodType) and 17 (Dynamic) were covered only by unit tests that feed each tag to parse_tagged in isolation. This adds test-data/indy/ConstantKinds.class — real javac output carrying all four of tags 15/16/17/18 — and locks it at two layers. The previous round reported it could not find ordinary code that makes javac emit tags 16/17; this round found it: a switch whose case labels are qualified enum constants on a non-enum selector (JEP 441) emits CONSTANT_Dynamic. Exactly 1 of OpenJDK 26's own 27,902 classes carries tag 17.",
+  "changes": [
+    "test-data/src/indy/ConstantKinds.java + test-data/indy/ConstantKinds{,$Suit,$Op}.class — real javac --release 21 output with tags 15/16/17/18",
+    "classfile/src/constant_pool.rs — a unit test that parses the fixture and counts each tag through a whole pool, which parse_tagged-level tests cannot reach",
+    "tests/test_class_format.rs — the end-to-end sentence for that class"
+  ],
+  "verification": [
+    "corpus measurement, exact constant pool walk over OpenJDK 26 jmods: 27,902 classes, 0 unparseable; tag 16 in 1,747 classes / 8,434 entries; tag 17 in exactly 1 class (jdk/jpackage/internal/PackageBuilder) / 3 entries",
+    "source shape narrowed one at a time: qualified enum case labels on an Object selector -> 3 Dynamic entries; mixed with a type pattern -> 2; plain enum switch -> 0; sealed-interface pattern switch -> 0",
+    "ground truth: OpenJDK 26.0.1 runs ConstantKinds to completion, prints h3, rc=0",
+    "the proposal's predicted failure mode is real: adding Dynamic (or MethodType) to parse_all's is_double_entry leaves the isolated unit test parses_method_handle_family_tags GREEN while the whole-pool test and the end-to-end test both go red with ClassFormatError",
+    "bidirectional ⒜: with the two new tests removed and that same bug applied, the entire suite is 558 passed / 0 failed — nothing else in the repo locks the axis",
+    "bidirectional ⒝: with them restored and the same bug, 2 tests red at two layers; restored green",
+    "cargo test --all: 558/0/1 -> 560/0/1 (+2, zero regressions); DoD 7 commands rc=0"
+  ],
+  "issues": [
+    "The fixture's premise depends on javac's behaviour. If a future JDK stops emitting condy for qualified enum case labels, the end-to-end test would stay green while asserting nothing — which is why the constant_pool.rs unit test counts the tags explicitly rather than trusting the file.",
+    "Tag 17's rarity was measured against javac output only (OpenJDK's own jmods). Third-party bytecode generators, where condy is more common, remain unmeasured — no jar corpus exists on this machine. Same limitation the sibling round recorded.",
+    "parse_all's slot accounting is still not covered by any unit test in isolation; it is covered only through a real class file. That is sufficient today but it is coverage by fixture, not by design."
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether parse_all's slot accounting deserves a direct unit test",
+      "plainSummary": "The rule that only long and double take two constant pool slots is now tested only by reading a whole real class file. Nothing tests it directly.",
+      "userBenefit": "None directly — it would make one parser rule fail in an obvious place instead of as a mysterious 'this file is corrupt'.",
+      "why": "This round measured that a slot-accounting mistake is invisible to every parse_tagged-level test and only shows up on a real pool. The fixture catches it now, but by side effect: the failure surfaces as 'ConstantKinds no longer parses', which is several inferential steps from 'Dynamic was treated as a two-slot entry'. A five-line test feeding parse_all a pool of {Long, Dynamic, Utf8} and asserting the resulting indices would name it.",
+      "tradeoff": "Arguably redundant — the axis IS locked, and this ledger's own rule is not to add tests for things already bitten. The honest case for it is diagnosis speed, not coverage, and that is a weaker reason. Could equally be declined.",
+      "effort": "S",
+      "target": "classfile/src/constant_pool.rs"
+    },
+    {
+      "title": "Pin the JDK version the indy fixtures are compiled with",
+      "plainSummary": "The fixtures in test-data/indy are whatever javac happened to be installed when someone regenerated them. Nothing records or checks which.",
+      "userBenefit": "None directly — it stops a fixture from silently changing meaning when the machine's JDK is upgraded.",
+      "why": "Three fixtures now exist in test-data/indy, each committed with a header comment naming `javac --release 21` and each depending on javac lowering a construct a particular way. ConstantKinds depends on the sharpest one: condy for qualified enum labels. The --release flag pins the class file version and the language level but not the compiler, and nothing in the repo asserts which compiler produced the committed bytes.",
+      "tradeoff": "Low value against real risk: the fixtures are committed binaries, so they do not change unless someone regenerates them, and the per-tag counts added this round would fail loudly if they did. A recorded version is documentation, not a lock — and a lock (checking the class file's major version, say) would be checking the wrong thing. Probably worth one line in the fixture header rather than a mechanism.",
+      "effort": "S",
+      "target": "test-data/src/indy/"
+    }
+  ],
+  "adoptedProposals": ["2026-09-16-cp-tags-15-18-parse#p2"],
+  "declinedProposals": []
+}
