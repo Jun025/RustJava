@@ -1,4 +1,27 @@
 # REPORT
+## [2026-09-17] 「어느 javac 이 만들었나」를 «기록»이 아니라 «검증»으로 바꿨다 (rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1)
+- 무엇을: 기록된 도구로 **다시 빌드해 바이트를 비교**하는 검사를 만들었다. ★**제품 코드 무접촉**(Rust 변경은 doc 주석 1곳).
+- 왜: 채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1`.
+- 사용자 영향: 없다(시험 위생). ★바뀐 것은 ★**「javac 26.0.1 로 만들었다」가 «주장»에서 «검증된 사실»이 된 것**이다.
+- ★★**제안의 결론 «둘»이 실측으로 반증됐다**:
+  ⑴「**Nothing offline can verify** a recorded compiler version … buys **provenance, not enforcement**」 →
+  ★**거짓**. javac 은 같은 소스·플래그·컴파일러에 **결정적**이라 ★**`test-data/indy` 6개가 바이트 단위로 재현된다**.
+  ⑵「강제 가능한 축은 `constant_pool.rs` 의 상수 개수뿐이고 **한 픽스처만** 덮는다」 → ★**거짓**.
+  ★**javac 산출 indy 픽스처 3/3 이 형상 단언을 갖는다** — `ConstantKinds`(태그별 정확한 개수) ·
+  `StringConcat`(신원 4축 + 인자가 «가리키는 값» + ★**바이트 창** `[15,6,0,35]`) · `Lambda`(`args[0]==args[2]!=args[1]`).
+  ★제안이 든 위험(「현대 javac 이 enum switch 를 condy 로 낸다」)은 ★**`ConstantKinds` 의 Dynamic 개수 3 이 이미 잠근다.**
+- ★**만든 것**: `test-data/src/verify-javac-fixtures.sh` — ★`--release` 를 **픽스처 자신의 major − 44** 로 읽어
+  **외부 표에 의존하지 않고**, ★명시한 `JAVAC` 가 안 되면 **조용히 대체하지 않고 rc=2** 로 멈추며,
+  ★**「못 만들었다」와 「만들었는데 다르다」를 «가른다»**(합치면 발견을 과장한다).
+  ★**CI 에 배선하지 «않았다»** — 워크플로에도 PATH 에도 JDK 가 없어 **어디서나 실패하거나 어디서나 건너뛴다**.
+- ★**실패담 둘(밟은 대로 적는다)**: ⑴`command -v javac` 이 macOS **스텁**을 고른다 ⇒ **실행해서** 판별 ⑵★`-sourcepath` 를 넣었다가
+  **더 나빠졌다** — `test-data/src/Exception.java` 가 `java.lang.Exception` 을 가려 멀쩡하던 재현이 타입 오류로 무너졌다 ⇒ **되돌리고 그 대가를 따로 보고**.
+- ★**개악 대조**: 커밋본 **1바이트 반전** → ★**✗ 감지** · 복원 → 6/6 재현 · 명시 `JAVAC` 부재 → ★**rc=2(통과 아님)**.
+- ★**일반화 — 값만 적고 고치지 않았다**: 루트에 돌리니 **109 rebuilt · 104 재현 · 5 상이 · 3 재빌드 불가**.
+  상이 5건(`MonitorSemantics`×3 · `NativeMethod` @8 · `OddEven` @21)의 ★**원인은 단정하지 않는다**(다른 컴파일러 ↔ 빌드 후 소스 수정이 둘 다 맞는다).
+  ★그래도 적는 이유: ★**제안이 걱정한 드리프트가 «실재»한다는 첫 직접 증거**다.
+- 검증: `cargo test --all` **572 / 0 failed / 1 ignored**(doc 주석만 바꿔 **불변**) · DoD 7명령 rc=0.
+- 후속 추천: 루트 5건이 **왜** 재현되지 않는지 규명(M) — 상세 = `docs/worklog/2026-09-17-javac-fixture-provenance-verified.md`.
 ## [2026-09-16] 부트스트랩 메서드의 «정적 인자» 인덱스를 경계 검사한다 (rustjava-adopt-bound-bootstrap-method-attr-index-p1)
 - 무엇을: JVMS 4.7.23 의 `bootstrap_arguments` 는 상수 풀 인덱스인데 ★**아무도 그것이 실재하는지 보지 않았다.**
   이제 풀에 «없는» 인덱스를 가리키면 **거부**한다.
