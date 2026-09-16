@@ -1,0 +1,46 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-cp-tag-switch-passthrough-mutation-detectable",
+  "summary": "A test that claimed to prove 'we still reject unknown constant pool tags' passed for a different reason. Rebuilt its fixture so the unknown tag is the only defect, making the pass-through mutation detectable end to end.",
+  "changes": [
+    "test-data/src/cp/make_cp_fixtures.py + test-data/cp/UnreferencedTag{13,14,19}.class: unreferenced, payload-free, trailing pool entry carrying the unknown tag",
+    "tests/test_class_format.rs: test_unsupported_constant_pool_tag_raises_class_format_error now loads those fixtures instead of overwriting Hello.class's first (referenced) entry"
+  ],
+  "verification": [
+    "before: pass-through branch mutated to accept -> the test still passed; only constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected caught it",
+    "competing hypothesis rejected by experiment: a mutation consuming exactly 4 bytes (no desync) also left the test green",
+    "after: same mutation -> test red, failing with 'must be rejected: \"\"' (empty output = the class ran)",
+    "a different branch (tag 16) mutated -> 6 tests red, so the suite still guards the whole switch",
+    "cargo test --all: 568 passed / 0 failed / 1 ignored (count unchanged: a test was replaced)",
+    "product code unchanged in the final diff; constant_pool.rs restored to sha 393e0594d7eb647e",
+    "no other test referenced the old BadTag* fixtures; hello_class()/fixture() helpers still used",
+    "DoD 7 commands all rc=0; fixture regeneration idempotent"
+  ],
+  "issues": [
+    "ClassFileError still flattens every parse failure into 'Invalid class file'. This round worked around that by constructing an input with a single defect, but any future test that wants to assert *why* a file was rejected faces the same wall."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-ldc-tags-15-16-17#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Audit the other end-to-end assertions for mutation resistance",
+      "plainSummary": "Check whether other tests in the class-format suite also pass for reasons other than the one they claim.",
+      "userBenefit": "Tests that cannot fail are worse than absent ones, because they are counted as coverage. Finding the rest of them is cheap now that the method is known.",
+      "why": "This round found one such test by mutating the branch it named and observing green. The same procedure applies mechanically to the other assertions in tests/test_class_format.rs, several of which also rely on corrupting a referenced slot of Hello.class and then asserting only the flattened error kind.",
+      "tradeoff": "Each one found may need its own purpose-built fixture, as this one did, so the cost is per-test rather than a single sweep. Some may turn out to be adequately guarded by classfile unit tests, in which case the honest outcome is a note rather than a change.",
+      "effort": "M",
+      "target": "tests/test_class_format.rs"
+    },
+    {
+      "title": "Decide whether ClassFileError should carry a cause again",
+      "plainSummary": "Every parse failure currently reports the same flat message, so tests cannot assert why a file was rejected.",
+      "userBenefit": "Users get a diagnosis that says what is wrong with their class file, and tests can assert the specific reason instead of just the exception kind.",
+      "why": "The flattening is why this round could not fix the test by tightening its assertion, and it is recorded as a known limitation at the top of tests/test_class_format.rs. Restoring variants would let the assertion name the cause directly, which is a stronger lock than a carefully shaped fixture.",
+      "tradeoff": "The note says restoring variants needs upstream changes, so this is not purely local — and this repo is a fork whose upstream contact is deliberately read-only. It may be better solved locally, or not at all.",
+      "effort": "M",
+      "target": "classfile/src/error.rs"
+    }
+  ]
+}
