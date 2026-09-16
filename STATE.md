@@ -87,6 +87,19 @@
   그 5줄을 지운 상태**다(`grep -cxF` 전건 0). ⇒ ★**머지가 «승인된 삭제»를 따랐을 뿐 새로 지운 줄이 0 이다.**
   ★#45 가 «실제로 더한» 1줄(항목 1 꼬리 — `verifier.rs` 무접촉 실측)은 **보존**했다.
   ★`classfile/src/validation.rs`·`constant_pool.rs` 는 **자동 병합**(충돌 아님 — #45 예측 적중).
+  ★★**게이트③ 착지 — PR #44 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **`-fix2` 회차 approve** · 핀 `b5f268c0` **불이동**(동봉 전 실측 — 로컬·원격·PR head·리뷰 줄2 **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN**(3건 전건 완료·성공) · `mergeable` **MERGEABLE/CLEAN** · `merge-tree` 충돌 **0** ·
+  자식 PR **0건**(head 브랜치 `feat/rustjava-ldc-tags-15-16-17` 기준) ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 20파일을 `origin/main...HEAD` 로 냈고, `.github/workflows/` 6개 전건
+  deploy·publish·release·wrangler·pages 어휘 **0건**).
+  ★★**이 리니지의 `-merge` 는 «두 번 렌더»됐다** — 1차(`…-fix-merge`)는 낡은 head `e9151acf` 기준이라 `hold:` 가 걸려
+  **큐에 들어가지 못했고**(queue-lint 검사26), 2차(`…-fix2-merge`)가 새 head `b5f268c0` 로 렌더돼 이 착지를 냈다.
+  ★**그 `hold:` 가 값을 했다** — 낡은 렌더본이 그대로 돌았으면 게이트③이 `CONFLICTING` 으로 섰다.
+  ★★**형제 #46 이 «아직 열려 있다**(head `72db4923` · 게이트③ `blocked(ci-pending)` 재배차 중) ⇒ ★**이 착지가 그 PR 의
+  `tests/test_class_format.rs` 꼬리와 원장 2파일을 «다시» 충돌시킨다** — 그쪽은 base 당기기가 한 번 더 필요하다.
+  ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#44·#46)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
+  파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
