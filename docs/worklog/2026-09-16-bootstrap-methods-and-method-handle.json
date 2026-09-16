@@ -1,0 +1,58 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-invokedynamic-bootstrapmethods-and-methodhandle",
+  "summary": "AttributeInfo::BootstrapMethods goes from Vec<u8> to a parsed Vec<BootstrapMethod> (JVMS 4.7.23), and CONSTANT_MethodHandle is decoded into MethodHandleRef (nine named reference kinds + class/name/descriptor). This is half ⒜ of STATE ④-1 only: no call-site linking, no java.lang.invoke, verifier.rs and interpreter.rs untouched. The one real decision is that bootstrap static arguments stay raw constant pool indices — resolving them turns every lambda-bearing class from 'unsupported' back into 'corrupt', measured as M3.",
+  "changes": [
+    "classfile/src/attribute.rs — BootstrapMethod, MethodHandleRef, MethodHandleKind, and the BootstrapMethods parse arm",
+    "classfile/src/lib.rs — export the three new types",
+    "classfile/src/constant_pool.rs, classfile/src/validation.rs — two comments that claimed the attribute was an unparsed blob, now false",
+    "test-data/indy/Lambda.{java,class} + Lambda$Op.class — the fixture whose bootstrap arguments are MethodType/MethodHandle",
+    "classfile/tests/test.rs — three structural tests; tests/test_class_format.rs — the end-to-end sentence for a lambda"
+  ],
+  "verification": [
+    "M1 num_bootstrap_arguments read as u8 -> both structure tests red",
+    "M2 bootstrap_method_ref index read +1 -> all three structure tests red",
+    "M3 static arguments forced to resolve -> Lambda red at both layers (ClassFormatError: Invalid class file), and StringConcat stayed GREEN — the pre-existing fixture cannot see this regression",
+    "M4 verifier's Invokedynamic arm removed -> panicked at jvm-bytecode/src/interpreter.rs:631, host abort; so todo!() is still unreachable here",
+    "kind/target pairing is validation.rs's rule, not the parser's: kinds 1/4/9 mispaired -> InvalidFormat, kind 5 correctly paired -> parses (assertion is not vacuous)",
+    "java.lang.invoke absence measured: no invoke directory under rustjava-runtime/src/classes/java/, ledger-grep returns 0 files",
+    "cargo test --all: 558/0/1 -> 562/0/1 (+4, zero regressions); DoD 7 commands rc=0"
+  ],
+  "issues": [
+    "MethodHandleKind arguably belongs in constant_pool.rs, next to CONSTANT_MethodHandle. It is in attribute.rs because the only consumer today is in that file and the sibling round (PR #44) has constant_pool.rs open with edits to the adjacent enum. That is a merge-politics reason, not a design reason.",
+    "bootstrap_method_attr_index is still not bounds-checked against the array, and a pool containing Dynamic/InvokeDynamic entries is still not required to carry the attribute at all. Both became possible for the first time with this change and both were deliberately skipped as out of scope (validation, not parsing, and a behaviour change).",
+    "MethodHandleRef resolution is decoding only — no class loading, no member lookup, no access check, no MethodHandle object. The boundary is spelled out in STATE.md ④-1 and the worklog rather than being left to the reader."
+  ],
+  "proposals": [
+    {
+      "title": "⒝ Link one call site: StringConcatFactory.makeConcatWithConstants",
+      "plainSummary": "Make the string-concatenation form of javac 9+ output actually run, instead of being cleanly refused.",
+      "userBenefit": "`\"a\" + n` — the single most common shape javac lowers to invokedynamic — starts working. Today every class containing it is rejected at load.",
+      "why": "This is the other half of the split STATE ④-1 demands and the proposal `2026-09-16-cp-tags-15-18-parse#p0` itself asked for. The parser side is now done: the bootstrap method is decoded to (kind, class, name, descriptor) and its argument indices are in hand, so linking can start from data rather than from bytes.",
+      "tradeoff": "Much heavier than ⒜ and mostly not parser work: it needs a java.lang.invoke package that does not exist at all today (no directory, no references), a MethodHandle representation, a call-site cache, and the StringConcatFactory recipe language. Critically, the verifier's Invokedynamic arm must be removed in the SAME commit as the interpreter implementation — removing it alone makes interpreter.rs:631's todo!() reachable, which is a host abort rather than a guest exception (measured twice on 2026-09-16). Lambdas need LambdaMetafactory too and should be a further round.",
+      "effort": "L",
+      "target": "rustjava-runtime/src/classes/java/lang/invoke/, jvm-bytecode/src/{verifier,interpreter}.rs"
+    },
+    {
+      "title": "Bound bootstrap_method_attr_index, and require BootstrapMethods when the pool needs it",
+      "plainSummary": "Two rules of the class file format that a real JVM enforces and this parser does not: a bootstrap index that points past the end of the table, and a class that uses dynamic constants without carrying the table at all.",
+      "userBenefit": "Files that are genuinely broken in either way are named as broken at load time instead of being accepted and failing somewhere later — or not at all.",
+      "why": "Neither was checkable until this round: the attribute was a byte blob, so there was nothing to bound the index against. Now there is. OpenJDK enforces both — it rejected the previous round's hand-built fixture with `Missing BootstrapMethods attribute` (JVMS 4.7.23), which is how the gap was noticed at all. Pairs naturally with the tag-vs-major-version check already recorded in STATE ④-2, since both are 'rules a real JVM applies that validation.rs does not'.",
+      "tradeoff": "It is validation rather than parsing, and it is a behaviour change: classes that parse today would start being rejected, so it needs its own round with its own fixtures rather than riding along. Also awkward structurally — validate_constant_pool only receives the constant pool, so the cross-check has to move up into validate_class, which is where the class attributes are.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs, classfile/src/class.rs"
+    },
+    {
+      "title": "Re-decide where MethodHandleKind lives once PR #44 has landed",
+      "plainSummary": "A type that describes a constant pool entry currently lives in the file about class attributes, for a reason that will have expired.",
+      "userBenefit": "None directly — it keeps the parser's types where a reader expects to find them.",
+      "why": "MethodHandleKind and MethodHandleRef describe CONSTANT_MethodHandle (JVMS 4.4.8) and their natural home is constant_pool.rs. They were put in attribute.rs because the only consumer today is the BootstrapMethods attribute and because the sibling round had constant_pool.rs open with edits to the adjacent enum and function. The second reason disappears the moment that PR merges.",
+      "tradeoff": "Pure churn if nothing else ever reads them — if ⒝ lands and still only reads them through BootstrapMethod, leaving them alone is correct and this proposal should be declined rather than done. Decide after ⒝, not before.",
+      "effort": "S",
+      "target": "classfile/src/attribute.rs, classfile/src/constant_pool.rs"
+    }
+  ],
+  "adoptedProposals": ["2026-09-16-cp-tags-15-18-parse#p0"],
+  "declinedProposals": []
+}

@@ -200,3 +200,23 @@ async fn test_a_dynamic_constant_with_no_bootstrap_methods_attribute_is_still_on
         "known gap: expected the unsupported-feature diagnosis, got: {err}"
     );
 }
+
+// The same sentence, for the harder shape. A lambda's `BootstrapMethods` entry carries
+// MethodType and MethodHandle constants as static arguments, which nothing here can resolve —
+// so parsing the attribute is exactly where a lambda class could start being called corrupt
+// again. The classfile-level test asserts the indices survive; this asserts what the user reads.
+#[tokio::test]
+async fn test_lambda_class_reports_unsupported_feature_not_malformed() {
+    let path = Path::new("test-data/indy/Lambda.class");
+
+    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+    assert!(
+        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+        "expected the unsupported-feature diagnosis, got: {err}"
+    );
+    assert!(
+        !err.contains("ClassFormatError"),
+        "a class javac emits for `x -> x + 1` is not malformed, got: {err}"
+    );
+}

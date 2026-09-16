@@ -250,10 +250,10 @@ pub enum ConstantPoolReference {
     Method(FieldMethodref),
     InterfaceMethodref(FieldMethodref),
     Field(FieldMethodref),
-    // The bootstrap method itself is not resolved: `BootstrapMethods` is still kept as raw
-    // bytes (see `AttributeInfo::BootstrapMethods`), and nothing links a call site yet — the
-    // verifier rejects every `invokedynamic` at class definition time. The index is carried
-    // verbatim so that linking can start from it without another parser change.
+    // The index is carried verbatim, not dereferenced. `AttributeInfo::BootstrapMethods` is now
+    // a parsed `Vec<BootstrapMethod>` rather than a byte blob, so the entry it names *could* be
+    // looked up — but nothing links a call site yet (the verifier rejects every `invokedynamic`
+    // at class definition time), and this type has no access to the class attributes anyway.
     InvokeDynamic {
         bootstrap_method_attr_index: u16,
         name: Arc<String>,
