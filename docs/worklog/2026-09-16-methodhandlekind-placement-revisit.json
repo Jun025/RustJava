@@ -1,0 +1,24 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-methodhandlekind-placement-revisit-after-pr44",
+  "summary": "Re-decided where MethodHandleKind lives now that PR #44 has landed. The answer is: leave it in attribute.rs. Recorded the reasoning, and the condition that would re-open it, in the doc comment.",
+  "changes": [
+    "classfile/src/attribute.rs: MethodHandleKind's doc comment now states why it lives in the attribute file rather than constant_pool.rs, and names the trigger that would re-open the question. No type, impl or re-export touched."
+  ],
+  "verification": [
+    "cargo test --all: 570 passed / 0 failed / 1 ignored — identical to the pre-change tree (b3a20ae)",
+    "git numstat: 10 insertions / 0 deletions in one file; the intent was insertion, not replacement, so the zero-deletion rule does not apply",
+    "PR #44 re-measured at start: state=MERGED, mergedAt=2026-09-16T02:13:39Z, mergeCommit dc03593699cd3ca8d4ef41109ca8371d01b4c4c8, and its file list does contain classfile/src/constant_pool.rs",
+    "consumer census: MethodHandleRef::resolve has exactly one call site (attribute.rs:116, inside the BootstrapMethod parser, and resolve is not pub); every MethodHandleKind read goes through BootstrapMethod.method.kind (classfile/tests/test.rs:223,270 and jvm-bytecode/src/string_concat.rs:81)",
+    "the ldc path does not decode a method handle: jvm-bytecode/src/verifier.rs:32 answers UnsupportedFeature off ConstantPoolReference::MethodHandle",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The cost the ticket named — an attributes file holding a constant pool type can mislead a reader — is real and remains. It is paid down with the doc comment rather than with a move, because moving would put a payload-free decoding and a full decoding of the same constant side by side in constant_pool.rs."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bootstrap-methods-and-method-handle#p2"
+  ],
+  "proposals": []
+}

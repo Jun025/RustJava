@@ -21,6 +21,28 @@
   ⑵kotlinc·scalac 을 설치해 **타깃 형상 축**을 채우기. 상세 = `docs/worklog/2026-09-16-ldc-tags-real-world-generator-survey.md`.
 
 
+## [2026-09-16] `MethodHandleKind` 위치 재결정 — **옮기지 않는다**(재결정의 답이 「그대로」다) (rustjava-methodhandlekind-placement-revisit-after-pr44)
+- 무엇을: `MethodHandleKind`·`MethodHandleRef` 를 `constant_pool.rs` 로 옮길지 **재결정**했다. ⇒ **`attribute.rs` 에 남긴다.**
+  코드 변경은 **그 판단과 «재개 조건»을 doc 주석에 적은 것뿐**(타입·`impl`·re-export 무접촉 · 동작 변경 0).
+- 왜: 채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p2`. ★낱말이 `Re-decide` 이고 ★**「아니오」도 정당한 답**이다.
+- 사용자 영향: 없다(배치 판정 · 공개 API 변화 0).
+- ★**제안이 적은 배치 사유 «둘» 중 하나만 만료됐다**: ⑵「형제 회차가 `constant_pool.rs` 를 열어 두고 있었다」는
+  **만료**(PR **#44** `MERGED` · `2026-09-16T02:13:39Z` · 머지커밋 `dc03593` · ★그 PR 파일 목록에 그 파일이 실제로 있다) ·
+  ⑴「유일한 소비자가 `BootstrapMethods` 속성이다」는 ★**여전히 참**이다.
+- ★★**제안이 건 조건이 이미 충족됐고, 그 조건이 «declined» 를 가리킨다**: 「⒝(콜사이트 링크) 착지 후에 정하라」의
+  그 ⒝ 가 오늘 **PR #48** 로 착지했는데 ★**그 소비자마저 `bootstrap.method.kind` 로 읽는다**
+  (`jvm-bytecode/src/string_concat.rs:81`). `MethodHandleRef::resolve` 호출부는 ★**`attribute.rs:116` 단 1곳**이다.
+- ★★**그러나 escape 절에 기대지 않았다 — 코드에서 더 나은 이유를 찾았다.** `constant_pool.rs` 는 **이미**
+  CONSTANT_MethodHandle 을 어디까지 해독할지 정해 뒀다 — `ConstantPoolReference::MethodHandle` = ★**피연산자 0**
+  (「아무도 resolve 하지 않는다」). ⇒ 옮기면 ★**같은 상수의 «두 해독»이 한 파일에 나란히 서서 모순으로 읽힌다** —
+  이동이 없애려던 오해를 오히려 키운다.
+- ★**잃는 것**: 「속성 파일이 상수 풀 타입을 갖는다」는 오해는 **남는다**. 그 비용을 이동이 아니라 **주석**으로 갚았고,
+  ★**재개 조건**(이 속성 «밖»의 무언가가 method handle 을 해독할 때 — 유력 후보 `ldc`, 지금은 `UnsupportedFeature`)을 함께 박았다.
+- 검증: `cargo test --all` **570 / 0 failed / 1 ignored** — ★직전 형상과 **동일**(불변 증명) ·
+  `numstat` **10+/0−**(★삽입 의도이므로 「삭제행 0」 규율 비해당) · DoD 7명령 rc=0.
+- 후속 추천: ★**새 카드 0** — 「X 가 생기면 다시 열어라」를 cockpit 열린 추천으로 띄우면 **집행 불가한 카드가 영구히 남는다**.
+  재개 조건은 **코드 주석**에 뒀다(고칠 사람이 보는 자리). 상세 = `docs/worklog/2026-09-16-methodhandlekind-placement-revisit.md`.
+
 ## [2026-09-16] indy 픽스처에 JDK 핀을 «검사»로 박고, 슬롯 회계 직접 시험을 넣었다 (rustjava-indy-fixture-jdk-pin-and-slot-accounting-test)
 - 무엇을: ⒜`test-data/indy` 의 javac 픽스처가 **class file 65.0**(= `--release 21`)을 유지하는지 **커밋된 바이트로** 검사한다.
   ⒝`parse_all` 의 「long·double **만** 상수풀 2칸」 규칙을 **파서 단위에서 직접** 문다.
