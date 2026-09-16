@@ -1,10 +1,10 @@
 #![allow(clippy::double_must_use)] // temporary until https://github.com/rust-lang/rust-clippy/issues/17529 fix lands
 
-use alloc::{boxed::Box, format, vec, vec::Vec};
+use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use core::iter;
 
-use classfile::{AttributeInfoCode, ConstantPoolReference, Opcode};
-use jvm::{ClassInstance, JavaChar, JavaError, JavaType, JavaValue, Jvm, Result};
+use classfile::{AttributeInfoCode, ConstantPoolReference, Opcode, StringConcatCallSite};
+use jvm::{ClassInstance, JavaChar, JavaError, JavaType, JavaValue, Jvm, Result, runtime::JavaLangString};
 
 use crate::stack_frame::StackFrame;
 
@@ -630,6 +630,12 @@ impl Interpreter {
             Opcode::Invokedynamic(_) => {
                 todo!()
             }
+            Opcode::InvokedynamicStringConcat(call_site) => {
+                let params = Self::extract_invoke_params(stack_frame, &call_site.descriptor);
+                let result = Self::concat_with_constants(jvm, call_site, params).await?;
+
+                stack_frame.operand_stack.push(JavaValue::Object(Some(result)));
+            }
             Opcode::Invokeinterface(x, _count, _zero) => {
                 let x = x.as_interface_method_ref();
                 let params = Self::extract_invoke_params(stack_frame, &x.descriptor);
@@ -997,6 +1003,85 @@ impl Interpreter {
         let value = stack_frame.operand_stack.pop().unwrap().into();
 
         pred(value)
+    }
+
+    /// Execute a `StringConcatFactory.makeConcatWithConstants` call site.
+    ///
+    /// A real JVM asks the factory for a `CallSite` holding a `MethodHandle` chain and invokes it.
+    /// There is no `java.lang.invoke` package here — no `MethodHandle`, no `CallSite` — so the
+    /// recipe is walked directly instead. That is the whole reason this is *one* linked bootstrap
+    /// rather than a linkage mechanism: the factory's contract is a string template, and a string
+    /// template can be honoured without the machinery that would normally deliver it.
+    ///
+    /// Recipe grammar (JVMS-adjacent, `StringConcatFactory` javadoc): `\u{1}` consumes the next
+    /// argument, `\u{2}` consumes the next constant, anything else is literal text.
+    async fn concat_with_constants(jvm: &Jvm, call_site: &StringConcatCallSite, params: Vec<JavaValue>) -> Result<Box<dyn ClassInstance>> {
+        let mut result = String::new();
+        let mut params = params.into_iter();
+        let mut constants = call_site.constants.iter();
+
+        for character in call_site.recipe.chars() {
+            match character {
+                '\u{1}' => {
+                    // `params` is exactly as long as the descriptor says, and the recipe is the
+                    // factory's own account of that descriptor, so a missing argument means the
+                    // two disagree — a class file we mis-read rather than a runtime condition.
+                    let Some(param) = params.next() else {
+                        return Err(jvm
+                            .exception(
+                                "java/lang/BootstrapMethodError",
+                                "string concat recipe wants more arguments than the call site has",
+                            )
+                            .await);
+                    };
+                    result += &Self::value_to_string(jvm, param).await?;
+                }
+                '\u{2}' => {
+                    let Some(constant) = constants.next() else {
+                        return Err(jvm
+                            .exception(
+                                "java/lang/BootstrapMethodError",
+                                "string concat recipe wants more constants than the bootstrap has",
+                            )
+                            .await);
+                    };
+                    result += constant;
+                }
+                _ => result.push(character),
+            }
+        }
+
+        jvm.intern_string(&result).await
+    }
+
+    /// The `String.valueOf` overload the JVM would have picked, called through the runtime rather
+    /// than reimplemented — so `null`, `Object::toString` and float formatting stay in one place.
+    async fn value_to_string(jvm: &Jvm, value: JavaValue) -> Result<String> {
+        let descriptor = match value {
+            JavaValue::Boolean(_) => "(Z)Ljava/lang/String;",
+            JavaValue::Char(_) => "(C)Ljava/lang/String;",
+            JavaValue::Byte(_) | JavaValue::Short(_) | JavaValue::Int(_) => "(I)Ljava/lang/String;",
+            JavaValue::Long(_) => "(J)Ljava/lang/String;",
+            JavaValue::Float(_) => "(F)Ljava/lang/String;",
+            JavaValue::Double(_) => "(D)Ljava/lang/String;",
+            JavaValue::Object(_) => "(Ljava/lang/Object;)Ljava/lang/String;",
+            JavaValue::Void => unreachable!("a void argument cannot be on the operand stack"),
+        };
+        // Byte and Short widen to int on the operand stack anyway; String has no valueOf for them.
+        let value = match value {
+            JavaValue::Byte(x) => JavaValue::Int(x as _),
+            JavaValue::Short(x) => JavaValue::Int(x as _),
+            x => x,
+        };
+
+        let result: JavaValue = jvm.invoke_static("java/lang/String", "valueOf", descriptor, [value]).await?;
+        let result: Option<Box<dyn ClassInstance>> = result.into();
+        let Some(result) = result else {
+            // String.valueOf never returns null; if it did, concatenation would silently lose text.
+            return Err(jvm.exception("java/lang/BootstrapMethodError", "String.valueOf returned null").await);
+        };
+
+        JavaLangString::to_rust_string(jvm, &result).await
     }
 
     fn extract_invoke_params(stack_frame: &mut StackFrame, descriptor: &str) -> Vec<JavaValue> {

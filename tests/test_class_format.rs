@@ -39,20 +39,28 @@ async fn test_truncated_class_raises_class_format_error() {
     assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
 }
 
+// 13 and 14 are unassigned by JVMS 4.4; 19 (Module) is assigned but only legal inside a
+// module-info. Widening the parser to the method-handle tags (15..=18) must not have widened it
+// to "anything goes" — a file carrying a tag that cannot appear here is still a corrupt file, not
+// a file using a feature we have not implemented.
+//
+// The fixtures carry that tag on a **trailing, unreferenced, payload-free** pool entry, so the
+// unknown tag is the only thing wrong with the file. That is what makes this test able to fail:
+// the previous version overwrote the tag of `Hello.class`'s first entry, which is a Methodref the
+// code invokes, so the file broke along several paths at once. `ClassFileError` flattens every
+// parse failure into "Invalid class file", so that assertion could not tell "rejected because the
+// tag is unknown" from "rejected because the class fell apart" — and measurably did not: with the
+// tag switch's pass-through branch mutated from reject to accept, it still passed.
+// See `test-data/src/cp/make_cp_fixtures.py`.
 #[tokio::test]
 async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
-    // 13 and 14 are unassigned by JVMS 4.4; 19 (Module) is assigned but only legal inside a
-    // module-info. Widening the parser to the method-handle tags (15..=18) must not have
-    // widened it to "anything goes" — a file carrying a tag that cannot appear here is still
-    // a corrupt file, not a file using a feature we have not implemented.
     for tag in [13u8, 14, 19] {
-        let mut bytes = hello_class();
-        // offset 10 is the first constant pool tag; 10 (Methodref) in the committed fixture
-        assert_eq!(bytes[10], 10, "test-data/Hello.class layout changed; adjust the mutation offset");
-        bytes[10] = tag;
-        let (dir, path) = fixture(&format!("BadTag{tag}Hello.class"), &bytes);
+        let path = PathBuf::from(format!("test-data/cp/UnreferencedTag{tag}.class"));
 
-        let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
+        let err = run_class(&path, &[Path::new("./test-data/cp/")], &[])
+            .await
+            .expect_err("a tag that cannot appear in a class file must be rejected")
+            .to_string();
         assert!(
             err.contains("java.lang.ClassFormatError"),
             "tag {tag}: expected ClassFormatError, got: {err}"
@@ -60,24 +68,36 @@ async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
     }
 }
 
-// javac 9+ emits `invokedynamic` for something as ordinary as string `+`, so the constant
-// pool tags it needs (15 MethodHandle, 18 InvokeDynamic) decide which of two very different
-// sentences the user reads: "your file is broken" or "this runtime cannot do that yet".
-// Before the tags were parsed this fixture died as `ClassFormatError: Invalid class file`.
+// Exactly one `invokedynamic` bootstrap is linked: `StringConcatFactory.makeConcatWithConstants`,
+// which is what javac 9+ lowers string `+` to. Every other bootstrap is still refused, and this
+// asserts both halves — because a change that linked *everything* would satisfy the first half
+// alone and read identically from the outside.
+//
+// The linked half is asserted here as "it loads and runs"; what it actually prints is compared
+// against `test-data/StringConcat.txt` by `tests/test_class.rs`, which is where output belongs.
 #[tokio::test]
-async fn test_invokedynamic_class_reports_unsupported_feature_not_malformed() {
-    let path = Path::new("test-data/indy/StringConcat.class");
+async fn test_only_the_string_concat_bootstrap_is_linked() {
+    let indy = Path::new("./test-data/indy/");
 
-    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+    run_class(Path::new("test-data/indy/StringConcat.class"), &[indy], &[])
+        .await
+        .expect("javac's string `+` call site should link and run");
 
-    assert!(
-        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
-        "expected the unsupported-feature diagnosis, got: {err}"
-    );
-    assert!(
-        !err.contains("ClassFormatError"),
-        "a class javac emits for `a` + int is not malformed, got: {err}"
-    );
+    // LambdaMetafactory (Lambda) and ConstantBootstraps/condy (ConstantKinds) are not linked.
+    for name in ["Lambda", "ConstantKinds", "NotStringConcatFactory"] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[indy], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: a bootstrap we do not link must stay refused, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: refusing to link is not the same as calling the file broken, got: {err}"
+        );
+    }
 }
 
 #[tokio::test]

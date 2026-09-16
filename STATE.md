@@ -30,6 +30,79 @@
   **새 파일**에 두어 #48·#49 와 충돌 0 — 그 둘이 그 파일 꼬리를 만진다).
   ★**남긴 것**: 핀은 **목표 버전**을 고정하지 **컴파일러 바이너리**를 고정하지 않는다(javac 21·26 둘 다 65.0) ·
   핀 범위는 `test-data/indy` 뿐이고 **루트는 65×61·52×40·66×8·70×3·68×1 로 다섯 버전이 섞여 있다** — 둘 다 후속 추천.
+- [rustjava-cp-tag-switch-passthrough-mutation-detectable] ★★**「알 수 없는 태그를 거부한다」는 테스트가 그것을 «지키지 않았다» — 지키게 했다.**
+  채택 제안 `2026-09-16-ldc-tags-15-16-17#p1`(worklog json `adoptedProposals` 기록).
+  ★**제품 코드 변경 «0»** — 개악은 실증용 임시이고 전부 되돌렸다(`git status classfile/ jvm-bytecode/` **0건**으로 확인).
+  ★★**대전제를 «먼저» 실증했다**(티켓 ⓐ): 태그 switch 의 `_ => Err(...)` 를 `_ => Ok(Integer(0))` 로 개악하니
+  ★**그 테스트는 «ok»** 였고 스위트에서 무는 것은 `constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected`
+  **단 1건**이었다 ⇒ ★**end-to-end 층에는 그 가지를 무는 것이 «없었다»**(직전 회차가 「M5 층 어긋남」으로 남긴 그것).
+  ★★**근인 — 판별 실험으로 좁혔다(추측 아님)**: 옛 테스트는 `Hello.class` **상수풀 1번**의 태그를 덮는데
+  그 슬롯은 ★**코드가 참조하는 Methodref** 라 덮는 순간 파일이 **여러 경로로 동시에** 깨진다. 그리고 `ClassFileError` 가
+  모든 파싱 실패를 ★**「Invalid class file」로 평탄화**하므로(그 테스트 파일이 스스로 적어 둔 사실) 단언이
+  ★**「태그가 미지라 거부」와 「클래스가 무너져 거부」를 구별하지 못한다.**
+  ★**바이트 어긋남(desync)은 근인이 «아니다»** — 4바이트를 정확히 소비하는 개악(B)으로도 **여전히 green** 이었다.
+  ⇒ ★**두 가설 중 하나를 실험으로 기각했다.**
+  ★★**그러므로 처방이 «단언 조이기»가 아니다** — 문면이 평탄해 조일 것이 없다. 티켓 계약 1 이 예측한 대로
+  ★**입력이 그 가지에 «유일한 결함»으로 도달하게** 만들었다: `test-data/cp/UnreferencedTag{13,14,19}.class`
+  (생성기 `test-data/src/cp/make_cp_fixtures.py` 신규) = ★**참조되지 않고 · 페이로드 0 · 상수풀 «맨 끝»** 인 엔트리 하나.
+  ★**세 성질이 전부 값한다** — 맨 끝 + 페이로드 0 이라야 pass-through 개악이 ★**«정상 동작하는» 클래스**를 만들고,
+  그래야 테스트가 red 가 된다(그렇지 않으면 «다르게 깨진» 파일이 되어 또 green 이다).
+  ★★**전/후 — 같은 개악, 다른 결과**: **전** = 그 테스트 **ok** / **후** = ★**red**
+  (실패 문면 `a tag that cannot appear in a class file must be rejected: ""` — ★빈 출력 = 클래스가 «성공적으로 실행»됐다).
+  ★**⒞ 다른 가지 개악**(태그 16 거부) → **6 테스트 red** ⇒ 스위트가 여전히 switch 전체를 지킨다(이 회차가 좁히지 않았다).
+  ★`cargo test --all` **568 / 0 failed / 1 ignored**(★수 불변 — 테스트 1개 «치환») · DoD **7줄 전건 rc=0** · 픽스처 재생성 **멱등**.
+  ★**계약 2⒜ 전수 확인**: 옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 **0건** · `hello_class()`·`fixture()` 헬퍼는 여전히 **4·5회** 쓰여 고아 0.
+  ★**계약 2⒝ 오탐**: 새 단언은 ★**오탐이 늘지 않는다** — 픽스처가 «유일한 결함»만 갖도록 지어져 있어 다른 변경이 이 테스트를 흔들 경로가 좁다.
+  ★★**게이트③ 착지 — PR #49 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `eb8b4eb6` **불이동**(착수 실측 09:03Z — 로컬·원격·PR head 일치).
+  ★★**그러나 «충돌 해소»가 이 회차의 본체였다** — 검수 «도중» #47 이 착지해 PR 이 `CONFLICTING/DIRTY` 가 됐다.
+  ★**충돌은 원장 2파일뿐**(측정 09:03:56Z · `REPORT.md`·`STATE.md` 의 «맨 위 새 항목») — 선행 PLAN 의 예측
+  「코드 충돌은 없다 — 파일이 갈린다」가 **맞았다**. 해소 = 전건 보존·합집합·시간순(`eb8b4eb` 16:20 > `3b3667d` 14:45).
+  ★★**`tests/test_class_format.rs` 는 «자동 병합»됐고 그것을 믿지 않고 쟀다**(계약 12): 양방향 hunk 동일성 —
+  `base..theirs` 델타 == `ours..merged` 델타 · `base..ours` == `theirs..merged` **둘 다 일치**.
+  ★★**그리고 «줄 소실 3건»을 발견해 전건 해명했다** — 둘 다 **상대가 base 대비 «지운» 줄**이다(`deleted_by_other=True`):
+  ⑴우리가 남긴 「`bootstrap_method_attr_index` 는 여전히 경계 검사되지 않는다」를 ★**#47 이 그것을 구현하며 고쳐 썼다**
+  ⑵#47 이 남긴 「M5 층 어긋남 — pass-through 개악을 `test_class_format` 이 못 잡는다」를 ★**이 회차가 닫으며 고쳐 썼다**.
+  ⇒ ★**소실이 아니라 «각자 자기가 닫은 구멍을 갱신»한 것**이고, 부활·조작 줄은 **0**이다.
+  ★**해소 외 변경 0** · `--delete-branch` 미사용 · 형제 PR **#48·#50** 은 만지지 않았다(각자 base 당김이 필요하다).
+- [rustjava-link-stringconcatfactory-makeconcatwithconstants] ★★**javac 의 문자열 `+` 가 «실제로 돈다» — ④-1 의 ⒝ 를 «한 칸만» 닫았다.**
+  채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p0`(worklog json `adoptedProposals` 기록 · 이 배치의 유일한 **L**).
+  ★**PLAN 선회신 게이트를 탔다** — `reports/<id>.plan.md` 를 먼저 내고 같은 회차에서 착수했다(헌장: PLAN 은 통지 후 즉시 착수).
+  ★★**전/후를 «실행»으로 갈랐다**: 전 = `UnsupportedOperationException: … invokedynamic` — ★그것도 `defineClass` 프레임에서 났다
+  (= **실행에 도달조차 못 했다**) / 후 = ★**`a0` 출력 후 정상 종료**(`test-data/StringConcat.txt` 와 **바이트 대조**).
+  ★★**이 티켓의 L 은 문자열 접합이 아니라 «어디서 잇는가»였다 — 그 사실을 여기 박는다.**
+  `BootstrapMethods` 는 **클래스** 속성인데 `Interpreter::run(jvm, code_attribute, args, return_type)` 은
+  ★**메서드의 `Code` 만** 받는다 ⇒ ★**실행 시점에 부트스트랩 테이블에 닿을 길이 «없다».**
+  ⇒ 둘을 «다» 쥔 유일한 자리 **`ClassDefinitionImpl::from_classfile`** 에서 **정의 시점에 내려쓴다**
+  (`Opcode::Invokedynamic` → ★`Opcode::InvokedynamicStringConcat`). ★**`Interpreter::run` 시그니처 불변**(호출부 0곳 변경).
+  ★**순서가 설계다** — 내려쓰기를 **verifier «앞»**에 둔다 ⇒ ★**verifier 를 한 줄도 고치지 않았다**:
+  「그때까지 `Invokedynamic` 으로 남아 있는 것 = 우리가 링크하지 않는 부트스트랩」이 그대로 거부 규칙이 된다.
+  ★★**`java.lang.invoke` 를 «세우지 않았다»** — `MethodHandle`·`CallSite` **0줄**(그 디렉터리는 여전히 부재).
+  팩토리의 계약이 «문자열 템플릿»이라 레시피를 직접 걸으면 되고, ★**그것이 「한 호출 지점」과 「링크 기구」를 가르는 선**이다.
+  값→문자열은 런타임의 `String.valueOf` 를 `jvm.invoke_static` 으로 부른다(null·toString·부동소수 서식이 한 자리에 남는다).
+  ★★★**「전부 열어 버린」 변경과 구별되는 축을 «만들어» 넣었다 — 이것이 이 회차에서 가장 값진 실측이다.**
+  인식은 **kind·class·name·descriptor 4축 완전일치**인데, ★**그 검사를 지워도 기존 픽스처가 «전부 green» 이었다**:
+  `Lambda`·`ConstantKinds` 는 정적 인자가 String 이 아니라 ★**신원 검사에 도달하기 «전»에 다른 이유로 걸린다.**
+  ⇒ ★**신원 검사가 아무 테스트에도 물려 있지 않았다**(= 지워도 아무도 모른다). 그래서 ★**근접 오답 픽스처**를 새로 만들었다:
+  **`NotStringConcatFactory`**(`test-data/src/indy/make_indy_fixtures.py` · ★**소유 클래스 한 축만** 다르고 kind·이름·서술자·String 정적 인자는 전부 일치)
+  ⇒ ★**오직 신원 검사만이 그것을 거부할 수 있다.**
+  ★**개악 2종(양방향)**: ⑴**링크 끊기** → `test_class`(출력 대조) + `test_only_the_string_concat_bootstrap_is_linked` **red**
+  ⑵**무차별 링크**(4축 제거) → ★**근접 오답이 링크돼 red** — ★**그 픽스처를 넣기 «전»에는 이 개악이 green 이었다.**
+  ★`cargo test --all` **568 / 0 failed / 1 ignored**(★수 불변 — 테스트 1개 «치환» + 픽스처 1쌍 추가) · DoD **7줄 전건 rc=0** ·
+  ★`make_indy_fixtures.py` 재생성 **멱등**(기존 indy 픽스처 변경 0).
+  ★★**잃는 것 — 위험의 «종류»가 바뀌었다**: 종전 = 「안 돈다」(거부) → 신규 = ★**「잘못 돌 수 있다」.** ★후자가 더 나쁘다 ⇒
+  그래서 판정을 「거부되지 않는다」가 아니라 ★**출력값 대조**로 잡았다(`test_class` 의 `.txt` 규약).
+  ★**범위 압력을 선으로 막았다** — `makeConcat`·`LambdaMetafactory`·condy 는 **무접촉**이고 후속 추천으로 넘겼다.
+  ★★**게이트③ 착지 — PR #48 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `0113b0a6` **불이동**(착수 실측 10:12Z).
+  ★★**착지 전에 «형제 둘»이 먼저 들어와 있었다** — `#47`(14:45) · `#49`(16:20)가 이미 main 이라 이 PR 은 `CONFLICTING/DIRTY` 였다.
+  ★**충돌은 원장 2파일뿐**(측정 10:12:58Z) — 선행 PLAN 의 「코드 충돌은 없다 — 파일이 갈린다」가 ★**형제가 «둘»로 늘어난 뒤에도 유지됐다.**
+  ★★**해소는 «시간순 끼워넣기»다 — 한쪽을 통째로 얹는 것이 아니었다**: main 이 이미 [#49, #47] 순으로 갖고 있어
+  이 회차(15:46)를 ★**그 «사이»에** 넣었다(`theirs[:i] + ours + theirs[i:]`). ⇒ 최종 순서 **#49 → #48 → #47**.
+  ★★**`tests/test_class_format.rs` 는 자동 병합됐고, 그것을 믿지 않고 «줄 단위»로 쟀다**(계약 12):
+  비어있지 않은 줄 기준 소실 **35건이 전건 «상대가 base 대비 지운 줄»**(각자 자기가 닫은 구멍의 옛 문장) · 부활·조작 **0**.
+  ⇒ ★#49 가 태그 테스트를 다시 지은 것과 이 회차가 StringConcat 주석을 고쳐 쓴 것이 **둘 다 살아 있다**.
+  ★**해소 외 변경 0** · `--delete-branch` 미사용 · 형제 **#50**(게이트② 대기)은 만지지 않았다 — 그쪽은 자기 base 를 당긴다.
 - [rustjava-bound-bootstrap-method-attr-index] ★★**`bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 — 「파손」을 되찾았다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 에 **전건** 기록):
   `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0` —
@@ -932,7 +1005,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    `LambdaMetafactory.metafactory` 의 인자는 **MethodType·MethodHandle·MethodType** 이라 해석을 강제하면
    ★**람다가 든 모든 클래스가 «파싱»에서 죽어 `ClassFormatError: Invalid class file` 로 되돌아간다**
    (= 직전 두 회차가 만든 「파손 ↔ 미지원」 구분을 그대로 잃는다). ⇒ **`test-data/indy/Lambda.class` 가 그 축을 «두 층»에서 문다.**
-   ★**미착수(= ⒝)**: 콜사이트 링크 · `StringConcatFactory`/`LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.
+   ★**미착수(= ⒝)**: ★**[2026-09-16 «한 칸» 닫힘 · `rustjava-link-stringconcatfactory-makeconcatwithconstants`] `makeConcatWithConstants` 는 링크됐다**(정의 시점 내려쓰기 · `java.lang.invoke` 0줄) — 남은 것은 `makeConcat` · `LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.
    ★★**착수 전 실측 의무 — «그대로 유효»하다**: `verifier.rs` 의 `Opcode::Invokedynamic(_)` 분기를 **언제 뺄지**가 그 회차의 게이트다.
    그것을 빼면 `interpreter.rs:631` 의 `todo!()` 가 **도달 가능해진다** — ★**2026-09-16 에 «두 번» 측정됐다**
    (태그 회차 M4 · 이 회차 M4: 분기 제거 시 `panicked at jvm-bytecode/src/interpreter.rs:631` **호스트 abort** ↔ 현 트리는 게스트 예외).
@@ -959,8 +1032,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    참조 JVM 은 `Missing BootstrapMethods attribute` 인데 우리는 **여전히 「미지원」**이다.
    ★그 경계 검사는 **속성 파싱이 정말로 필요**하므로 ④-1(PR #45 리니지) 몫이다 — ★**픽스처와 테스트로 «현재 답»을 잠가 뒀으니
    그 회차가 닫으면 그 단언이 «시끄럽게» 진다.**
-   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
-   `test_class_format` 이 **못 잡는다**(무는 것은 `classfile` 단위 테스트) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
+   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: ★**[2026-09-16 닫힘 · `rustjava-cp-tag-switch-passthrough-mutation-detectable`] 이제 `test_class_format` 이 «잡는다»**(픽스처를 «유일한 결함»으로 다시 지었다 — 종전엔 참조되는 Methodref 슬롯을 덮어 «다른 이유»로 통과했다) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
 3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
 
 ---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----

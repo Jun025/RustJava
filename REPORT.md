@@ -20,6 +20,49 @@
 - 후속 추천: ⑴핀을 `test-data` 나머지로 확대(★근거: 루트가 **65×61·52×40·66×8·70×3·68×1** 로 다섯 버전이 섞여 있다)
   ⑵`--release` 가 아니라 **javac 바이너리**를 기록·검사하는 축(같은 `--release 21` 에서 javac 21·26 은 둘 다 65.0 이다).
 
+## [2026-09-16] 「알 수 없는 태그를 거부한다」는 테스트가 ★**그것을 지키지 않았다** — 지키게 했다 (rustjava-cp-tag-switch-passthrough-mutation-detectable)
+- 무엇을: `test_unsupported_constant_pool_tag_raises_class_format_error` 가 ★**상수풀 태그 switch 의 pass-through 가지를
+  개악해도 green** 이었다. 그 가지가 «끝에서 끝까지» 관측되도록 **픽스처를 바꿔** 이제 **red** 가 되게 했다.
+  ★**제품 코드 변경 0**(개악은 실증용 임시 · 전부 되돌렸다 · `git status` 로 확인).
+- 왜: 채택 제안 `2026-09-16-ldc-tags-15-16-17#p1`. ★**「소비되지 않는 경보는 장식이다」의 테스트판** — 상수 pass 로 바꿔도
+  통과하는 단언은 «없는 것과 같다».
+- 사용자 영향: **없다**(테스트만 바뀐다). 바뀐 것은 ★**그 단언이 실제로 무엇을 잠그는가**다.
+- ★★**근인 — 「통과한 진짜 이유」를 판별 실험으로 좁혔다.** 옛 테스트는 `Hello.class` **상수풀 1번**의 태그 바이트를 덮었는데,
+  그 슬롯은 ★**코드가 `invokespecial` 로 «참조»하는 Methodref** 다 ⇒ 덮는 순간 파일이 **여러 경로로 동시에** 깨진다.
+  `ClassFileError` 는 모든 파싱 실패를 ★**「Invalid class file」로 평탄화**하므로(그 파일이 스스로 적어 둔 사실)
+  단언이 ★**「태그가 미지라 거부」와 「클래스가 무너져 거부」를 구별하지 못한다.**
+  ★**바이트 폭 어긋남(desync)은 근인이 «아니었다»** — 4바이트를 정확히 소비하는 개악으로도 **여전히 green** 이었다(판별 실험 B).
+- ★**처방은 단언 조이기가 «아니다»**(문면이 평탄해 불가능하다) — ★**입력이 그 가지에 «유일한 결함»으로 도달하게** 했다:
+  `test-data/cp/UnreferencedTag{13,14,19}.class`(신규 생성기 `test-data/src/cp/make_cp_fixtures.py`) =
+  ★**참조되지 않고 · 페이로드가 없고 · 상수풀 «맨 끝»**인 엔트리 하나만 미지 태그다.
+  ★그 세 성질이 «전부» 값한다 — 맨 끝 + 페이로드 0이라야 pass-through 개악이 **정상 동작하는 클래스**를 만들고, 그래야 red 가 된다.
+- ★★**전/후 — 같은 개악, 다른 결과**: ⑴**전**: pass-through 개악 → 그 테스트 **ok**(스위트에서 무는 것은 `classfile` 단위 테스트 1건뿐)
+  ⑵**후**: 같은 개악 → ★**red**(실패 문면이 `must be rejected: ""` = 클래스가 «성공적으로 실행»됐다는 뜻).
+  ⑶**다른 가지 개악**(태그 16 거부) → **6 테스트 red** ⇒ 스위트가 여전히 switch 전체를 지킨다.
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개 치환) · DoD 7줄 rc=0 · 픽스처 재생성 멱등 ·
+  ★**옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 0건**(전수 확인) · `hello_class()`·`fixture()` 헬퍼는 여전히 4·5회 쓰인다(고아 0).
+- 후속 추천: ⑴같은 자를 다른 «조용한» 단언에 대 보기(개악 내성 감사) ⑵`ClassFileError` 에 원인 변종을 되살릴지 판정(상류 과제).
+  상세 = `docs/worklog/2026-09-16-cp-tag-passthrough-detectable.md`.
+## [2026-09-16] javac 의 문자열 `+` 가 «실제로 돈다» — 호출 지점 «하나»만 이었다 (rustjava-link-stringconcatfactory-makeconcatwithconstants)
+- 무엇을: `invokedynamic` 중 ★**`StringConcatFactory.makeConcatWithConstants` 한 부트스트랩만** 링크한다.
+  javac 9+ 가 문자열 `+` 를 내리는 그 형태다. ★**나머지 부트스트랩은 전부 종전대로 거부**된다.
+- 왜: 채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p0`(이 배치의 유일한 **L**).
+- 사용자 영향: ★**전/후가 «실행»으로 갈린다** — 전: `UnsupportedOperationException: … invokedynamic`(★`defineClass` 단계에서
+  거부돼 **실행에 도달조차 못 했다**) → 후: ★**`a0` 을 출력하고 정상 종료**(`test-data/StringConcat.txt` 와 바이트 대조).
+- ★★**급소는 접합이 아니라 «어디서 잇는가»였다**: `BootstrapMethods` 는 **클래스** 속성인데 `Interpreter::run` 은
+  **메서드의 `Code` 만** 받는다 ⇒ 실행 시점에 부트스트랩 테이블에 닿을 길이 **없다**. ⇒ 둘을 «다» 쥔 유일한 자리인
+  `ClassDefinitionImpl::from_classfile` 에서 **정의 시점에 내려쓴다**(`Opcode::InvokedynamicStringConcat`).
+  ★`Interpreter::run` **시그니처 불변** · ★`java.lang.invoke`(MethodHandle·CallSite) **0줄** — 레시피를 직접 집행한다.
+- ★★**「전부 열어 버린」 변경과 구별되는 축을 «만들어» 넣었다**: 인식은 **kind·class·name·descriptor 4축 완전일치**다.
+  ★그런데 그 검사를 지워도 기존 픽스처는 **전부 green 이었다**(Lambda·ConstantKinds 는 정적 인자가 String 이 아니라
+  «다른 이유»로 먼저 걸린다) ⇒ ★**신원 검사가 아무 테스트에도 안 물려 있었다.** 그래서 ★**근접 오답 픽스처**
+  `NotStringConcatFactory`(소유 클래스 한 축만 다르다 · `test-data/src/indy/make_indy_fixtures.py`)를 새로 만들었다.
+- ★**개악 2종**: ⑴링크 끊기 → `test_class`(출력 대조)·`test_only_the_string_concat_bootstrap_is_linked` **red**
+  ⑵무차별 링크(4축 제거) → ★**근접 오답 픽스처가 링크돼 red**(그 픽스처 «전»에는 green 이었다 — 위).
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개 치환 · 픽스처 1쌍 추가) · DoD 7줄 rc=0.
+- ★**잃는 것**: 위험의 «종류»가 「안 돈다」 → ★**「잘못 돌 수 있다」**로 바뀐다. 그래서 판정을 **출력값 대조**로 잡았다.
+- 후속 추천: ⑴`makeConcat`(인자 없는 형제 팩토리) ⑵부트스트랩 정적 인자가 String 이 아닌 레시피 형태 ⑶`LambdaMetafactory`(L).
+  상세 = `docs/worklog/2026-09-16-link-stringconcatfactory.md`.
 ## [2026-09-16] `bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 (rustjava-bound-bootstrap-method-attr-index)
 - 무엇을: `Dynamic`/`InvokeDynamic` 상수의 `bootstrap_method_attr_index` 가 **BootstrapMethods 테이블 안**을 가리키는지
   검사한다(JVMS 4.4.10·4.7.23). ★**두 축이 한 술어다** — 속성이 «아예 없는» 경우는 «항목 0개짜리 표»여서 어떤 인덱스도 못 가리킨다.
