@@ -27,6 +27,18 @@
   ★`cargo test --all` **568 / 0 failed / 1 ignored**(★수 불변 — 테스트 1개 «치환») · DoD **7줄 전건 rc=0** · 픽스처 재생성 **멱등**.
   ★**계약 2⒜ 전수 확인**: 옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 **0건** · `hello_class()`·`fixture()` 헬퍼는 여전히 **4·5회** 쓰여 고아 0.
   ★**계약 2⒝ 오탐**: 새 단언은 ★**오탐이 늘지 않는다** — 픽스처가 «유일한 결함»만 갖도록 지어져 있어 다른 변경이 이 테스트를 흔들 경로가 좁다.
+  ★★**게이트③ 착지 — PR #49 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `eb8b4eb6` **불이동**(착수 실측 09:03Z — 로컬·원격·PR head 일치).
+  ★★**그러나 «충돌 해소»가 이 회차의 본체였다** — 검수 «도중» #47 이 착지해 PR 이 `CONFLICTING/DIRTY` 가 됐다.
+  ★**충돌은 원장 2파일뿐**(측정 09:03:56Z · `REPORT.md`·`STATE.md` 의 «맨 위 새 항목») — 선행 PLAN 의 예측
+  「코드 충돌은 없다 — 파일이 갈린다」가 **맞았다**. 해소 = 전건 보존·합집합·시간순(`eb8b4eb` 16:20 > `3b3667d` 14:45).
+  ★★**`tests/test_class_format.rs` 는 «자동 병합»됐고 그것을 믿지 않고 쟀다**(계약 12): 양방향 hunk 동일성 —
+  `base..theirs` 델타 == `ours..merged` 델타 · `base..ours` == `theirs..merged` **둘 다 일치**.
+  ★★**그리고 «줄 소실 3건»을 발견해 전건 해명했다** — 둘 다 **상대가 base 대비 «지운» 줄**이다(`deleted_by_other=True`):
+  ⑴우리가 남긴 「`bootstrap_method_attr_index` 는 여전히 경계 검사되지 않는다」를 ★**#47 이 그것을 구현하며 고쳐 썼다**
+  ⑵#47 이 남긴 「M5 층 어긋남 — pass-through 개악을 `test_class_format` 이 못 잡는다」를 ★**이 회차가 닫으며 고쳐 썼다**.
+  ⇒ ★**소실이 아니라 «각자 자기가 닫은 구멍을 갱신»한 것**이고, 부활·조작 줄은 **0**이다.
+  ★**해소 외 변경 0** · `--delete-branch` 미사용 · 형제 PR **#48·#50** 은 만지지 않았다(각자 base 당김이 필요하다).
 - [rustjava-bound-bootstrap-method-attr-index] ★★**`bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 — 「파손」을 되찾았다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 에 **전건** 기록):
   `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0` —
