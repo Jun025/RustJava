@@ -4,6 +4,30 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0] ★★**`test-data` 전체(150 클래스)의 클래스 파일 버전을 «동결»했다 — «통일»이 아니라.**
+  채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p0`(worklog json `adoptedProposals` 기록).
+  ★★**제안의 «비용 산정»을 바꿨다 — 기각이 아니라 «설계 교체»다.** 제안은 「**decide the intended target** per fixture or
+  per directory … recompiled … ★**The decision is the work**」라며 **통일**을 전제했는데, 정작 제안이 적은 이득은
+  「a regenerated fixture **cannot quietly start testing a different Java version's** bytecode shapes」 = ★**«드리프트 탐지»**다.
+  ⇒ ★**목표를 «동결»로 바꾸면 그 「work」가 통째로 사라진다**: 지금 값을 기록하고 혼자 움직이면 red —
+  ★**재컴파일 0 · 바이트 변경 0 · 「어느 타깃이 옳은가」 결정 자체가 불요.**
+  ★**대가는 정직하게**: 이 축은 ★**섞임을 «고치지» 않고 «굳힌다»**(루트에 52·65·66·68·70 이 그대로 남는다).
+  그것이 옳은 이유는 ★**통일 = 재컴파일 = 바이트 변경 = 「그 픽스처가 무엇을 시험하는지」의 변경**이기 때문이고(제안 자신의 경고),
+  그 판정은 **별 축(후속 L)** 으로 넘겼다.
+  ★★**ⓑ 이미 핀하는 축이 «둘» 있었고, 그 둘이 못 덮는 곳이 이 회차의 대상이었다**:
+  ⑴`tests/test_fixture_pins.rs` 는 **`test-data/indy` 만** ⑵**생성기 코드**가 자기 산출물 **16개**의 버전을 소스에 박는다
+  (`make_ldc_fixtures.py` 의 `major=52` + 항목별 오버라이드) ⇒ ★**남는 132개 = 「`.java` 소스가 있어 손수 재컴파일 가능한 것」**이고,
+  ★**루트의 66×8 · 68×1 · 70×3 이 그 사고가 «이미 일어난» 지문**이다.
+  ★**만든 것**: `test-data/class-file-versions.txt`(150행 + 머리 주석에 「이것은 타깃이 아니라 동결이다」) ·
+  `test-data/src/record-class-file-versions.py`(머리 주석 **보존** · 없으면 **거부** · docstring 이 「실패를 잠재우려고 돌리지 마라」를 못박는다) ·
+  테스트 `committed_fixtures_keep_their_recorded_class_file_version`.
+  ★★**세 방향을 «전부» 검사한다 — 이것이 급소다**: ⑴기록과 다름 ⑵★**기록에 없는 새 픽스처**
+  (★없으면 핀이 «옵트인»이 되어 **내일 추가되는 픽스처는 조용히 미보호** — 이 저장소가 반복해 잡은 그 형태의 변종) ⑶**유령 기록**.
+  ★**개악 3종 전건 red**: M1 `Hello.class` 버전 바이트 `65→70`(= 다른 JDK 재생성과 **같은 형상**) ·
+  M2 미기록 `.class` 투입 · M3 표에만 있는 행 ⇒ 복원 **green**(`test_fixture_pins` **2 passed**).
+  ★실패 문면이 **파일·두 버전·해소 명령**을 함께 말한다(`Hello.class: recorded 65.0, found 70.0`).
+  ★**기록기 멱등**(재실행 시 표 **바이트 동일**) · `cargo test --all` **572 → 573 / 0 failed / 1 ignored** · DoD **7줄 전건 rc=0**.
+  ★**알고 남긴 값**: 생성기 산출물 16개는 **이중 잠금**(생성기 + 표)이다 — ★**예외 목록을 두는 규칙보다 «전건 단일 규칙»이 덜 썩는다.**
 - [rustjava-adopt-bound-bootstrap-method-attr-index-p1] ★★**부트스트랩 «정적 인자» 인덱스를 경계 검사한다 — 「감지되나 판정되지 않던」 자리를 닫았다.**
   채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p1`(worklog json `adoptedProposals` 기록).
   ★**전/후**: `UnsupportedOperationException` → ★`ClassFormatError`. ★참조 JVM(OpenJDK 26.0.1) →

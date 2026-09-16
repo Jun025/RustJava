@@ -1,0 +1,41 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0",
+  "summary": "Froze the class file version of all 150 committed fixtures in a checked-in table, rather than unifying them on a target. The proposal's stated benefit is drift detection, and a freeze buys that with zero recompiles — so the 'decide a target per directory' work it called the main cost is not needed.",
+  "changes": [
+    "test-data/class-file-versions.txt: new, 150 rows of <major>.<minor> <path>, with a header saying it is a freeze rather than a target and why",
+    "test-data/src/record-class-file-versions.py: new, rewrites the table from disk; preserves the header and refuses to write without one",
+    "tests/test_fixture_pins.rs: committed_fixtures_keep_their_recorded_class_file_version, checking all three directions"
+  ],
+  "verification": [
+    "census re-measured at start: root 52 x40, 65 x62, 66 x8, 68 x1, 70 x3; ldc 52 x7, 55 x6; indy 52 x1, 65 x6; 150 classes total — the proposal's numbers still hold in shape, 65 moved 61 -> 62 because this lineage added fixtures",
+    "existing coverage measured: tests/test_fixture_pins.rs pins only test-data/indy, and the generators pin their 16 outputs in source (make_ldc_fixtures.py has major=52 by default with per-fixture overrides)",
+    "the unpinned population is therefore the 132 javac-compiled fixtures that have .java sources — the ones a person can recompile by hand, which is exactly where the 66/68/70 outliers are",
+    "mutation M1, flipping Hello.class's version bytes 65 -> 70 (the same shape as a regeneration on another JDK): red, with the message naming the file, both versions and the fix",
+    "mutation M2, adding an unrecorded .class: red — without this direction the pin would be opt-in and new fixtures would be silently uncovered",
+    "mutation M3, adding a table row for a file that does not exist: red",
+    "restore: test_fixture_pins 2 passed",
+    "the recorder is idempotent: rerunning it leaves the table byte-identical",
+    "cargo test --all: 573 passed / 0 failed / 1 ignored (572 before; +1 test)",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "This freezes the heterogeneity rather than fixing it: five majors remain in the root. Unifying would require recompiling, and recompiling changes bytes, which can change what a fixture exercises — the proposal's own warning.",
+    "The 16 generator outputs are now double-locked (generator source plus the table). That is deliberate: one uniform rule is less likely to rot than a rule with an exemption list."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether the root fixtures should be recompiled onto one target",
+      "plainSummary": "The main test-data directory holds fixtures built by five different Java versions. We froze that, which stops it drifting further, but did not decide whether it should be uniform.",
+      "userBenefit": "None directly. It would make a fixture's bytecode shapes predictable from one number instead of from its individual history.",
+      "why": "The freeze added in this round answers 'did it move', not 'is it what we want'. A fixture compiled at major 52 exercises pre-invokedynamic shapes; one at 70 may lower the same source differently. Nobody has decided which of those each test wants, and the current spread is an accident of when each file was last touched rather than a choice.",
+      "tradeoff": "Recompiling changes bytes, and a fixture's bytes are what its test asserts against — several compare output against a committed .txt. So this is not a bulk operation: it needs a per-fixture judgement about what that test is for, and the likely honest answer for most of them is 'leave it', which costs the review time and buys nothing.",
+      "effort": "L",
+      "target": "test-data/, test-data/src/"
+    }
+  ]
+}
