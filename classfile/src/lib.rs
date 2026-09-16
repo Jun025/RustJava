@@ -12,7 +12,7 @@ mod opcode;
 mod validation;
 
 pub use {
-    attribute::{AttributeInfo, AttributeInfoCode},
+    attribute::{AttributeInfo, AttributeInfoCode, BootstrapMethod, MethodHandleKind, MethodHandleRef},
     class::ClassInfo,
     constant_pool::{ConstantPoolReference, FieldMethodref},
     error::ClassFileError,
