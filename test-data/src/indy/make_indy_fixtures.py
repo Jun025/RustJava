@@ -116,7 +116,7 @@ METAFACTORY_DESCRIPTOR = (
 )
 
 
-def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6):
+def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6, arguments=None):
     """The same near-miss idea as `near_miss_call_site`, for the *other* linked factory:
     `LambdaMetafactory.metafactory`.
 
@@ -155,7 +155,15 @@ def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor
         u2(0x0008) + u2(cp.utf8("impl")) + u2(cp.utf8("()V")) + u2(1) + u2(code_name) + u4(len(impl_code)) + impl_code
     )
 
-    bootstrap_body = u2(1) + u2(bootstrap) + u2(3) + u2(sam_type) + u2(implementation) + u2(sam_type)
+    # `arguments` overrides the static argument list. `metafactory` is defined as taking exactly
+    # three, of exactly three kinds, so a bootstrap naming it with anything else is a near miss in
+    # the *arguments* rather than in the identity — a separate check, needing a separate fixture.
+    if arguments is None:
+        arguments = [sam_type, implementation, sam_type]
+    else:
+        arguments = [{"sam": sam_type, "impl": implementation, "string": cp.string("not a method type")}[x] for x in arguments]
+
+    bootstrap_body = u2(1) + u2(bootstrap) + u2(len(arguments)) + b"".join(u2(x) for x in arguments)
     class_attributes = [u2(cp.utf8("BootstrapMethods")) + u4(len(bootstrap_body)) + bootstrap_body]
 
     return (
@@ -246,6 +254,26 @@ METAFACTORY_FIXTURES = {
         "metafactory",
         METAFACTORY_DESCRIPTOR,
         7,
+    ),
+    # Identity correct, static arguments wrong. Two ways, because they are two checks: the count
+    # (`metafactory` takes three, this carries four) and the kinds (the third is a String where a
+    # MethodType belongs). Both are shapes no compiler emits and both would otherwise be read as
+    # if they were the real thing.
+    "NotMetafactoryArgumentCount.class": (
+        "NotMetafactoryArgumentCount",
+        METAFACTORY_CLASS,
+        "metafactory",
+        METAFACTORY_DESCRIPTOR,
+        6,
+        ["sam", "impl", "sam", "sam"],
+    ),
+    "NotMetafactoryArgumentKinds.class": (
+        "NotMetafactoryArgumentKinds",
+        METAFACTORY_CLASS,
+        "metafactory",
+        METAFACTORY_DESCRIPTOR,
+        6,
+        ["sam", "impl", "string"],
     ),
 }
 

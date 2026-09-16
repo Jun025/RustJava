@@ -81,6 +81,17 @@ public class LambdaKinds {
         return x + x;
     }
 
+    // A `void` interface method whose implementation returns something is not a curiosity: the
+    // value has to be *dropped*, and if it is not, it stays on the operand stack. Nothing in
+    // ordinary bytecode ever pops it again, so the only way to see the mistake is to hand the
+    // object to something that calls the method from outside the interpreter — `Thread.run()`
+    // invokes `Runnable.run()V` from Rust and converts the result to `()`, which a stray value
+    // cannot be.
+    static int tick() {
+        System.out.println("tick");
+        return 7;
+    }
+
     static int report(int x) {
         System.out.println("sink:" + x);
         return x;
@@ -109,5 +120,8 @@ public class LambdaKinds {
         System.out.println(named.of(new NamedBox()));
         System.out.println(new Derived().superReference().get());
         discarding.accept(9);
+
+        Runnable ticking = LambdaKinds::tick;
+        new Thread(ticking).run();
     }
 }

@@ -136,6 +136,35 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
     }
 }
 
+// The identity is four comparisons; the static arguments are two more checks, and they are not the
+// same question. `metafactory` is defined as taking exactly three arguments of exactly three kinds,
+// so a bootstrap that names it correctly and then carries four of them — or three where one is a
+// String — is not the shape it claims to be. Reading it as if it were means linking a call site
+// from constants that mean something else.
+//
+// Both fixtures are valid class files: OpenJDK 26.0.1 loads them and refuses at linkage with
+// BootstrapMethodError.
+#[tokio::test]
+async fn test_a_metafactory_bootstrap_with_the_wrong_static_arguments_is_not_linked() {
+    for (name, wrong) in [
+        ("NotMetafactoryArgumentCount", "four static arguments where there are three"),
+        ("NotMetafactoryArgumentKinds", "a String where the instantiated method type belongs"),
+    ] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: {wrong} must not be linked, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: it has to reach the argument check, so it must be a readable file, got: {err}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn test_bad_magic_raises_class_format_error() {
     let mut bytes = hello_class();
@@ -362,6 +391,7 @@ async fn test_every_reference_kind_a_lambda_implementation_can_have_runs() {
             "named",  // REF_invokeInterface
             "base",   // super:: — javac routes it through a synthetic method, so still virtual
             "sink:9", // the interface method is void; `report` returns int and it is dropped
+            "tick",   // and the drop is observed from outside: Thread.run() converts run()V to ()
         ]
     );
 
