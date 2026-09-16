@@ -92,7 +92,7 @@ fn committed_fixtures_keep_their_recorded_class_file_version() {
     let mut unrecorded = Vec::new();
     let mut moved = Vec::new();
     for path in class_files(Path::new("test-data")) {
-        let relative = path.strip_prefix("test-data").unwrap().to_string_lossy().into_owned();
+        let relative = table_key(path.strip_prefix("test-data").unwrap());
         let bytes = fs::read(&path).unwrap();
         let actual = format!(
             "{}.{}",
@@ -124,6 +124,31 @@ fn committed_fixtures_keep_their_recorded_class_file_version() {
          Run test-data/src/record-class-file-versions.py to drop them.",
         recorded.keys().collect::<Vec<_>>()
     );
+}
+
+/// The table is checked in, so its keys have to read the same on every OS: `indy/StringConcat.class`,
+/// never `indy\StringConcat.class`.
+///
+/// Windows built the latter and every one of the 36 fixtures in a subdirectory then showed up as
+/// both "unrecorded" and "a ghost record" at once, while the 114 in the root passed — which is why
+/// this was invisible on macOS and Linux and only `rust_ci (windows-latest, *)` caught it.
+///
+/// Taking the lossy string and replacing separators (rather than joining `components()`) is what
+/// makes the rule testable without Windows: the unit test below feeds it a backslash path, which a
+/// `components()` walk on Unix would hand back unchanged. The cost is that a Unix filename
+/// containing a literal backslash would be rewritten — no fixture has one, and the table is ours.
+fn table_key(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+#[test]
+fn table_keys_use_forward_slashes_on_every_platform() {
+    assert_eq!(
+        table_key(Path::new("dispatch\\base\\PackageBase.class")),
+        "dispatch/base/PackageBase.class"
+    );
+    assert_eq!(table_key(Path::new("indy/StringConcat.class")), "indy/StringConcat.class");
+    assert_eq!(table_key(Path::new("Hello.class")), "Hello.class");
 }
 
 fn class_files(dir: &Path) -> Vec<std::path::PathBuf> {

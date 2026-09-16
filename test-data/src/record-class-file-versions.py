@@ -28,7 +28,10 @@ def main():
     for path in sorted(ROOT.rglob("*.class")):
         data = path.read_bytes()
         minor, major = struct.unpack(">H", data[4:6])[0], struct.unpack(">H", data[6:8])[0]
-        rows.append(f"{major}.{minor} {path.relative_to(ROOT)}\n")
+        # as_posix(), not str(): on Windows the latter writes `indy\\StringConcat.class`, and the
+        # table would then be wrong for everyone else. The recorder is not run by CI, so that
+        # direction of the bug would never announce itself.
+        rows.append(f"{major}.{minor} {path.relative_to(ROOT).as_posix()}\n")
 
     TABLE.write_text("".join(header) + "".join(rows))
     print(f"recorded {len(rows)} fixtures in {TABLE}")

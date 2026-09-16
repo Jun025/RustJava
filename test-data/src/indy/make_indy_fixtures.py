@@ -30,6 +30,7 @@ u1 = lambda x: struct.pack(">B", x)
 u2 = lambda x: struct.pack(">H", x)
 u4 = lambda x: struct.pack(">I", x)
 
+FACTORY_CLASS = "java/lang/invoke/StringConcatFactory"
 FACTORY_DESCRIPTOR = (
     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;"
     "Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"
@@ -64,17 +65,22 @@ class Pool:
         return u2(len(self.entries) + 1) + b"".join(self.entries)
 
 
-def near_miss_call_site(name, bootstrap_class, bootstrap_name, bootstrap_descriptor):
+def near_miss_call_site(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6):
     """A class whose single `invokedynamic` names a bootstrap that is a near miss for the
-    string-concat factory: same shape, one axis different."""
+    string-concat factory: same shape, one axis different.
+
+    `bootstrap_kind` is the `reference_kind` of the CONSTANT_MethodHandle. It defaults to 6
+    (REF_invokeStatic), what the real factory uses; 7 (REF_invokeSpecial) is the near miss for
+    that axis. Both pair with a Methodref under JVMS 4.4.8, so the file stays valid and the
+    identity check is the only thing that can refuse it — which is the point of these fixtures."""
     cp = Pool()
     this_class = cp.klass(name)
     super_class = cp.klass("java/lang/Object")
     main_name, main_desc, code_name = cp.utf8("main"), cp.utf8("([Ljava/lang/String;)V"), cp.utf8("Code")
 
     bootstrap = cp.add(
-        u1(15)  # kind 6 = REF_invokeStatic, same as the real factory
-        + u1(6)
+        u1(15)
+        + u1(bootstrap_kind)
         + u2(cp.methodref(cp.klass(bootstrap_class), cp.name_and_type(bootstrap_name, bootstrap_descriptor)))
     )
     recipe = cp.string("linked-by-mistake")
@@ -105,6 +111,37 @@ FIXTURES = {
         "java/lang/invoke/NotStringConcatFactory",
         "makeConcatWithConstants",
         FACTORY_DESCRIPTOR,
+    ),
+    # One fixture per remaining axis. Without all four, deleting a single axis from the identity
+    # check leaves every test green — measured: with only the owning-class fixture present, the
+    # kind, name and descriptor axes could each be removed and `cargo test --all` stayed at
+    # 570 passed / 0 failed. A mutation that deletes all four at once dies on the class fixture
+    # alone, which is why the audit that ran it read "this branch is covered".
+    #
+    # Differs in the method name. `makeConcat` is a real StringConcatFactory bootstrap, so this is
+    # the near miss a compiler could actually hand us.
+    "NotMakeConcatWithConstants.class": (
+        "NotMakeConcatWithConstants",
+        FACTORY_CLASS,
+        "makeConcat",
+        FACTORY_DESCRIPTOR,
+    ),
+    # Differs in the descriptor: the trailing `[Ljava/lang/Object;` (the constants varargs) is
+    # gone. Still a well-formed method descriptor, so nothing upstream rejects it.
+    "NotFactoryDescriptor.class": (
+        "NotFactoryDescriptor",
+        FACTORY_CLASS,
+        "makeConcatWithConstants",
+        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;"
+        "Ljava/lang/String;)Ljava/lang/invoke/CallSite;",
+    ),
+    # Differs in the reference kind: 7 (REF_invokeSpecial) instead of 6 (REF_invokeStatic).
+    "NotInvokeStaticFactory.class": (
+        "NotInvokeStaticFactory",
+        FACTORY_CLASS,
+        "makeConcatWithConstants",
+        FACTORY_DESCRIPTOR,
+        7,
     ),
 }
 

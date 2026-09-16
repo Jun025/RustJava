@@ -147,6 +147,9 @@
 65.0 indy/ConstantKinds.class
 65.0 indy/Lambda$Op.class
 65.0 indy/Lambda.class
+52.0 indy/NotFactoryDescriptor.class
+52.0 indy/NotInvokeStaticFactory.class
+52.0 indy/NotMakeConcatWithConstants.class
 52.0 indy/NotStringConcatFactory.class
 65.0 indy/StringConcat.class
 55.0 ldc/Ldc2WDynamic.class
