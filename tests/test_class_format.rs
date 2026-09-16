@@ -68,23 +68,27 @@ async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
     }
 }
 
-// Exactly one `invokedynamic` bootstrap is linked: `StringConcatFactory.makeConcatWithConstants`,
-// which is what javac 9+ lowers string `+` to. Every other bootstrap is still refused, and this
-// asserts both halves — because a change that linked *everything* would satisfy the first half
-// alone and read identically from the outside.
+// Two `invokedynamic` bootstraps are linked, and only two: `StringConcatFactory
+// .makeConcatWithConstants` and `LambdaMetafactory.metafactory` — what javac 9+ lowers string `+`
+// and lambdas to. Every other bootstrap is still refused, and this asserts both halves, because a
+// change that linked *everything* would satisfy the first half alone and read identically from the
+// outside.
 //
-// The linked half is asserted here as "it loads and runs"; what it actually prints is compared
-// against `test-data/StringConcat.txt` by `tests/test_class.rs`, which is where output belongs.
+// The linked half is asserted here as "it loads and runs"; what those two actually print is
+// asserted by `tests/test_class.rs` (StringConcat) and by the lambda tests below.
 #[tokio::test]
-async fn test_only_the_string_concat_bootstrap_is_linked() {
+async fn test_only_the_two_recognised_bootstraps_are_linked() {
     let indy = Path::new("./test-data/indy/");
 
     run_class(Path::new("test-data/indy/StringConcat.class"), &[indy], &[])
         .await
         .expect("javac's string `+` call site should link and run");
+    run_class(Path::new("test-data/indy/Lambda.class"), &[indy], &[])
+        .await
+        .expect("javac's lambda call site should link and run");
 
-    // LambdaMetafactory (Lambda) and ConstantBootstraps/condy (ConstantKinds) are not linked.
-    for name in ["Lambda", "ConstantKinds", "NotStringConcatFactory"] {
+    // ConstantBootstraps/condy (ConstantKinds) is not linked, nor is a near miss for either factory.
+    for name in ["ConstantKinds", "NotStringConcatFactory", "NotLambdaMetafactory"] {
         let path = PathBuf::from(format!("test-data/indy/{name}.class"));
 
         let err = run_class(&path, &[indy], &[]).await.unwrap_err().to_string();
@@ -323,13 +327,63 @@ async fn test_a_class_declaring_bootstrap_methods_twice_is_malformed() {
     );
 }
 
-// The same sentence, for the harder shape. A lambda's `BootstrapMethods` entry carries
-// MethodType and MethodHandle constants as static arguments, which nothing here can resolve —
-// so parsing the attribute is exactly where a lambda class could start being called corrupt
-// again. The classfile-level test asserts the indices survive; this asserts what the user reads.
+// `Lambda.class` is one lambda with nothing captured and a static implementation — the simplest
+// call site javac emits, and by itself it leaves most of the linker unobserved. `LambdaKinds.class`
+// is the rest: a capture, an object capture, a constructor reference, an unbound receiver, an
+// interface method reference, and a `void` interface method dropping what its implementation
+// returned.
+//
+// The output is asserted line by line rather than "it ran", and that is the load-bearing part: a
+// lambda that captured the wrong value, dispatched to the wrong receiver or dropped an argument
+// still links and still runs. The expected text is OpenJDK 26.0.1's, taken by running the same
+// fixture there.
 #[tokio::test]
-async fn test_lambda_class_reports_unsupported_feature_not_malformed() {
-    let path = Path::new("test-data/indy/Lambda.class");
+async fn test_every_reference_kind_a_lambda_implementation_can_have_runs() {
+    let indy = Path::new("./test-data/indy/");
+
+    let output = run_class(Path::new("test-data/indy/Lambda.class"), &[indy], &[])
+        .await
+        .expect("a lambda should link and run");
+    assert_eq!(output, "1\n", "x -> x + 1 applied to 0");
+
+    let output = run_class(Path::new("test-data/indy/LambdaKinds.class"), &[indy], &[])
+        .await
+        .expect("every reference kind javac emits should link and run");
+
+    assert_eq!(
+        output.lines().collect::<Vec<_>>(),
+        vec![
+            "1",      // no capture, REF_invokeStatic
+            "101",    // captures an int
+            "6",      // REF_invokeStatic, method reference
+            "14",     // REF_newInvokeSpecial: Box::new, then doubled()
+            "Box:21", // REF_invokeVirtual, receiver from the interface method's argument
+            "42",     // captures an object
+            "named",  // REF_invokeInterface
+            "base",   // super:: — javac routes it through a synthetic method, so still virtual
+            "sink:9", // the interface method is void; `report` returns int and it is dropped
+        ]
+    );
+
+    // REF_invokeSpecial, the kind the fixture above cannot have: javac stopped emitting it at
+    // Java 11, so this one is compiled at `--release 8` (see its source, and the pin in
+    // tests/test_fixture_pins.rs). Without it that branch of the linker is unreachable by any test.
+    let output = run_class(Path::new("test-data/indy/LambdaCapturingThis.class"), &[indy], &[])
+        .await
+        .expect("a lambda capturing `this` should link and run");
+    assert_eq!(output, "42\n", "40 captured through `this`, plus the argument");
+}
+
+// The other half of the sentence above: what is *not* linked. The interface method returns
+// `Object` and the implementation returns `int`, so a real `LambdaMetafactory` boxes — OpenJDK
+// 26.0.1 runs this fixture and prints 3. There is no boxing to insert here, so the call site is
+// left alone and the class is refused.
+//
+// This is what makes the choice visible. Remove the signature check in `jvm-bytecode/src/lambda.rs`
+// and the class links instead: the refusal is a decision, and deleting it is a change this notices.
+#[tokio::test]
+async fn test_a_call_site_needing_an_adapter_is_refused_rather_than_guessed_at() {
+    let path = Path::new("test-data/indy/LambdaBoxing.class");
 
     let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
 
@@ -339,6 +393,37 @@ async fn test_lambda_class_reports_unsupported_feature_not_malformed() {
     );
     assert!(
         !err.contains("ClassFormatError"),
-        "a class javac emits for `x -> x + 1` is not malformed, got: {err}"
+        "a class OpenJDK runs to completion is not malformed, got: {err}"
     );
+}
+
+// The identity check is four comparisons and the tests above can observe none of them: every
+// other bootstrap on hand is refused for an unrelated reason first. So each axis gets a fixture
+// differing in that axis alone, exactly as the string concat factory has (this is the second
+// linked factory, so it needs its own set — a near miss for one is not a near miss for the other).
+//
+// Each is a valid class file that reaches the identity check: OpenJDK 26.0.1 loads all four and
+// refuses them at linkage, one per axis — NoClassDefFoundError, NoSuchMethodError twice, and
+// IncompatibleClassChangeError for the reference kind.
+#[tokio::test]
+async fn test_each_axis_of_the_metafactory_identity_is_observable() {
+    for (name, axis) in [
+        ("NotLambdaMetafactory", "owning class"),
+        ("NotMetafactory", "method name (altMetafactory, a real LambdaMetafactory bootstrap)"),
+        ("NotMetafactoryDescriptor", "descriptor"),
+        ("NotInvokeStaticMetafactory", "reference kind"),
+    ] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: a bootstrap differing in {axis} must not be linked, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: it has to reach the identity check, so it must be a readable file, got: {err}"
+        );
+    }
 }

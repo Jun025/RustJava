@@ -23,6 +23,20 @@ use std::{ffi::OsStr, fs, path::Path};
 const PINNED_MAJOR: u16 = 65;
 const PINNED_MINOR: u16 = 0;
 
+/// One fixture is compiled at a different release, and it is pinned rather than exempted.
+///
+/// `LambdaCapturingThis` exists to carry a `REF_invokeSpecial` bootstrap argument, which javac
+/// stopped emitting at Java 11 (nestmates, JEP 181) — `--release 8` produces kind 7 for that
+/// source and `--release 21` produces kind 5, so the *release* is the fixture's whole point. Its
+/// source says so too. Recording the pin here keeps the promise identical for it: regenerating it
+/// on the wrong release is still caught.
+fn pinned_version_of(stem: &str) -> (u16, u16, &'static str) {
+    match stem {
+        "LambdaCapturingThis" => (52, 0, "8"),
+        _ => (PINNED_MAJOR, PINNED_MINOR, "21"),
+    }
+}
+
 /// Synthetic fixtures — the ones a generator script writes byte by byte — are deliberately not
 /// pinned here: they are not javac output and pick their own version (`NotStringConcatFactory`
 /// targets 52.0). "Has a `.java` source" is the structural way to tell the two apart, and it
@@ -50,12 +64,17 @@ fn indy_javac_fixtures_keep_the_pinned_class_file_version() {
         let major = u16::from_be_bytes([bytes[6], bytes[7]]);
         let minor = u16::from_be_bytes([bytes[4], bytes[5]]);
 
+        // `Outer$Inner.class` is compiled from `Outer.java`, so it inherits the outer name's pin.
+        let stem = path.file_stem().unwrap().to_str().unwrap();
+        let (pinned_major, pinned_minor, release) = pinned_version_of(stem.split('$').next().unwrap());
+
         assert_eq!(
             (major, minor),
-            (PINNED_MAJOR, PINNED_MINOR),
-            "{} is class file {major}.{minor}, not the pinned {PINNED_MAJOR}.{PINNED_MINOR}. \
-             Recompile it with: javac --release 21 -d test-data/indy test-data/src/indy/*.java",
-            path.display()
+            (pinned_major, pinned_minor),
+            "{} is class file {major}.{minor}, not the pinned {pinned_major}.{pinned_minor}. \
+             Recompile it with: javac --release {release} -d test-data/indy test-data/src/indy/{}.java",
+            path.display(),
+            stem.split('$').next().unwrap()
         );
 
         checked.push(path);

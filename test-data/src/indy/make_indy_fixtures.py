@@ -61,6 +61,12 @@ class Pool:
     def methodref(self, class_index, nat_index):
         return self.add(u1(10) + u2(class_index) + u2(nat_index))
 
+    def method_type(self, descriptor):
+        return self.add(u1(16) + u2(self.utf8(descriptor)))
+
+    def method_handle(self, kind, reference_index):
+        return self.add(u1(15) + u1(kind) + u2(reference_index))
+
     def bytes(self):
         return u2(len(self.entries) + 1) + b"".join(self.entries)
 
@@ -98,6 +104,64 @@ def near_miss_call_site(name, bootstrap_class, bootstrap_name, bootstrap_descrip
         b"\xca\xfe\xba\xbe" + u2(0) + u2(52) + cp.bytes()
         + u2(0x0021) + u2(this_class) + u2(super_class)
         + u2(0) + u2(0) + u2(1) + method
+        + u2(len(class_attributes)) + b"".join(class_attributes)
+    )
+
+
+METAFACTORY_CLASS = "java/lang/invoke/LambdaMetafactory"
+METAFACTORY_DESCRIPTOR = (
+    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;"
+    "Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)"
+    "Ljava/lang/invoke/CallSite;"
+)
+
+
+def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6):
+    """The same near-miss idea as `near_miss_call_site`, for the *other* linked factory:
+    `LambdaMetafactory.metafactory`.
+
+    A separate builder rather than a parameter on that one, because the shapes differ in what the
+    identity check has to see past. A metafactory bootstrap carries three static arguments —
+    MethodType, MethodHandle, MethodType — and the call site returns the functional interface
+    rather than a String. A near miss has to carry all of that correctly, or it is refused for
+    the wrong reason and the identity check stays unobserved.
+
+    `java/lang/Runnable` is the interface, and `()V` the method type, so that a fixture which
+    *does* get linked (because an identity comparison was deleted) links to something real and
+    runs to completion. Then the only difference a test can see is refusal versus no refusal,
+    which is the difference being measured."""
+    cp = Pool()
+    this_class = cp.klass(name)
+    super_class = cp.klass("java/lang/Object")
+    main_name, main_desc, code_name = cp.utf8("main"), cp.utf8("([Ljava/lang/String;)V"), cp.utf8("Code")
+
+    bootstrap = cp.method_handle(
+        bootstrap_kind,
+        cp.methodref(cp.klass(bootstrap_class), cp.name_and_type(bootstrap_name, bootstrap_descriptor)),
+    )
+    # samMethodType, implMethod, instantiatedMethodType. The implementation is this class's own
+    # no-op static method, so a linked call site has something real to delegate to.
+    sam_type = cp.method_type("()V")
+    implementation = cp.method_handle(6, cp.methodref(this_class, cp.name_and_type("impl", "()V")))
+    call_site = cp.add(u1(18) + u2(0) + u2(cp.name_and_type("run", "()Ljava/lang/Runnable;")))
+
+    body = u1(0xBA) + u2(call_site) + u2(0) + b"\x57" + b"\xb1"  # invokedynamic; pop; return
+    code_attr = u2(1) + u2(1) + u4(len(body)) + body + u2(0) + u2(0)
+    main = u2(0x0009) + u2(main_name) + u2(main_desc) + u2(1) + u2(code_name) + u4(len(code_attr)) + code_attr
+
+    impl_body = b"\xb1"  # return
+    impl_code = u2(0) + u2(0) + u4(len(impl_body)) + impl_body + u2(0) + u2(0)
+    impl = (
+        u2(0x0008) + u2(cp.utf8("impl")) + u2(cp.utf8("()V")) + u2(1) + u2(code_name) + u4(len(impl_code)) + impl_code
+    )
+
+    bootstrap_body = u2(1) + u2(bootstrap) + u2(3) + u2(sam_type) + u2(implementation) + u2(sam_type)
+    class_attributes = [u2(cp.utf8("BootstrapMethods")) + u4(len(bootstrap_body)) + bootstrap_body]
+
+    return (
+        b"\xca\xfe\xba\xbe" + u2(0) + u2(52) + cp.bytes()
+        + u2(0x0021) + u2(this_class) + u2(super_class)
+        + u2(0) + u2(0) + u2(2) + main + impl
         + u2(len(class_attributes)) + b"".join(class_attributes)
     )
 
@@ -145,8 +209,51 @@ FIXTURES = {
     ),
 }
 
+# One per axis of the metafactory identity, for the same reason the four above exist: with only
+# some of them, deleting a single comparison leaves every test green. The linked counterpart is
+# javac's own output (Lambda.class, LambdaKinds.class) — these are what it must *not* be confused
+# with.
+METAFACTORY_FIXTURES = {
+    # Differs in the owning class.
+    "NotLambdaMetafactory.class": (
+        "NotLambdaMetafactory",
+        "java/lang/invoke/NotLambdaMetafactory",
+        "metafactory",
+        METAFACTORY_DESCRIPTOR,
+    ),
+    # Differs in the method name. `altMetafactory` is a real LambdaMetafactory bootstrap — the one
+    # javac emits for serializable and multi-interface lambdas — so this is the near miss a
+    # compiler could actually hand us.
+    "NotMetafactory.class": (
+        "NotMetafactory",
+        METAFACTORY_CLASS,
+        "altMetafactory",
+        METAFACTORY_DESCRIPTOR,
+    ),
+    # Differs in the descriptor: `altMetafactory`'s, which is varargs where `metafactory`'s is
+    # three explicit types. Still a well-formed method descriptor.
+    "NotMetafactoryDescriptor.class": (
+        "NotMetafactoryDescriptor",
+        METAFACTORY_CLASS,
+        "metafactory",
+        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;"
+        "[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
+    ),
+    # Differs in the reference kind: 7 (REF_invokeSpecial) instead of 6 (REF_invokeStatic).
+    "NotInvokeStaticMetafactory.class": (
+        "NotInvokeStaticMetafactory",
+        METAFACTORY_CLASS,
+        "metafactory",
+        METAFACTORY_DESCRIPTOR,
+        7,
+    ),
+}
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     for filename, args in FIXTURES.items():
         (OUT / filename).write_bytes(near_miss_call_site(*args))
+        print(f"wrote {OUT / filename}")
+    for filename, args in METAFACTORY_FIXTURES.items():
+        (OUT / filename).write_bytes(lambda_near_miss(*args))
         print(f"wrote {OUT / filename}")

@@ -9,7 +9,35 @@ use nom::{
     number::complete::{be_i16, be_i32, be_u16, i8, u8},
 };
 
-use crate::constant_pool::{ConstantPoolItem, ConstantPoolReference};
+use crate::{
+    attribute::MethodHandleRef,
+    constant_pool::{ConstantPoolItem, ConstantPoolReference},
+};
+
+/// A `LambdaMetafactory.metafactory` call site, resolved against the class's `BootstrapMethods`
+/// attribute.
+///
+/// This is what javac lowers a lambda or a method reference to. Unlike the string concat call
+/// site below, executing it does not compute a value — it *makes an object*: an instance of
+/// `interface_name` whose `method_name`/`method_descriptor` runs `implementation`, with whatever
+/// the call site descriptor leaves on the stack captured into it.
+#[derive(Clone, Debug)]
+pub struct LambdaCallSite {
+    /// The synthetic class implementing the interface, named at lowering time — the only place
+    /// that sees the whole class and can pick a name nothing else in it uses. Shaped like
+    /// OpenJDK's (`Host$$Lambda$0`), which is a convention; nothing parses it.
+    pub class_name: Arc<String>,
+    pub interface_name: Arc<String>,
+    /// The call site descriptor: its parameters are the captured values, in stack order, and its
+    /// return type is the interface.
+    pub descriptor: Arc<String>,
+    /// The interface method to implement, with the *erased* descriptor (the bootstrap's
+    /// `samMethodType`) — that is the one callers invoke through the interface.
+    pub method_name: Arc<String>,
+    pub method_descriptor: Arc<String>,
+    /// The method the interface method delegates to (the bootstrap's `implMethod`).
+    pub implementation: MethodHandleRef,
+}
 
 /// A `StringConcatFactory.makeConcatWithConstants` call site, resolved against the class's
 /// `BootstrapMethods` attribute.
@@ -121,6 +149,10 @@ pub enum Opcode {
     Ineg,
     Instanceof(ConstantPoolReference),
     Invokedynamic(ConstantPoolReference),
+    /// An `invokedynamic` already resolved to `LambdaMetafactory.metafactory`. Written by
+    /// `jvm-bytecode` at class definition time, never by the parser — same reasoning as the
+    /// string concat variant below, which says it at length.
+    InvokedynamicLambda(LambdaCallSite),
     /// An `invokedynamic` already resolved to `StringConcatFactory.makeConcatWithConstants`.
     ///
     /// **The parser never produces this.** `parse_opcode` only ever emits `Invokedynamic`, because
