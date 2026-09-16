@@ -27,6 +27,12 @@
   픽스처 재생성 **멱등**(기존 11 전건 바이트 동일 · 신규 1) · DoD **7줄 전건 rc=0**.
   ★**잃는 것**: 지금까지 «로드되던» 파일 하나가 거부된다 — 다만 그 형상은 어제 이 저장소가 잰 대로
   **javac·kotlinc·scalac·Lombok 산출물 5,479 클래스에 0**이고 ASM 으로도 «일부러» 만들어야 나온다.
+  ★★**게이트③ 착지 — PR #53 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `f2c83174` **불이동**(착수 실측 17:39:54Z · ★워밍 후 재조회 `MERGEABLE/CLEAN`).
+  ★**충돌 0 · base 당김 0**(`merge-tree` rc=0) — 이 브랜치가 `origin/main` 위에서 갈렸고 그 뒤 착지한 형제가 없다.
+  ★**여파**: 이 착지가 형제 **#54**(BSM 정적 인자)·**#55**(변이 감사)의 base 를 낡게 만든다.
+  ★**#54 는 «코드 파일이 자동 병합»되도록 그 회차가 삽입 위치를 미리 갈라 뒀고**(그 done 회신의 `merge-tree` 실측),
+  **#55 는 원장 3파일만 만진다** ⇒ 두 형제 모두 충돌은 **원장 계열에 국한**된다(게이트③ 계약 2-c⒜ 범위).
 - [rustjava-ldc-tags-15-16-17-real-world-generator-survey] ★★**「못 쟀다」를 «쟀다»로 바꿨다 — ASM 은 태그 15/16/17 을 «낸다».**
   채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`(worklog json `adoptedProposals` 기록). ★**조사 회차 · 크레이트 무접촉**(파서·테스트 0).
   ★★**ASM 9.7.1 = 낸다(실증)** — `visitLdcInsn(Handle)`·`(Type.getMethodType)`·`(ConstantDynamic)` 15줄로 만든 클래스에서
