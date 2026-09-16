@@ -100,6 +100,28 @@ async fn test_only_the_string_concat_bootstrap_is_linked() {
     }
 }
 
+// The factory's other entry point. `makeConcat` takes no static arguments — the call site
+// descriptor alone says what to concatenate — so the recipe is synthesised from its arity rather
+// than read from the bootstrap.
+//
+// The fixture prints its result, and this asserts *that* rather than only that the class ran: a
+// recipe synthesised at the wrong length still links and still runs, and would concatenate the
+// wrong number of arguments unnoticed if the value were discarded.
+//
+// javac does not emit this shape — targets 9 through 26 all emit `makeConcatWithConstants`, even
+// for `a + b` with no literal text — so the fixture is hand-assembled
+// (test-data/src/indy/make_indy_fixtures.py).
+#[tokio::test]
+async fn test_the_recipe_free_factory_concatenates_every_argument() {
+    let path = Path::new("test-data/indy/MakeConcat.class");
+
+    let output = run_class(path, &[Path::new("./test-data/indy/")], &[])
+        .await
+        .expect("a makeConcat call site should link and run");
+
+    assert_eq!(output.trim_end(), "ab", "both arguments must be concatenated, in order");
+}
+
 // The identity check above is four comparisons, and the test above can only observe one of them.
 // `NotStringConcatFactory` differs in the owning class, so deleting *that* comparison links it and
 // the test fails — but deleting any of the other three changes nothing any fixture can see. Measured
@@ -116,6 +138,13 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
         ("NotMakeConcatWithConstants", "method name"),
         ("NotFactoryDescriptor", "descriptor"),
         ("NotInvokeStaticFactory", "reference kind"),
+        // The same axis for the recipe-free entry point. It carries no static arguments, so the
+        // argument-count guard cannot refuse it and the descriptor comparison is all that is left
+        // — which is exactly what makes that comparison observable.
+        ("MakeConcatWrongDescriptor", "descriptor, on the recipe-free entry point"),
+        // And the other half of that entry point's rule: it takes no static arguments, so one that
+        // carries a static argument is not the shape it claims to be.
+        ("MakeConcatWithArgument", "a static argument the recipe-free entry point does not take"),
     ] {
         let path = PathBuf::from(format!("test-data/indy/{name}.class"));
 

@@ -1,0 +1,33 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-link-stringconcatfactory-p0",
+  "summary": "Linked StringConcatFactory.makeConcat, the recipe-free entry point, by synthesising the recipe from the call site's arity — the executor needed nothing new. The proposal's stated reason was wrong: javac never emits makeConcat, at any release from 9 to 26.",
+  "changes": [
+    "jvm-bytecode/src/string_concat.rs: a second name/descriptor pair, matched as a pair so one entry point's name with the other's descriptor does not link; resolve_bootstrap_methods returns LinkedFactory::{WithConstants, NoRecipe}, because a recipe-free call site's recipe depends on the call site rather than the bootstrap",
+    "test-data/src/indy/make_indy_fixtures.py: make_concat_call_site builds a linkable makeConcat class that prints its result, and takes parameters for the two near misses of the new pair",
+    "test-data/indy/MakeConcat.class, MakeConcatWrongDescriptor.class, MakeConcatWithArgument.class: new fixtures",
+    "tests/test_class_format.rs: test_the_recipe_free_factory_concatenates_every_argument, plus the two new near misses in the identity-axis test"
+  ],
+  "verification": [
+    "javac 26.0.1 measured on the same source at --release 9, 11, 17, 21 and 26: all five emit makeConcatWithConstants, including for a + b with no literal text, where the recipe is two placeholders and nothing else; only -XDstringConcat=indy emits makeConcat, and -XDstringConcat=inline emits StringBuilder",
+    "end to end: the fixture prints 'ab', so the synthesised recipe consumed both arguments in order",
+    "mutation M1, removing the makeConcat pair: red",
+    "mutation M2, synthesising a recipe of the wrong length: red — which is why the fixture prints rather than discarding the value",
+    "mutation M3, loosening the pair check to the name alone: SURVIVED at first, killed after adding MakeConcatWrongDescriptor",
+    "mutation M4, dropping the no-static-arguments guard: SURVIVED at first, killed after adding MakeConcatWithArgument",
+    "the near-miss fixtures added by PR #55 still refuse, because name and descriptor are compared as a pair",
+    "cargo test --all --no-fail-fast: 574 passed / 0 failed / 1 ignored, up from 573",
+    "fixture regeneration is idempotent: the four pre-existing indy fixtures come out byte-identical",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The linker now accepts two bootstraps rather than one — exactly the widening the proposal warned about. It is kept as a written-out pair list rather than a registry, and the doc comment says why.",
+    "The benefit is not the one the proposal claimed: default javac output was already fully linked. This helps producers that choose the recipe-free entry point, including javac under -XDstringConcat=indy.",
+    "M3 and M4 surviving the first pass is the same shape the sibling audit round documented: a coarse mutation proves one axis is observed, not all of them. Each axis of the new pair now has its own near miss."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-link-stringconcatfactory#p0"
+  ],
+  "proposals": []
+}
