@@ -1,4 +1,26 @@
 # REPORT
+## [2026-09-17] 레시피가 콜사이트와 어긋날 때 — ★**「싸고 옳다」는 두 겹으로 거짓이었다** (rustjava-adopt-link-stringconcatfactory-p1)
+- 무엇을: 채택 제안 `2026-09-16-link-stringconcatfactory#p1`(「진단의 자리를 정하라」). ★**제품 동작이 바뀐다** —
+  레시피와 콜사이트의 «합의»를 **변환 전에 한 번** 재고, 없던 `java/lang/BootstrapMethodError` 를 런타임에 추가했다.
+- 왜: 제안은 「현 런타임 검사는 싸고 옳다, 문제는 «자리»뿐」이라 했다. ★**둘 다 틀렸다.**
+  ⑴★**그 가지는 애초에 던지지 못했다** — `java/lang/BootstrapMethodError` 가 이 런타임에 **없어서**
+  `jvm.rs:948` 의 unwrap 에서 **NoClassDefFoundError 로 패닉**했다. 이 형상의 픽스처가 **하나도 없어** 아무도 밟은 적이 없다.
+  ⑵★**검사가 «부족분»만 봤다** — 레시피가 콜사이트보다 **짧으면** 남는 인자를 조용히 버리고 **틀린 문자열**(`a`)을 돌려주고 rc=0 이었다.
+  ⇒ 부등호를 **상등**으로 바꾸고 인자·상수 두 축을 함께 잰다.
+- 사용자 영향: 손상·수제 클래스 파일이 **패닉이나 조용한 오답 대신** `BootstrapMethodError` 를 받는다. 정상 javac 산출물은 **무영향**.
+- ★★**제안의 처방(`classfile/validation.rs` 로 옮겨 `ClassFormatError`)은 기각한다 — 추측이 아니라 실측이다.**
+  OpenJDK 26.0.1 에 세 픽스처를 **직접 돌렸다**: 전건 `BootstrapMethodError`(원인 `StringConcatException`) · 프레임은 `linkCallSite` =
+  ★**링크 시점**이고 ★**`ClassFormatError` 가 아니다**. 파일은 파싱되고, 부트스트랩 정적 인자의 «의미»는 클래스파일 형식의 소관이 아니다.
+  ⇒ 제안이 스스로 적은 비용(「검증 단계에서 부트스트랩 인자를 걷는 것 = `attribute.rs` 가 일부러 피한 해결」)도 함께 면했다.
+- ★**왜 «변환 전»인가**: 여기엔 `CallSite` 가 없어 링크가 첫 실행에 접힌다 ⇒ 그 순서에 가장 가까운 것이 「무엇도 변환하기 전에 잰다」이다.
+  먼저 변환하면 `String.valueOf` 를 통해 **사용자 `toString()` 이 돌고**, 그 예외가 이 진단을 덮는다.
+- ★★**개악 4종 전건 red**(정상 574 green): M1 합의 검사 제거 · M2 `!=`→`>`(부족분만) · M3 상수 축 제거 ·
+  ★**M4 `loader.rs` 에서 클래스 등록 제거 → `jvm.rs:948` 패닉이 «되살아난다»**(= 새 클래스가 하중을 진다).
+- 검증: `cargo test --all` **573 → 574 passed / 0 failed / 1 ignored**(기준선은 `origin/main` 워크트리에서 실측) ·
+  DoD 7명령 rc=0 · 픽스처 재생성 **멱등**(기존 4개 바이트 불변).
+- ★후속: **72개** `java/…Error|Exception` 이름이 이 워크스페이스의 오류 경로에 있고, 이번 회차 전까지 그중 **1개**(이 건)가 proto 없이 있었다.
+  ★**지금 baseline 이 0** 이라 잠그기 가장 싼 시점이다 — `docs/worklog/2026-09-17-string-concat-recipe-arity.json`.
+
 ## [2026-09-17] 신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다 (rustjava-adopt-cp-tag-passthrough-detectable-p0-fix)
 - 무엇을: `string_concat.rs` 의 부트스트랩 신원 **4축**(kind·class·name·descriptor) 중 ★**3축이 «관측되지 않고» 있었다** —
   근접 실패 픽스처가 **class 축 하나**뿐이었기 때문이다. 나머지 3축의 픽스처를 만들었다. ★**제품 코드 무접촉.**

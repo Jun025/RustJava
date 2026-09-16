@@ -1,9 +1,22 @@
 # STATE
 
 ## 진행중
-(없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
+(없음 — 2026-09-17 실측: 착수 시 열린 PR **4건**(#56·#57·#58·#59). ★**내 경로와 겹치는 것은 둘**이다 —
+ #59 가 `test-data/src/indy/make_indy_fixtures.py`·`tests/test_class_format.rs` · #56 이 `tests/test_class_format.rs`.
+ ★`jvm-bytecode/src/interpreter.rs`·`rustjava-runtime/` 은 **겹침 0**. ⇒ 착지 순서는 **#56·#59 먼저, 이 PR 나중**이 맞다
+ (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p1] ★★**레시피가 콜사이트와 어긋날 때 — 제안의 「싸고 옳다」가 두 겹으로 거짓이었다.**
+  채택 제안 `2026-09-16-link-stringconcatfactory#p1`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
+  ★**제안의 처방은 기각**(`classfile/validation.rs`/`ClassFormatError`) — ★**OpenJDK 26.0.1 에 픽스처 3종을 직접 돌린 실측**이 근거다:
+  전건 `BootstrapMethodError`(원인 `StringConcatException`) · 프레임 `linkCallSite` = **링크 시점** · **`ClassFormatError` 아님**.
+  ★★**실제로 깨져 있던 둘**: ⑴`java/lang/BootstrapMethodError` 가 **런타임에 없어서** 그 가지가 던지는 대신
+  `jvm.rs:948` unwrap 에서 **패닉**했다(픽스처 0 이라 아무도 밟은 적이 없다) ⑵검사가 **부족분**만 봐서
+  레시피가 **짧으면** 남는 인자를 버리고 **틀린 문자열을 반환**했다(rc=0). ⇒ **상등 검사 · 변환 전 1회 · 인자/상수 두 축**.
+  ★**변환 전인 이유**: `String.valueOf` 가 **사용자 `toString()`** 을 돌리므로, 먼저 변환하면 그 예외가 진단을 덮는다.
+  ★**개악 4종 전건 red**(M1 검사 제거 · M2 `!=`→`>` · M3 상수 축 제거 · ★**M4 클래스 등록 제거 → 패닉 재현**) ·
+  `cargo test --all` **573 → 574 / 0 failed / 1 ignored**(기준선 워크트리 실측) · DoD 7명령 rc=0 · 픽스처 재생성 멱등.
 - [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
   게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
   ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은
