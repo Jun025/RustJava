@@ -4,6 +4,42 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-bound-bootstrap-method-attr-index-p1] ★★**부트스트랩 «정적 인자» 인덱스를 경계 검사한다 — 「감지되나 판정되지 않던」 자리를 닫았다.**
+  채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p1`(worklog json `adoptedProposals` 기록).
+  ★**전/후**: `UnsupportedOperationException` → ★`ClassFormatError`. ★참조 JVM(OpenJDK 26.0.1) →
+  **`ClassFormatError: argument_index 65535 has bad constant type`**.
+  ★★**제안의 급소는 「해석으로 흐르지 마라」였다** — `attribute.rs` 가 길게 적어 둔 그 후퇴(람다 보유 클래스가
+  «미지원» → «파손»으로 되돌아가는 것)를 만들지 않는 것. 지킨 방법 둘: ⑴술어가 **`contains_key` 하나**라
+  ★**항목을 읽지 않는다**(페이로드도 종류도 안 본다) ⑵★**그 차이를 술어 doc 에 적었다** — 제안이 「a future reader
+  may not see the difference」라고 경고한 그 독자를 위한 것이다.
+  ★★**그리고 «지켰다»를 주장하지 않고 쟀다**: BSM 정적 인자를 **실제로 가진** 클래스들 —
+  `Lambda`·`ConstantKinds` → ★여전히 `UnsupportedOperationException: invokedynamic`(불변) ·
+  `StringConcat` → ★**여전히 실행된다**(`a0` · PR #48 링크 경로 정상). ⇒ **후퇴는 일어나지 않았다.**
+  ★★**ⓑ 실측이 처방을 바꿨다** — `arguments` 를 읽는 제품 코드는 `jvm-bytecode/src/string_concat.rs:92` **한 곳**뿐이고,
+  거기서는 잘못된 인덱스를 ★**«조용히 링크 포기»**로 처리한다(`string_constant(...)?`) ⇒ ★**감지는 되는데 «판정»되지 않는다.**
+  그래서 처방이 「그곳 수정」이 아니라 ★**「파스 시점 거부」**다(그곳을 고치면 그 콜사이트 하나만 달라지고 파일은 계속 산다).
+  ★**제안은 «절반»만 요구했고 그 절반만 했다**: JVMS 4.7.23 은 ⑴유효 인덱스 ⑵**loadable constant** 둘을 요구한다.
+  ⑵는 «종류» 검사라 **다른 문장**이고 넓히면 다른 티켓이다 ⇒ 인자가 `Utf8` 를 가리키면 **여전히 통과**한다(술어 doc 에 명시 · 후속 추천).
+  ★참조 JVM 의 문면(`bad constant type`)이 정확히 그 ⑵의 언어라, ★**우리가 하지 않은 절반을 스스로 가리킨다.**
+  ★**픽스처**: `LdcDynamicBSMArgPastEnd.class` — 생성기 `dynamic()` 에 `static_arguments=` 를 더했다(기존 `attr_index=` 와 **같은 모양**).
+  ★인덱스를 **`0xFFFF`** 로 고른 것은 ★**«부재»로만 실패하게** 하기 위해서다 — 풀 «안»의 종류 틀린 항목을 가리키면
+  ⑵축과 섞여 테스트가 «이름과 다른 이유»로 통과한다. 구조 측정: 인자 `[65535]` · 풀 유효 **1..19** · 재생성 **멱등**(기존 11 전건 동일).
+  ★**개악 양방향**: 호출부 제거 **red** · 술어 본문 `true`(상수 통과) **red** · 정상 **green**.
+  ★`cargo test --all` **571 / 0 failed / 1 ignored**(27 스위트 **전건 합산**) · DoD **7줄 전건 rc=0**.
+  ★**잃는 것 — 오탐 여지가 «한 자리» 있다**: long/double 은 슬롯을 둘 먹고 **둘째 슬롯은 이 맵에 없어** 그것을 가리키는
+  인자가 거부된다. ★**맵의 우연이 아니라 의도된 읽기**다(그 슬롯에서는 어떤 상수도 적재할 수 없다 — JVMS 4.4.5) · 술어 doc 에 적었다.
+  ★**범위**: `bootstrap_method_indices_resolve` **무접촉**(그것은 `bootstrap_method_attr_index` 한 문장이다) ·
+  `attribute.rs` **무접촉**(`arguments` 는 여전히 **원시 인덱스** — 제안이 지키라고 한 그 설계) · 형제 `#p0` 무접촉.
+  ★★**게이트③ 착지 — PR #54 · `--merge`**(등재 repo). 게이트② **1회차 approve** · 핀 `4d2820f3` **불이동**(18:04:52Z · 워밍 후 재조회).
+  ★**충돌은 원장 2파일뿐**(측정 18:05:01Z) — 형제 **#53** 착지분과 겹쳤고, 해소는 전건 보존·합집합·시간순
+  (`4d2820f` 01:49:47 > `f2c8317` 01:16:29) · 줄 소실 **0** · 부활·조작 **0**.
+  ★★**공유 «코드» 3파일(`validation.rs`·`make_ldc_fixtures.py`·`test_class_format.rs`)은 «전부 자동 병합»됐다** —
+  ★그 회차가 착수 때 삽입 위치를 일부러 갈라 둔 것(술어 호출을 `bootstrap_method_indices_resolve` «위»에 · 테스트를 파일 «앞»에 ·
+  생성기 항목을 다른 칸에)이 **여기서 값을 했다**. 계약 12 로 **양방향 hunk 동일성** 확인(3파일 × 2축 전건 일치).
+  ⇒ ★**게이트③ 계약 2-c⒝(코드 충돌 = blocked)에 걸리지 않았다.**
+  ★**병합 결과를 «의미»로도 확인했다**: `validate_class` 사슬에 두 회차의 술어가 **둘 다** 있다
+  (`…static_arguments_are_in_the_pool` + `at_most_one_bootstrap_methods_attribute`) · `cargo test --all` **572**
+  (= main 570 + `#p0` 1 + 이 회차 1) ⇒ **두 회차의 테스트가 모두 살아 있다.**
 - [rustjava-adopt-bound-bootstrap-method-attr-index-p0] ★★**`BootstrapMethods` 를 «두 번» 선언한 클래스를 거부한다 — 임의 선택을 없앴다.**
   채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p0`(운영자 tower 패널 채택 · worklog json `adoptedProposals` 기록).
   ★**JVMS 4.7.23 = 최대 한 개.** 종전에는 `find_map` 이 **첫 표**를 쓰고 나머지를 **조용히 무시**했다 ⇒

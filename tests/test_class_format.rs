@@ -225,6 +225,26 @@ async fn test_a_constant_tag_below_its_minimum_class_file_version_is_malformed()
     }
 }
 
+// A bootstrap method's static arguments are pool indices too (JVMS 4.7.23), and nothing used to
+// check they name anything. The one place that reads them — the StringConcatFactory linker — treats
+// a dangling index as "not a shape I can link" and declines, so the file went on to be reported as
+// an unsupported feature. It is not: no JVM can read it.
+//
+// This is a bounds check and not resolution. The fixture's argument is 0xFFFF, past the end of a
+// 19-entry pool, so it fails on being absent rather than on being the wrong kind of constant.
+#[tokio::test]
+async fn test_a_bootstrap_method_argument_naming_nothing_is_malformed() {
+    let path = Path::new("test-data/ldc/LdcDynamicBSMArgPastEnd.class");
+
+    let err = run_class(path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+    assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
+    assert!(
+        !err.contains("UnsupportedOperationException"),
+        "an argument index naming nothing is a broken file, not an unsupported feature, got: {err}"
+    );
+}
+
 // The band that used to be left open, now closed — this is the flipped assertion the previous
 // round asked for by name. A Dynamic entry has to name a real bootstrap method (JVMS 4.4.10,
 // 4.7.23), and it can fail either way: the attribute absent, or the index past the end of a table
