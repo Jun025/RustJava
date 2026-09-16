@@ -30,6 +30,16 @@
   인자가 거부된다. ★**맵의 우연이 아니라 의도된 읽기**다(그 슬롯에서는 어떤 상수도 적재할 수 없다 — JVMS 4.4.5) · 술어 doc 에 적었다.
   ★**범위**: `bootstrap_method_indices_resolve` **무접촉**(그것은 `bootstrap_method_attr_index` 한 문장이다) ·
   `attribute.rs` **무접촉**(`arguments` 는 여전히 **원시 인덱스** — 제안이 지키라고 한 그 설계) · 형제 `#p0` 무접촉.
+  ★★**게이트③ 착지 — PR #54 · `--merge`**(등재 repo). 게이트② **1회차 approve** · 핀 `4d2820f3` **불이동**(18:04:52Z · 워밍 후 재조회).
+  ★**충돌은 원장 2파일뿐**(측정 18:05:01Z) — 형제 **#53** 착지분과 겹쳤고, 해소는 전건 보존·합집합·시간순
+  (`4d2820f` 01:49:47 > `f2c8317` 01:16:29) · 줄 소실 **0** · 부활·조작 **0**.
+  ★★**공유 «코드» 3파일(`validation.rs`·`make_ldc_fixtures.py`·`test_class_format.rs`)은 «전부 자동 병합»됐다** —
+  ★그 회차가 착수 때 삽입 위치를 일부러 갈라 둔 것(술어 호출을 `bootstrap_method_indices_resolve` «위»에 · 테스트를 파일 «앞»에 ·
+  생성기 항목을 다른 칸에)이 **여기서 값을 했다**. 계약 12 로 **양방향 hunk 동일성** 확인(3파일 × 2축 전건 일치).
+  ⇒ ★**게이트③ 계약 2-c⒝(코드 충돌 = blocked)에 걸리지 않았다.**
+  ★**병합 결과를 «의미»로도 확인했다**: `validate_class` 사슬에 두 회차의 술어가 **둘 다** 있다
+  (`…static_arguments_are_in_the_pool` + `at_most_one_bootstrap_methods_attribute`) · `cargo test --all` **572**
+  (= main 570 + `#p0` 1 + 이 회차 1) ⇒ **두 회차의 테스트가 모두 살아 있다.**
 - [rustjava-adopt-bound-bootstrap-method-attr-index-p0] ★★**`BootstrapMethods` 를 «두 번» 선언한 클래스를 거부한다 — 임의 선택을 없앴다.**
   채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p0`(운영자 tower 패널 채택 · worklog json `adoptedProposals` 기록).
   ★**JVMS 4.7.23 = 최대 한 개.** 종전에는 `find_map` 이 **첫 표**를 쓰고 나머지를 **조용히 무시**했다 ⇒
