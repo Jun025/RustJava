@@ -23,6 +23,26 @@
   ★**옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 0건**(전수 확인) · `hello_class()`·`fixture()` 헬퍼는 여전히 4·5회 쓰인다(고아 0).
 - 후속 추천: ⑴같은 자를 다른 «조용한» 단언에 대 보기(개악 내성 감사) ⑵`ClassFileError` 에 원인 변종을 되살릴지 판정(상류 과제).
   상세 = `docs/worklog/2026-09-16-cp-tag-passthrough-detectable.md`.
+## [2026-09-16] javac 의 문자열 `+` 가 «실제로 돈다» — 호출 지점 «하나»만 이었다 (rustjava-link-stringconcatfactory-makeconcatwithconstants)
+- 무엇을: `invokedynamic` 중 ★**`StringConcatFactory.makeConcatWithConstants` 한 부트스트랩만** 링크한다.
+  javac 9+ 가 문자열 `+` 를 내리는 그 형태다. ★**나머지 부트스트랩은 전부 종전대로 거부**된다.
+- 왜: 채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p0`(이 배치의 유일한 **L**).
+- 사용자 영향: ★**전/후가 «실행»으로 갈린다** — 전: `UnsupportedOperationException: … invokedynamic`(★`defineClass` 단계에서
+  거부돼 **실행에 도달조차 못 했다**) → 후: ★**`a0` 을 출력하고 정상 종료**(`test-data/StringConcat.txt` 와 바이트 대조).
+- ★★**급소는 접합이 아니라 «어디서 잇는가»였다**: `BootstrapMethods` 는 **클래스** 속성인데 `Interpreter::run` 은
+  **메서드의 `Code` 만** 받는다 ⇒ 실행 시점에 부트스트랩 테이블에 닿을 길이 **없다**. ⇒ 둘을 «다» 쥔 유일한 자리인
+  `ClassDefinitionImpl::from_classfile` 에서 **정의 시점에 내려쓴다**(`Opcode::InvokedynamicStringConcat`).
+  ★`Interpreter::run` **시그니처 불변** · ★`java.lang.invoke`(MethodHandle·CallSite) **0줄** — 레시피를 직접 집행한다.
+- ★★**「전부 열어 버린」 변경과 구별되는 축을 «만들어» 넣었다**: 인식은 **kind·class·name·descriptor 4축 완전일치**다.
+  ★그런데 그 검사를 지워도 기존 픽스처는 **전부 green 이었다**(Lambda·ConstantKinds 는 정적 인자가 String 이 아니라
+  «다른 이유»로 먼저 걸린다) ⇒ ★**신원 검사가 아무 테스트에도 안 물려 있었다.** 그래서 ★**근접 오답 픽스처**
+  `NotStringConcatFactory`(소유 클래스 한 축만 다르다 · `test-data/src/indy/make_indy_fixtures.py`)를 새로 만들었다.
+- ★**개악 2종**: ⑴링크 끊기 → `test_class`(출력 대조)·`test_only_the_string_concat_bootstrap_is_linked` **red**
+  ⑵무차별 링크(4축 제거) → ★**근접 오답 픽스처가 링크돼 red**(그 픽스처 «전»에는 green 이었다 — 위).
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개 치환 · 픽스처 1쌍 추가) · DoD 7줄 rc=0.
+- ★**잃는 것**: 위험의 «종류»가 「안 돈다」 → ★**「잘못 돌 수 있다」**로 바뀐다. 그래서 판정을 **출력값 대조**로 잡았다.
+- 후속 추천: ⑴`makeConcat`(인자 없는 형제 팩토리) ⑵부트스트랩 정적 인자가 String 이 아닌 레시피 형태 ⑶`LambdaMetafactory`(L).
+  상세 = `docs/worklog/2026-09-16-link-stringconcatfactory.md`.
 ## [2026-09-16] `bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 (rustjava-bound-bootstrap-method-attr-index)
 - 무엇을: `Dynamic`/`InvokeDynamic` 상수의 `bootstrap_method_attr_index` 가 **BootstrapMethods 테이블 안**을 가리키는지
   검사한다(JVMS 4.4.10·4.7.23). ★**두 축이 한 술어다** — 속성이 «아예 없는» 경우는 «항목 0개짜리 표»여서 어떤 인덱스도 못 가리킨다.

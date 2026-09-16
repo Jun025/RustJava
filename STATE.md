@@ -39,6 +39,44 @@
   ⑵#47 이 남긴 「M5 층 어긋남 — pass-through 개악을 `test_class_format` 이 못 잡는다」를 ★**이 회차가 닫으며 고쳐 썼다**.
   ⇒ ★**소실이 아니라 «각자 자기가 닫은 구멍을 갱신»한 것**이고, 부활·조작 줄은 **0**이다.
   ★**해소 외 변경 0** · `--delete-branch` 미사용 · 형제 PR **#48·#50** 은 만지지 않았다(각자 base 당김이 필요하다).
+- [rustjava-link-stringconcatfactory-makeconcatwithconstants] ★★**javac 의 문자열 `+` 가 «실제로 돈다» — ④-1 의 ⒝ 를 «한 칸만» 닫았다.**
+  채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p0`(worklog json `adoptedProposals` 기록 · 이 배치의 유일한 **L**).
+  ★**PLAN 선회신 게이트를 탔다** — `reports/<id>.plan.md` 를 먼저 내고 같은 회차에서 착수했다(헌장: PLAN 은 통지 후 즉시 착수).
+  ★★**전/후를 «실행»으로 갈랐다**: 전 = `UnsupportedOperationException: … invokedynamic` — ★그것도 `defineClass` 프레임에서 났다
+  (= **실행에 도달조차 못 했다**) / 후 = ★**`a0` 출력 후 정상 종료**(`test-data/StringConcat.txt` 와 **바이트 대조**).
+  ★★**이 티켓의 L 은 문자열 접합이 아니라 «어디서 잇는가»였다 — 그 사실을 여기 박는다.**
+  `BootstrapMethods` 는 **클래스** 속성인데 `Interpreter::run(jvm, code_attribute, args, return_type)` 은
+  ★**메서드의 `Code` 만** 받는다 ⇒ ★**실행 시점에 부트스트랩 테이블에 닿을 길이 «없다».**
+  ⇒ 둘을 «다» 쥔 유일한 자리 **`ClassDefinitionImpl::from_classfile`** 에서 **정의 시점에 내려쓴다**
+  (`Opcode::Invokedynamic` → ★`Opcode::InvokedynamicStringConcat`). ★**`Interpreter::run` 시그니처 불변**(호출부 0곳 변경).
+  ★**순서가 설계다** — 내려쓰기를 **verifier «앞»**에 둔다 ⇒ ★**verifier 를 한 줄도 고치지 않았다**:
+  「그때까지 `Invokedynamic` 으로 남아 있는 것 = 우리가 링크하지 않는 부트스트랩」이 그대로 거부 규칙이 된다.
+  ★★**`java.lang.invoke` 를 «세우지 않았다»** — `MethodHandle`·`CallSite` **0줄**(그 디렉터리는 여전히 부재).
+  팩토리의 계약이 «문자열 템플릿»이라 레시피를 직접 걸으면 되고, ★**그것이 「한 호출 지점」과 「링크 기구」를 가르는 선**이다.
+  값→문자열은 런타임의 `String.valueOf` 를 `jvm.invoke_static` 으로 부른다(null·toString·부동소수 서식이 한 자리에 남는다).
+  ★★★**「전부 열어 버린」 변경과 구별되는 축을 «만들어» 넣었다 — 이것이 이 회차에서 가장 값진 실측이다.**
+  인식은 **kind·class·name·descriptor 4축 완전일치**인데, ★**그 검사를 지워도 기존 픽스처가 «전부 green» 이었다**:
+  `Lambda`·`ConstantKinds` 는 정적 인자가 String 이 아니라 ★**신원 검사에 도달하기 «전»에 다른 이유로 걸린다.**
+  ⇒ ★**신원 검사가 아무 테스트에도 물려 있지 않았다**(= 지워도 아무도 모른다). 그래서 ★**근접 오답 픽스처**를 새로 만들었다:
+  **`NotStringConcatFactory`**(`test-data/src/indy/make_indy_fixtures.py` · ★**소유 클래스 한 축만** 다르고 kind·이름·서술자·String 정적 인자는 전부 일치)
+  ⇒ ★**오직 신원 검사만이 그것을 거부할 수 있다.**
+  ★**개악 2종(양방향)**: ⑴**링크 끊기** → `test_class`(출력 대조) + `test_only_the_string_concat_bootstrap_is_linked` **red**
+  ⑵**무차별 링크**(4축 제거) → ★**근접 오답이 링크돼 red** — ★**그 픽스처를 넣기 «전»에는 이 개악이 green 이었다.**
+  ★`cargo test --all` **568 / 0 failed / 1 ignored**(★수 불변 — 테스트 1개 «치환» + 픽스처 1쌍 추가) · DoD **7줄 전건 rc=0** ·
+  ★`make_indy_fixtures.py` 재생성 **멱등**(기존 indy 픽스처 변경 0).
+  ★★**잃는 것 — 위험의 «종류»가 바뀌었다**: 종전 = 「안 돈다」(거부) → 신규 = ★**「잘못 돌 수 있다」.** ★후자가 더 나쁘다 ⇒
+  그래서 판정을 「거부되지 않는다」가 아니라 ★**출력값 대조**로 잡았다(`test_class` 의 `.txt` 규약).
+  ★**범위 압력을 선으로 막았다** — `makeConcat`·`LambdaMetafactory`·condy 는 **무접촉**이고 후속 추천으로 넘겼다.
+  ★★**게이트③ 착지 — PR #48 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `0113b0a6` **불이동**(착수 실측 10:12Z).
+  ★★**착지 전에 «형제 둘»이 먼저 들어와 있었다** — `#47`(14:45) · `#49`(16:20)가 이미 main 이라 이 PR 은 `CONFLICTING/DIRTY` 였다.
+  ★**충돌은 원장 2파일뿐**(측정 10:12:58Z) — 선행 PLAN 의 「코드 충돌은 없다 — 파일이 갈린다」가 ★**형제가 «둘»로 늘어난 뒤에도 유지됐다.**
+  ★★**해소는 «시간순 끼워넣기»다 — 한쪽을 통째로 얹는 것이 아니었다**: main 이 이미 [#49, #47] 순으로 갖고 있어
+  이 회차(15:46)를 ★**그 «사이»에** 넣었다(`theirs[:i] + ours + theirs[i:]`). ⇒ 최종 순서 **#49 → #48 → #47**.
+  ★★**`tests/test_class_format.rs` 는 자동 병합됐고, 그것을 믿지 않고 «줄 단위»로 쟀다**(계약 12):
+  비어있지 않은 줄 기준 소실 **35건이 전건 «상대가 base 대비 지운 줄»**(각자 자기가 닫은 구멍의 옛 문장) · 부활·조작 **0**.
+  ⇒ ★#49 가 태그 테스트를 다시 지은 것과 이 회차가 StringConcat 주석을 고쳐 쓴 것이 **둘 다 살아 있다**.
+  ★**해소 외 변경 0** · `--delete-branch` 미사용 · 형제 **#50**(게이트② 대기)은 만지지 않았다 — 그쪽은 자기 base 를 당긴다.
 - [rustjava-bound-bootstrap-method-attr-index] ★★**`bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 — 「파손」을 되찾았다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 에 **전건** 기록):
   `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0` —
@@ -941,7 +979,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    `LambdaMetafactory.metafactory` 의 인자는 **MethodType·MethodHandle·MethodType** 이라 해석을 강제하면
    ★**람다가 든 모든 클래스가 «파싱»에서 죽어 `ClassFormatError: Invalid class file` 로 되돌아간다**
    (= 직전 두 회차가 만든 「파손 ↔ 미지원」 구분을 그대로 잃는다). ⇒ **`test-data/indy/Lambda.class` 가 그 축을 «두 층»에서 문다.**
-   ★**미착수(= ⒝)**: 콜사이트 링크 · `StringConcatFactory`/`LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.
+   ★**미착수(= ⒝)**: ★**[2026-09-16 «한 칸» 닫힘 · `rustjava-link-stringconcatfactory-makeconcatwithconstants`] `makeConcatWithConstants` 는 링크됐다**(정의 시점 내려쓰기 · `java.lang.invoke` 0줄) — 남은 것은 `makeConcat` · `LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.
    ★★**착수 전 실측 의무 — «그대로 유효»하다**: `verifier.rs` 의 `Opcode::Invokedynamic(_)` 분기를 **언제 뺄지**가 그 회차의 게이트다.
    그것을 빼면 `interpreter.rs:631` 의 `todo!()` 가 **도달 가능해진다** — ★**2026-09-16 에 «두 번» 측정됐다**
    (태그 회차 M4 · 이 회차 M4: 분기 제거 시 `panicked at jvm-bytecode/src/interpreter.rs:631` **호스트 abort** ↔ 현 트리는 게스트 예외).

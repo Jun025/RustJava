@@ -68,24 +68,36 @@ async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
     }
 }
 
-// javac 9+ emits `invokedynamic` for something as ordinary as string `+`, so the constant
-// pool tags it needs (15 MethodHandle, 18 InvokeDynamic) decide which of two very different
-// sentences the user reads: "your file is broken" or "this runtime cannot do that yet".
-// Before the tags were parsed this fixture died as `ClassFormatError: Invalid class file`.
+// Exactly one `invokedynamic` bootstrap is linked: `StringConcatFactory.makeConcatWithConstants`,
+// which is what javac 9+ lowers string `+` to. Every other bootstrap is still refused, and this
+// asserts both halves — because a change that linked *everything* would satisfy the first half
+// alone and read identically from the outside.
+//
+// The linked half is asserted here as "it loads and runs"; what it actually prints is compared
+// against `test-data/StringConcat.txt` by `tests/test_class.rs`, which is where output belongs.
 #[tokio::test]
-async fn test_invokedynamic_class_reports_unsupported_feature_not_malformed() {
-    let path = Path::new("test-data/indy/StringConcat.class");
+async fn test_only_the_string_concat_bootstrap_is_linked() {
+    let indy = Path::new("./test-data/indy/");
 
-    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+    run_class(Path::new("test-data/indy/StringConcat.class"), &[indy], &[])
+        .await
+        .expect("javac's string `+` call site should link and run");
 
-    assert!(
-        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
-        "expected the unsupported-feature diagnosis, got: {err}"
-    );
-    assert!(
-        !err.contains("ClassFormatError"),
-        "a class javac emits for `a` + int is not malformed, got: {err}"
-    );
+    // LambdaMetafactory (Lambda) and ConstantBootstraps/condy (ConstantKinds) are not linked.
+    for name in ["Lambda", "ConstantKinds", "NotStringConcatFactory"] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[indy], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: a bootstrap we do not link must stay refused, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: refusing to link is not the same as calling the file broken, got: {err}"
+        );
+    }
 }
 
 #[tokio::test]

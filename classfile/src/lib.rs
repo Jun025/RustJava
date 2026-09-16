@@ -18,5 +18,5 @@ pub use {
     error::ClassFileError,
     field::FieldInfo,
     method::MethodInfo,
-    opcode::Opcode,
+    opcode::{Opcode, StringConcatCallSite},
 };

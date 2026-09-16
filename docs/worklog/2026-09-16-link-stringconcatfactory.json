@@ -1,0 +1,58 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-link-stringconcatfactory-makeconcatwithconstants",
+  "summary": "Link exactly one invokedynamic bootstrap — StringConcatFactory.makeConcatWithConstants — by lowering the call site at class definition time, the only place holding both the constant pool and the class attributes.",
+  "changes": [
+    "classfile/src/opcode.rs: StringConcatCallSite + Opcode::InvokedynamicStringConcat (the parser never emits it; jvm-bytecode writes it)",
+    "jvm-bytecode/src/string_concat.rs: four-axis recogniser + lowering pass, run before the verifier",
+    "jvm-bytecode/src/class_definition.rs: call the lowering pass",
+    "jvm-bytecode/src/interpreter.rs: execute the recipe via String.valueOf and jvm.intern_string; no java.lang.invoke",
+    "test-data/src/indy/make_indy_fixtures.py + test-data/indy/NotStringConcatFactory.class: near-miss fixture isolating the identity check",
+    "test-data/StringConcat.{class,txt}: executable fixture pair, output compared by tests/test_class.rs",
+    "tests/test_class_format.rs: the invokedynamic test reframed as the linked/refused boundary"
+  ],
+  "verification": [
+    "test-data/StringConcat.class runs and prints 'a0', compared byte-for-byte",
+    "mutation: sever the link -> test_class and test_only_the_string_concat_bootstrap_is_linked red",
+    "mutation: link indiscriminately -> red via NotStringConcatFactory (green before that fixture existed)",
+    "cargo test --all: 568 passed / 0 failed / 1 ignored",
+    "DoD 7 commands all rc=0; indy fixture regeneration idempotent"
+  ],
+  "issues": [
+    "The identity check had no test coverage until this round added NotStringConcatFactory; the two pre-existing indy fixtures are rejected earlier, by the recipe check, so they cannot exercise it.",
+    "Only String static arguments are accepted as recipe and constants. A recipe shaped otherwise is not linked and falls back to unsupported, which is a refusal rather than a wrong answer."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bootstrap-methods-and-method-handle#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Link StringConcatFactory.makeConcat as well",
+      "plainSummary": "The sibling factory with no recipe — used when javac concatenates without constant text — is still refused.",
+      "userBenefit": "More javac-emitted string concatenation runs instead of being refused, with no new machinery.",
+      "why": "makeConcat takes no static arguments: the call site descriptor alone says what to concatenate. The recogniser already keys on the bootstrap's identity, so this is a second constant tuple and a recipe-free path through the same executor.",
+      "tradeoff": "Widens what the linker accepts, and each addition makes 'we link one call site' less true. It should stay a short explicit list rather than becoming a registry.",
+      "effort": "S",
+      "target": "jvm-bytecode/src/string_concat.rs, jvm-bytecode/src/interpreter.rs"
+    },
+    {
+      "title": "Decide what to do when a linked recipe's arity disagrees with the call site",
+      "plainSummary": "If a class file's recipe asks for more arguments than the call site provides, we throw BootstrapMethodError at execution.",
+      "userBenefit": "A corrupt or hand-built class file gets a clear diagnosis instead of a confusing one, and the choice is deliberate rather than incidental.",
+      "why": "The recipe and the descriptor are two accounts of the same thing, written by the same compiler. Disagreement means the file is wrong, so arguably it belongs in validation at parse time — where it would be a ClassFormatError — rather than as a runtime error on a path that has already started concatenating.",
+      "tradeoff": "Moving it to parse time means walking bootstrap arguments during validation, which is the resolution that attribute.rs deliberately avoids. The current runtime check is cheap and correct; the question is only whether the diagnosis is in the right place.",
+      "effort": "S",
+      "target": "jvm-bytecode/src/interpreter.rs, classfile/src/validation.rs"
+    },
+    {
+      "title": "Link LambdaMetafactory.metafactory",
+      "plainSummary": "Lambdas and method references still do not run.",
+      "userBenefit": "The other half of what javac 9+ emits routinely; today any class containing a lambda is refused at load.",
+      "why": "This is the natural next bootstrap, and unlike string concatenation it genuinely needs invoke machinery — a call site that yields a functional-interface instance implies MethodHandle-like dispatch and a synthetic class.",
+      "tradeoff": "Large. It cannot reuse the shortcut this round took: the factory's contract is an object, not a string template, so the java.lang.invoke package this round avoided becomes unavoidable.",
+      "effort": "L",
+      "target": "jvm-bytecode/, rustjava-runtime/src/classes/java/lang/invoke/"
+    }
+  ]
+}

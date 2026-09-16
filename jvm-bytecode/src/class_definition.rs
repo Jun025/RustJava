@@ -17,7 +17,7 @@ use jvm::{ClassDefinition, ClassInstance, Field, JavaType, JavaValue, Jvm, Metho
 use jvm_class_proto::JavaClassProto;
 use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
 
-use crate::{ClassDefinitionError, class_instance::ClassInstanceImpl, field::FieldImpl, method::MethodImpl, verifier};
+use crate::{ClassDefinitionError, class_instance::ClassInstanceImpl, field::FieldImpl, method::MethodImpl, string_concat, verifier};
 
 struct ClassDefinitionInner {
     name: String,
@@ -97,7 +97,11 @@ impl ClassDefinitionImpl {
     }
 
     pub fn from_classfile(data: &[u8]) -> core::result::Result<Self, ClassDefinitionError> {
-        let class = ClassInfo::parse(data)?;
+        let mut class = ClassInfo::parse(data)?;
+        // Before the verifier, not after: lowering turns the call sites this runtime links into a
+        // different opcode, so whatever is still `Invokedynamic` when `verify` runs is a bootstrap
+        // we do not link — and that is exactly what it rejects.
+        string_concat::lower(&mut class);
         verifier::verify(&class)?;
 
         let mut constant_values = Vec::new();

@@ -10,6 +10,7 @@ mod field;
 mod interpreter;
 mod method;
 mod stack_frame;
+mod string_concat;
 mod verifier;
 
 pub use self::{
