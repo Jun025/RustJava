@@ -123,6 +123,25 @@ def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index
     return build
 
 
+def duplicate_bootstrap_methods(inner):
+    """The same BootstrapMethods attribute written twice. JVMS 4.7.23 allows at most one.
+
+    The copy is byte-identical on purpose: the file has to be rejected *only* for having two
+    tables, so either table on its own must be valid. A second table with different contents
+    would let some other rule do the rejecting, and the test would then pass for a reason it
+    does not name."""
+
+    def build(cp, attributes):
+        before = len(attributes)
+        entry = inner(cp, attributes)
+        written = attributes[before:]
+        assert len(written) == 1, f"inner builder wrote {len(written)} attributes, expected 1"
+        attributes.append(written[0])
+        return entry
+
+    return build
+
+
 LOOKUP = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;"
 null_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP)
 # Same file, but the bootstrap method's one static argument names a pool index that is not there.
@@ -130,6 +149,8 @@ null_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP)
 bad_argument_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP, static_arguments=(0xFFFF,))
 # Same file, but the entry names bootstrap method 1 of a table holding only method 0.
 past_end_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP, attr_index=1)
+# Same file again, but the one valid table is written twice (JVMS 4.7.23 allows at most one).
+duplicate_bsm_constant = duplicate_bootstrap_methods(null_constant)
 # Long.MAX_VALUE, i.e. `J`-typed, which JVMS 6.5 puts on the `ldc2_w` side of the split.
 long_constant = dynamic("MAX_VALUE", "J", "getStaticFinal", LOOKUP)
 
@@ -173,6 +194,9 @@ FIXTURES = {
     # and an index naming nothing is a broken file rather than a feature we have not implemented.
     "LdcDynamicBSMArgPastEnd.class": ("LdcDynamicBSMArgPastEnd", bad_argument_constant, ldc, 1, 55),
     "LdcDynamicBSMIndexPastEnd.class": ("LdcDynamicBSMIndexPastEnd", past_end_constant, ldc, 1, 55),
+    # Negative control 5 (JVMS 4.7.23): one BootstrapMethods table is required, two are not allowed.
+    # Reading the first and ignoring the rest picks arbitrarily between them, so the file is corrupt.
+    "LdcDynamicDuplicateBSM.class": ("LdcDynamicDuplicateBSM", duplicate_bsm_constant, ldc, 1, 55),
 }
 
 if __name__ == "__main__":

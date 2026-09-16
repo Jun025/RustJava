@@ -17,6 +17,7 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
         || !constant_pool_tags_fit_the_class_file_version(class)
         || !bootstrap_method_static_arguments_are_in_the_pool(class)
         || !bootstrap_method_indices_resolve(class)
+        || !at_most_one_bootstrap_methods_attribute(class)
     {
         return Err(ClassFileError::InvalidFormat);
     }
@@ -159,6 +160,27 @@ fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
 
         bootstrap_method_count.is_some_and(|count| (index as usize) < count)
     })
+}
+
+/// JVMS 4.7.23: at most one `BootstrapMethods` attribute may appear in a ClassFile's attributes
+/// table. A file carrying two is broken, not a file using a feature this runtime lacks.
+///
+/// Kept separate from `bootstrap_method_indices_resolve` because it is a different sentence: that
+/// one asks whether an index names a real entry, this one asks how many tables exist. Folding it in
+/// would also mean renaming that function for a rule it did not previously make.
+///
+/// It matters because `bootstrap_method_indices_resolve` resolves the table with `find_map`, which
+/// stops at the first one. With two tables that choice is arbitrary — the index would be bounded
+/// against whichever came first and the other silently ignored — so the honest answer is to reject
+/// the file rather than pick. Counting is the same shape `validate_class` already uses for the
+/// per-member "at most one" rules (`ConstantValue` on a field, `Code` on a method).
+fn at_most_one_bootstrap_methods_attribute(class: &ClassInfo) -> bool {
+    class
+        .attributes
+        .iter()
+        .filter(|attribute| matches!(attribute, AttributeInfo::BootstrapMethods(_)))
+        .count()
+        <= 1
 }
 
 fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {

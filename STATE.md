@@ -30,6 +30,35 @@
   인자가 거부된다. ★**맵의 우연이 아니라 의도된 읽기**다(그 슬롯에서는 어떤 상수도 적재할 수 없다 — JVMS 4.4.5) · 술어 doc 에 적었다.
   ★**범위**: `bootstrap_method_indices_resolve` **무접촉**(그것은 `bootstrap_method_attr_index` 한 문장이다) ·
   `attribute.rs` **무접촉**(`arguments` 는 여전히 **원시 인덱스** — 제안이 지키라고 한 그 설계) · 형제 `#p0` 무접촉.
+- [rustjava-adopt-bound-bootstrap-method-attr-index-p0] ★★**`BootstrapMethods` 를 «두 번» 선언한 클래스를 거부한다 — 임의 선택을 없앴다.**
+  채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p0`(운영자 tower 패널 채택 · worklog json `adoptedProposals` 기록).
+  ★**JVMS 4.7.23 = 최대 한 개.** 종전에는 `find_map` 이 **첫 표**를 쓰고 나머지를 **조용히 무시**했다 ⇒
+  ★**`bootstrap_method_attr_index` 가 «어느 표»에 대해 경계 검사되는지가 임의**였고 그 사실이 아무 데도 드러나지 않았다.
+  ★**전/후**: `UnsupportedOperationException`(「아직 못 한다」) → ★`ClassFormatError`(「이 파일이 깨졌다」).
+  ★★**참조 JVM 이 근거다**(observable behavior · OpenJDK 소스 미참조): OpenJDK 26.0.1 →
+  **`ClassFormatError: Multiple BootstrapMethods attributes in class file`** · ★**표 하나짜리 대조군은 rc=0 로드**.
+  ★**고친 자리 «한 곳»** — `validate_class` 에 술어 `at_most_one_bootstrap_methods_attribute` 를 이었다.
+  ★`bootstrap_method_indices_resolve` **무접촉**(그 doc 이 스스로 「인덱스가 실재 항목을 가리키는가」라는 한 문장임을
+  선언한다 — 「표가 몇 개인가」는 다른 문장이고, 접어 넣으면 **이름까지 바꿔야** 한다) · ★**새 관용 0**
+  (필드 `ConstantValue`·메서드 `Code` 가 이미 쓰는 **개수 세기** 모양 그대로).
+  ★★**픽스처를 «결함이 하나»가 되게 지었다** — `LdcDynamicDuplicateBSM.class` = **같은 유효한 표를 바이트 동일하게 두 번**.
+  어느 한 표만 있어도 정상 파일이라 ★거부 원인이 «둘이라는 사실»로 **고정**된다(둘째를 다르게 하면 다른 규칙이 먼저 물어
+  테스트가 «이름과 다른 이유»로 통과한다 — 이 저장소가 #49 에서 세운 그 규율).
+  구조를 **측정**했다: 속성 `['BootstrapMethods','BootstrapMethods']` · 두 본문 **바이트 동일 True**.
+  ★★**제안의 한 문장은 «과했다»** — 「생성기가 만들 수 없는 픽스처가 필요하다」는 **거짓**이고 ★**8줄 래퍼**로 됐다
+  (속성 목록이 빌더에 그대로 전달된다). ⇒ **관측은 맞았고 «비용 추정»이 틀렸다** — 다음 사람이 같은 이유로 미루지 않게 적는다.
+  ★**개악 대조 양방향**: ⑴호출부에서 술어 제거(= 제안 이전 상태) **red** ⑵술어 본문을 **`true`(상수 통과)** 로 **red** ·
+  정상 **green**. ★**⑵가 없으면 「검사가 상수로 뭉개진」 축을 못 잡는다**(⑴만으로는 호출 삭제만 잡힌다).
+  ★`cargo test --all` **571 / 0 failed / 1 ignored**(27 스위트 **전건 합산** — 꼬리만 세지 않았다) ·
+  픽스처 재생성 **멱등**(기존 11 전건 바이트 동일 · 신규 1) · DoD **7줄 전건 rc=0**.
+  ★**잃는 것**: 지금까지 «로드되던» 파일 하나가 거부된다 — 다만 그 형상은 어제 이 저장소가 잰 대로
+  **javac·kotlinc·scalac·Lombok 산출물 5,479 클래스에 0**이고 ASM 으로도 «일부러» 만들어야 나온다.
+  ★★**게이트③ 착지 — PR #53 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` — 스쿼시는 부모 2개를 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `f2c83174` **불이동**(착수 실측 17:39:54Z · ★워밍 후 재조회 `MERGEABLE/CLEAN`).
+  ★**충돌 0 · base 당김 0**(`merge-tree` rc=0) — 이 브랜치가 `origin/main` 위에서 갈렸고 그 뒤 착지한 형제가 없다.
+  ★**여파**: 이 착지가 형제 **#54**(BSM 정적 인자)·**#55**(변이 감사)의 base 를 낡게 만든다.
+  ★**#54 는 «코드 파일이 자동 병합»되도록 그 회차가 삽입 위치를 미리 갈라 뒀고**(그 done 회신의 `merge-tree` 실측),
+  **#55 는 원장 3파일만 만진다** ⇒ 두 형제 모두 충돌은 **원장 계열에 국한**된다(게이트③ 계약 2-c⒜ 범위).
 - [rustjava-ldc-tags-15-16-17-real-world-generator-survey] ★★**「못 쟀다」를 «쟀다»로 바꿨다 — ASM 은 태그 15/16/17 을 «낸다».**
   채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`(worklog json `adoptedProposals` 기록). ★**조사 회차 · 크레이트 무접촉**(파서·테스트 0).
   ★★**ASM 9.7.1 = 낸다(실증)** — `visitLdcInsn(Handle)`·`(Type.getMethodType)`·`(ConstantDynamic)` 15줄로 만든 클래스에서

@@ -24,6 +24,31 @@
   ★**의도된 읽기**다(그 슬롯에서는 어떤 상수도 적재할 수 없다 · JVMS 4.4.5) — 술어 doc 에 적었다.
 - 후속 추천: 인자가 **loadable constant 종류**인지까지 볼 것인가 **판정**(위 ⑵ · OpenJDK 문면이 그 언어를 쓴다).
   상세 = `docs/worklog/2026-09-16-bound-bootstrap-static-arguments.md`.
+## [2026-09-16] `BootstrapMethods` 를 두 번 선언한 클래스를 거부한다 (rustjava-adopt-bound-bootstrap-method-attr-index-p0)
+- 무엇을: JVMS 4.7.23 은 `BootstrapMethods` 를 **최대 한 개**만 허용한다. 두 개를 실은 파일을 ★**거부**한다
+  (종전에는 `find_map` 이 **첫 표**를 쓰고 나머지를 조용히 무시했다).
+- 왜: 채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p0`(운영자 tower 패널 채택).
+- 사용자 영향: ★**진단이 바뀐다** — `UnsupportedOperationException`(「이 런타임이 아직 못 한다」) →
+  ★`ClassFormatError`(「이 파일이 깨졌다」). ★**참조 JVM 과 같은 판정**이 된다.
+- ★★**참조 JVM 이 근거다**(observable behavior · OpenJDK 소스 미참조): OpenJDK 26.0.1 은 같은 파일에
+  **`ClassFormatError: Multiple BootstrapMethods attributes in class file`** 를 내고, ★**표가 하나뿐인 대조군은
+  rc=0 으로 로드**한다 ⇒ 픽스처의 결함이 «둘이라는 사실» 하나임이 참조 구현으로 확증된다.
+- ★**고친 자리는 «한 곳»**: `validate_class` 에 술어 `at_most_one_bootstrap_methods_attribute` 를 이었다.
+  ★`bootstrap_method_indices_resolve` 는 **무접촉** — 그 함수의 doc 이 스스로 「인덱스가 실재 항목을 가리키는가」라는
+  **한 문장**임을 선언하고, 「표가 몇 개인가」는 **다른 문장**이다(접어 넣으면 이름까지 바꿔야 한다).
+  ★**새 관용 0** — 필드 `ConstantValue`·메서드 `Code` 가 이미 쓰는 **개수 세기** 모양 그대로다.
+- ★**픽스처는 «결함이 하나»가 되게 지었다**: `LdcDynamicDuplicateBSM.class` = 같은 유효한 표를 ★**바이트 동일**하게 두 번.
+  어느 한 표만 있어도 정상 파일이라 ★**거부 원인이 «둘»로 고정**된다(둘째 표를 다르게 하면 다른 규칙이 먼저 물어
+  테스트가 «이름과 다른 이유»로 통과한다). 구조 실측: 속성 `['BootstrapMethods','BootstrapMethods']` · 본문 동일 `True`.
+- ★★**제안의 한 문장은 «과했다»**: 「생성기가 만들 수 없는 픽스처가 필요하다」 — ★**8줄 래퍼로 됐다**
+  (속성 목록이 빌더에 그대로 전달된다). **관측은 맞았고 비용 추정이 틀렸다.**
+- 검증: 개악 **양방향** — ⑴호출부에서 술어 제거(=제안 이전 상태) **red** ⑵술어 본문을 **`true`(상수 통과)** 로 **red**
+  (★⑵가 없으면 「검사가 상수로 뭉개진」 축을 못 잡는다) · 정상 **green** ·
+  `cargo test --all` **571 passed / 0 failed / 1 ignored**(27 스위트 **전건 합산**) · 픽스처 재생성 **멱등**(기존 11 바이트 동일) · DoD 7명령 rc=0.
+- 후속 추천: 클래스 수준의 **다른 「최대 1개」 속성**(SourceFile·EnclosingMethod·Signature…)도 같은 규칙을 받아야 하는지 **판정**
+  — ★이번 건이 검사를 얻은 이유는 「중복이 하류에 임의 선택을 만든다」이고, 파서가 무시하는 속성엔 그 논거가 **전이되지 않는다**.
+  상세 = `docs/worklog/2026-09-16-reject-duplicate-bootstrap-methods.md`.
+
 ## [2026-09-16] `ldc` 태그 15/16/17 — ★**ASM 은 «낸다»**(Kotlin·Scala·Lombok 산출물은 0) (rustjava-ldc-tags-15-16-17-real-world-generator-survey)
 - 무엇을: 선행 회차가 남긴 **「못 쟀다」**(ASM·Kotlin·Scala·Lombok)를 **쟀다**. 조사 회차 — ★**크레이트 무접촉**(파서·테스트 0).
 - 왜: 채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`. javac 은 안 낸다가 이미 증명됐고, **직접 바이트코드를 짜는 도구**가 남아 있었다.

@@ -271,6 +271,26 @@ async fn test_a_dynamic_constant_naming_a_missing_bootstrap_method_is_malformed(
     }
 }
 
+// The third way that rule can break, and the one that has no right answer to fall back on: JVMS
+// 4.7.23 allows at most one BootstrapMethods attribute, and the resolver takes the first it finds.
+// With two tables that choice is arbitrary — the index gets bounded against whichever came first
+// while the other is ignored — so the file has to be refused rather than read one way or the other.
+//
+// The fixture carries the same valid table twice, so being rejected is *only* attributable to there
+// being two of them: either table alone makes a file that loads.
+#[tokio::test]
+async fn test_a_class_declaring_bootstrap_methods_twice_is_malformed() {
+    let path = Path::new("test-data/ldc/LdcDynamicDuplicateBSM.class");
+
+    let err = run_class(path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+    assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
+    assert!(
+        !err.contains("UnsupportedOperationException"),
+        "two bootstrap tables is a broken file, not an unsupported feature, got: {err}"
+    );
+}
+
 // The same sentence, for the harder shape. A lambda's `BootstrapMethods` entry carries
 // MethodType and MethodHandle constants as static arguments, which nothing here can resolve —
 // so parsing the attribute is exactly where a lambda class could start being called corrupt
