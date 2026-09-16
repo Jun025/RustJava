@@ -4,6 +4,32 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-cp-tag-passthrough-detectable-p1] ★★**판정 — `ClassFileError` 에 «원인»을 실을 값은 있다. 단 제안의 이름·이유·범위가 «셋 다» 틀렸다.**
+  채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p1`(worklog json `adoptedProposals` 기록). 낱말이 **`Decide`** 다
+  ⇒ ★**코드 변경은 «틀린 주석 한 곳» 정정뿐** · 구현은 **범위를 바로잡아 후속으로** 넘겼다.
+  ★★**⑴역사가 거짓이다**: `822504b` 는 `error.rs` 를 **«자르지» 않고 «만들었다»**(`new file` · 지금과 동일한 2변형)이고,
+  그 이전 `ClassInfo::parse` 는 **`Option<Self>`**(실패에 정보 **0** · `.unwrap()` 투성이)였다 ⇒ ★**그 커밋은 «개선»이었다.**
+  ⇒ ★**「carry a cause **again**」·「restoring」은 성립하지 않는다 — 이 리니지에 원인이 실렸던 시기는 «없다».**
+  ★★**⑵「upstream 이 해야 한다」도 거짓**: `upstream/main` 기준 **5커밋 뒤** · 그중 이 파일들을 만지는 것 **0건** ·
+  upstream 의 `error.rs` 접촉은 **1건(생성)** 뿐(이 crate 에서 가장 안정된 파일) · ★**우리는 이미 이 crate 에서 크게 갈렸다**
+  (`constant_pool.rs` +211/−6 · `validation.rs` +137/−0 · `attribute.rs` +129/−3 · `opcode.rs` +83/−7).
+  ※`AGENTS.md` read-only 는 **upstream 으로 «보내는 것»** 금지이지 로컬 변경 금지가 아니다.
+  ★★**⑶범위도 틀렸다 — `target: classfile/src/error.rs` 는 1파일인데 평탄화는 «3층»이다**:
+  `InvalidFormat`(생산 9곳) → `ClassDefinitionError::InvalidClassFile`(**From 이 원인을 버린다**) →
+  ★**`"Invalid class file"` 하드코딩 2곳**(`src/runtime.rs:189` · `test-utils/src/lib.rs:334`).
+  ⇒ ★**`error.rs` 만 고치면 «관측 변화 0»** — 아무도 원인을 넣지 않고 아무도 읽지 않는, 이 저장소가 규탄하는 그 형태다.
+  ★★**진짜 비용은 `validate_class` 의 «8항 `||` 사슬»을 쪼개는 것**이다(원인이 갈리는 유일한 자리) —
+  ★그것은 이 티켓이 **명시적으로 금지한 리팩터**(계약 3)라 ★**여기서 구현하지 않았다.**
+  ★★**ⓑ 그런데 설계는 «한 enum 건너» 이미 증명돼 있다** — `ClassDefinitionError::UnsupportedFeature(&'static str)` 가
+  **5곳**에서 쓰이며 `"ldc of a method handle"` 같은 문장을 낸다 ⇒ ★**새 발명이 아니라 «일관성 회복»**이고 이것이 「할 값 있다」의 근거다.
+  ★**이득을 과장하지 않는다**: kind-only 단언 **8곳**이 원인을 이름 부를 수 있고 참조 JVM 격차가 준다.
+  ★**그러나 제안의 「픽스처보다 강한 자물쇠」는 «절반만» 참** — 원인은 «어느 검사가 울렸나», 픽스처는 «그 검사가 관측 가능한가»를 잠근다.
+  ★**증거**: 직전 `-fix` 가 찾은 구멍(신원 4축 중 3축 미관측)은 **링크 축**이라 ★**원인을 실었어도 안 잡혔다** ⇒ **대체가 아니라 «더하기»다.**
+  ★**지금 고친 것**: `tests/test_class_format.rs` 머리 주석 — ★**제안이 근거로 인용한 바로 그 문장**이 거짓이었다
+  (「cut 822504b」·「Restoring it needs upstream variants」) ⇒ 그 자리에서 정정했다.
+  ★**착지한 트리가 거짓을 나르면 다음 사람이 같은 전제로 같은 제안을 다시 만든다.**
+  ★두 번째 언급(「`ClassFileError` 가 평탄화한다」)은 **참**이라 **건드리지 않았다**(과잉 편집 0).
+  ★`cargo test --all` **572 / 0 failed / 1 ignored**(주석만 바꿔 **불변**) · DoD **7줄 전건 rc=0**.
 - [rustjava-adopt-bound-bootstrap-method-attr-index-p1] ★★**부트스트랩 «정적 인자» 인덱스를 경계 검사한다 — 「감지되나 판정되지 않던」 자리를 닫았다.**
   채택 제안 `2026-09-16-bound-bootstrap-method-attr-index#p1`(worklog json `adoptedProposals` 기록).
   ★**전/후**: `UnsupportedOperationException` → ★`ClassFormatError`. ★참조 JVM(OpenJDK 26.0.1) →
