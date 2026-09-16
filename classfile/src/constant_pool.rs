@@ -473,4 +473,36 @@ mod tests {
     fn long_must_fit_in_two_constant_pool_slots() {
         assert!(ConstantPoolItem::parse_all(&[0x00, 0x02, 0x05, 0, 0, 0, 0, 0, 0, 0, 0]).is_err());
     }
+
+    // The test above pins one direction from the outside: a Long that overruns the declared count
+    // must fail. It says nothing about Double, and nothing about where the *following* entry lands
+    // — and that is the real symptom of a miscount, since a shifted pool rarely loses an entry, it
+    // misnumbers every later one. Measured on this tree by mutating the two-slot set: dropping
+    // Double is caught only by `tests/test_class.rs` (the whole-JVM suite), and widening the set to
+    // Integer only by class files read end to end. Both arrive far from the parser that broke.
+    #[test]
+    fn only_long_and_double_consume_two_constant_pool_slots() {
+        // count = 5, so the pool holds: Integer at 1, the two-slot entry at 2 (its tail is 3), and
+        // Integer at 4. Any other slot width makes the last entry land somewhere other than 4.
+        let pools: [(&str, &[u8]); 2] = [
+            ("Long", &[0x00, 0x05, 3, 0, 0, 0, 1, 5, 0, 0, 0, 0, 0, 0, 0, 7, 3, 0, 0, 0, 2]),
+            ("Double", &[0x00, 0x05, 3, 0, 0, 0, 1, 6, 0x3f, 0xf0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 2]),
+        ];
+
+        for (kind, bytes) in pools {
+            let (remaining, pool) = ConstantPoolItem::parse_all(bytes).unwrap_or_else(|x| panic!("{kind} pool did not parse: {x:?}"));
+
+            assert!(remaining.is_empty(), "{kind}: {remaining:?} left unconsumed");
+            assert!(
+                pool.keys().copied().eq([1u16, 2, 4]),
+                "{kind}: slots {:?}, expected 1, 2 and 4",
+                pool.keys()
+            );
+            assert!(
+                matches!(pool.get(&4), Some(ConstantPoolItem::Integer(2))),
+                "{kind}: the entry after the two-slot one is {:?}",
+                pool.get(&4)
+            );
+        }
+    }
 }

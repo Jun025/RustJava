@@ -4,6 +4,46 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-indy-fixture-jdk-pin-and-slot-accounting-test] ★★**시험 위생 둘 — indy 픽스처 JDK 핀을 «검사»로 박고, 슬롯 회계를 파서 단위에서 직접 물게 했다.**
+  채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 전건 기록):
+  `2026-09-16-cp-tags-16-17-execution-fixtures#p0` · `#p1`.
+  ★★**⒜ 핀은 «기록»이 아니라 «검사»다** — 이 repo 엔 `rust-toolchain.toml` 부재 · CI `setup-java` **0건** ·
+  PATH 에 `javac` 부재(실물은 `/opt/homebrew/opt/openjdk/bin/javac` **26.0.1**, PATH 밖) ⇒
+  ★**컴파일러에게 묻는 검사는 원리적으로 불가능**하고, 잴 수 있는 것은 **커밋된 바이트**뿐이다.
+  `tests/test_fixture_pins.rs` 가 `test-data/indy` 의 javac 산출물에 **65.0**(=`--release 21`)을 요구한다.
+  ★**핀 값과 강제 지점이 같은 파일**이라 「기록했는데 검사가 다른 값을 본다」가 성립하지 않는다.
+  ★★**핀 대상을 «`.java` 짝이 있는 것»으로 구조적으로 골랐다** — 형제 **PR #48** 이 같은 디렉터리에
+  **합성 픽스처**(`NotStringConcatFactory.class` · major **52**)를 넣는다 ⇒ ★디렉터리 전수 핀이었으면
+  **#48 착지 순간 red** 였다(그 파일을 실제로 받아 버전을 재서 확인했다). 새 javac 픽스처는 `.java` 를 넣는 순간 자동 편입된다.
+  ★**양방향**: 핀 값 오기 → red · ★**실제 사고 재현**(`javac` 26.0.1 을 `--release` 없이 → major **70**) → red ·
+  ★**개악**(검사를 상수 통과로) → 그 major 70 파일이 **green** ⇒ red 의 출처가 검사임이 선다.
+  ※재현 실험 픽스처는 `git checkout` 원복(status 0건) — ★**커밋된 픽스처 재생성 0.**
+  ★★**⒝ 판정은 「예」인데, 제안의 전제는 «절반만» 참이었다** — 「직접 시험 0」은 거짓이다
+  (`long_must_fit_in_two_constant_pool_slots` 실재). ⇒ 추가하기 전에 **개악으로 «무엇이 안 잡히나»를 쟀다**:
+  ★**Double 을 1칸으로 바꾸면 red 는 `test_class` 단 1건**(전 JVM · 40초)이고,
+  「long·double **만**」 축(Integer 를 2칸으로)은 **실물 클래스 파일을 통째로 읽는 시험**에서만 잡혔다.
+  ⇒ `only_long_and_double_consume_two_constant_pool_slots` 를 넣어 개악 **3종 전건**을 **0.01초 파서 시험**이 잡게 했다.
+  ★공개 API `parse_all` 의 **결과 인덱스**(1·2·4)를 보므로 구현 세부에 결합하지 않는다.
+  ★★**계측 함정을 남긴다 — `cargo test` 는 «첫 실패 바이너리에서 멈춘다».** `--no-fail-fast` 없이 센 첫 측정은
+  「전건 `test_class` 1건만 red」라는 **과소계상**이었다. 개악 대조를 세는 회차는 그 플래그를 반드시 붙여라.
+  ★**범위**: `parse_all` 구현 무접촉 · 픽스처 재생성 0 · 형제 셋 무접촉(★시험을 `tests/test_class_format.rs` 꼬리가 아니라
+  **새 파일**에 두어 #48·#49 와 충돌 0 — 그 둘이 그 파일 꼬리를 만진다).
+  ★**남긴 것**: 핀은 **목표 버전**을 고정하지 **컴파일러 바이너리**를 고정하지 않는다(javac 21·26 둘 다 65.0) ·
+  핀 범위는 `test-data/indy` 뿐이고 **루트는 65×61·52×40·66×8·70×3·68×1 로 다섯 버전이 섞여 있다** — 둘 다 후속 추천.
+  ★★**게이트③ 착지 — PR #50 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22`).
+  게이트② **1회차 approve**(반려 0) · 핀 `eb4d296b` **불이동**(착수 실측 10:39Z · 워밍 후 재조회).
+  ★**충돌은 원장 2파일뿐**(측정 10:39:37Z) — 그 사이 형제 **둘**(#49·#48)이 착지했는데도 그렇다.
+  ★★**코드 파일은 «양측 교집합이 0» 이었다** — 이 회차가 시험을 `tests/test_class_format.rs` 꼬리가 아니라
+  **새 파일**(`tests/test_fixture_pins.rs`)에 둔 **설계 판단이 실제로 값을 했다**(#48·#49 는 둘 다 그 파일을 만졌다).
+  ⇒ 계약 12(자동 병합 코드 파일 hunk 대조)는 ★**대상 자체가 없었다.**
+  해소 = 전건 보존·합집합·시간순(이 회차 17:47:55 > #49 16:20 > #48 15:46) · 소실 3줄은 전건
+  **상대가 base 대비 지운 줄**(#48·#49 가 각자 닫은 구멍의 옛 문장) · 부활·조작 **0**.
+  ★★★**그리고 «설계 주장»이 실물로 검증됐다** — #48 이 같은 디렉터리에 넣은 합성 픽스처
+  **`test-data/indy/NotStringConcatFactory.class`(major 52)** 가 병합 형상에 실제로 들어왔고,
+  ★**`.java` 짝이 없어 핀 대상에서 자동 제외**되어 `indy_javac_fixtures_keep_the_pinned_class_file_version` **green**
+  (나머지 6개는 전부 `.java` 짝 보유 · major 65 = 핀 대상). ⇒ ★**「디렉터리 전수 핀이었으면 #48 착지 순간 red」가
+  가정이 아니라 «지금 이 트리에서» 확인된 사실이다.**
+  ★`cargo test --all` **570 / 0 failed / 1 ignored** · DoD **7줄 전건 rc=0** · `--delete-branch` 미사용.
 - [rustjava-cp-tag-switch-passthrough-mutation-detectable] ★★**「알 수 없는 태그를 거부한다」는 테스트가 그것을 «지키지 않았다» — 지키게 했다.**
   채택 제안 `2026-09-16-ldc-tags-15-16-17#p1`(worklog json `adoptedProposals` 기록).
   ★**제품 코드 변경 «0»** — 개악은 실증용 임시이고 전부 되돌렸다(`git status classfile/ jvm-bytecode/` **0건**으로 확인).

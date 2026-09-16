@@ -1,5 +1,25 @@
 # REPORT
 
+## [2026-09-16] indy 픽스처에 JDK 핀을 «검사»로 박고, 슬롯 회계 직접 시험을 넣었다 (rustjava-indy-fixture-jdk-pin-and-slot-accounting-test)
+- 무엇을: ⒜`test-data/indy` 의 javac 픽스처가 **class file 65.0**(= `--release 21`)을 유지하는지 **커밋된 바이트로** 검사한다.
+  ⒝`parse_all` 의 「long·double **만** 상수풀 2칸」 규칙을 **파서 단위에서 직접** 문다.
+- 왜: 채택 제안 `2026-09-16-cp-tags-16-17-execution-fixtures#p0`·`#p1`.
+- 사용자 영향: 직접 없음(시험 위생). ★**픽스처를 다른 JDK 로 재생성하면 그 자리에서 빨개진다** —
+  종전에는 아무 신호도 없었다. ★슬롯 회계 개악은 **40초짜리 전-JVM 스위트** 대신 **0.01초짜리 파서 시험**이 잡는다.
+- ★**검사할 수 있는 것은 바이트뿐이다**: 이 repo 엔 `rust-toolchain.toml` 이 없고 CI 에 `setup-java` **0건**,
+  이 맥의 PATH 에도 `javac` 가 없다(실물은 `/opt/homebrew/opt/openjdk/bin/javac` 26.0.1 로 PATH 밖) ⇒
+  ★**컴파일러에게 묻는 검사는 원리적으로 불가능**하다. 핀 값과 그것을 강제하는 자리를 **한 파일**에 두어 기록·검사 드리프트를 없앴다.
+- ★**핀 대상을 «`.java` 짝이 있는 것»으로 골랐다** — 형제 PR #48 이 같은 디렉터리에 **합성 픽스처**(major **52**)를 넣는다.
+  디렉터리 전수 핀이었으면 ★**#48 착지 순간 red** 였다(그 파일을 받아 버전을 재서 확인했다).
+- ★**제안의 전제 하나는 «틀렸다»**: ⒝의 「직접 시험 0」은 절반만 참이다(`long_must_fit_in_two_constant_pool_slots` 실재).
+  ⇒ 그대로 추가하지 않고 **개악으로 «무엇이 안 잡히는지»를 쟀다**: ★**Double 을 1칸으로 바꾸면 `test_class` 단 1건**만 red 였다.
+  그것이 「예」의 근거다.
+- 검증: 핀 — 값 오기 **red** · ★`javac --release` **없이** 재생성(major 70) **red** · 검사를 상수 통과로 개악하면 그 red **소멸**.
+  슬롯 — 개악 3종(`long→1칸`·`double→1칸`·`integer→2칸`) **전건 red**. `cargo test --all` **570 passed / 1 ignored** · DoD 7명령 rc=0.
+  ※계측 함정: `cargo test` 는 **첫 실패 바이너리에서 멈춘다** — `--no-fail-fast` 없이 센 첫 측정은 과소계상이었다.
+- 후속 추천: ⑴핀을 `test-data` 나머지로 확대(★근거: 루트가 **65×61·52×40·66×8·70×3·68×1** 로 다섯 버전이 섞여 있다)
+  ⑵`--release` 가 아니라 **javac 바이너리**를 기록·검사하는 축(같은 `--release 21` 에서 javac 21·26 은 둘 다 65.0 이다).
+
 ## [2026-09-16] 「알 수 없는 태그를 거부한다」는 테스트가 ★**그것을 지키지 않았다** — 지키게 했다 (rustjava-cp-tag-switch-passthrough-mutation-detectable)
 - 무엇을: `test_unsupported_constant_pool_tag_raises_class_format_error` 가 ★**상수풀 태그 switch 의 pass-through 가지를
   개악해도 green** 이었다. 그 가지가 «끝에서 끝까지» 관측되도록 **픽스처를 바꿔** 이제 **red** 가 되게 했다.
