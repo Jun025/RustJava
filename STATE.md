@@ -4,7 +4,31 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
-- [rustjava-adopt-cp-tag-passthrough-detectable-p0] ★★**변이 저항 감사 — 「고칠 것이 없다」를 «재서» 확인했다. 제안의 전제는 이미 거짓이었다.**
+- [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
+  게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
+  ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은
+  ★**「4축 중 «적어도 하나»가 관측된다」**뿐인데, 회신은 그것을 **「이 가지는 덮여 있다」**로 읽었다.
+  검수자가 **축을 하나씩** 지워 재니 ★**kind·name·descriptor 는 «전 스위트 green 인 채로» 살아남았다**(class 축만 죽었다).
+  ★**근인은 픽스처의 수**다 — 근접 실패가 `NotStringConcatFactory`(class 축) **하나뿐**이라 나머지 세 비교는 **어떤 파일도 관측 못 했다**.
+  ★생성기 docstring 이 이미 그 문장을 적어 뒀는데(「Without such a fixture the identity check is not observable」)
+  **한 축에만 이행**돼 있었고, 감사는 그것을 「저항한다」로 덮었다.
+  ★★**감사 방법론에 «역»을 남겼다 — 이것이 이 회차의 진짜 산출물이다**:
+  원 회신의 「죽지 **않았다** ≠ 테스트가 약하다」에 더해 ⇒ ★**「죽**었다** ≠ 그 가지가 «전부» 덮였다」.**
+  ★**다축 술어(`A || B || C || D`)를 통째로 지우는 «굵은» 개악은 «가장 잘 덮인 축»이 red 를 내고 나머지 축에 대해선 아무 말도 하지 않는다**
+  ⇒ ★**축이 여럿인 검사는 «축 하나씩» 찔러라.**
+  ★**만든 것**: `make_indy_fixtures.py` 에 `bootstrap_kind`(기본 6 = 종전 하드코딩값 ⇒ **기존 산출물 불변**) + 픽스처 3개 —
+  `NotMakeConcatWithConstants`(name · `makeConcat` 은 **실재하는** StringConcatFactory 부트스트랩) ·
+  `NotFactoryDescriptor`(descriptor · 끝의 varargs 만 제거 — **여전히 적법한 서술자**) ·
+  `NotInvokeStaticFactory`(kind **7 = REF_invokeSpecial** — JVMS 4.4.8 상 Methodref 와 **적법**).
+  ★**셋 다 «적법한 클래스 파일»이라 신원 검사까지 도달한다**(실측: 넷 다 `UnsupportedOperationException: invokedynamic` ·
+  `ClassFormatError` 아님) — 상류가 먼저 거부하면 그 픽스처는 «다른 이유»로 통과하는 것이고 그것이 이 리니지가 고치려는 형태다.
+  ★**전/후**: kind·name·descriptor 단독 삭제 **SURVIVED**(`--all` 570/0/1 green) → ★**KILLED**(신규 테스트) ·
+  class 축 **여전히 KILLED**(이제 **2개**를 죽인다 ⇒ 옛 커버리지 유지) · 회귀 표본 2종(BSM off-by-one · `Ldc2W` arm 제거) **여전히 KILLED**.
+  ★`test_class_format` **11 → 12** · `cargo test --all --no-fail-fast` **570 → 571 / 0 failed / 1 ignored** · 픽스처 재생성 **멱등** · DoD 7줄 rc=0.
+  ★★**하네스가 실제로 워킹트리를 오염시켰다** — 러너 시간 상한 **SIGKILL** 로 `finally` 복원이 안 돌아 name 축이 `false` 로 남았고,
+  그 상태의 측정 2건이 **오염**됐다. ★**계약 ⒡ 의 「치환 1건 단언」이 다음 축에서 «앵커 0건»으로 즉시 잡았다** ⇒ 복원 후 **4축 전부 재측**.
+  ⇒ ★**이 사건이 「소스를 치환하는 하네스를 커밋하지 않는다」는 직전 회차 결정의 «실증»이다**(죽는 순간 트리를 오염시킨다).
+- [rustjava-adopt-cp-tag-passthrough-detectable-p0] ★★**변이 저항 감사 — ★그 「고칠 것이 없다」는 «한 자리에서» 거짓이었다(위 `-fix` 가 정정).**
   채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p0`(worklog json `adoptedProposals` 기록). ★**코드 변경 «0»**.
   ★★**결과: `tests/test_class_format.rs` 의 단언 11개 «전건»이 자기가 이름 붙인 가지의 개악에 죽는다**
   (개악 10종 · 표는 worklog). ⇒ 「통과하지만 아무것도 재지 않는 단언」은 ★**더 없다**.

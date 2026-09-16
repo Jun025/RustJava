@@ -1,5 +1,23 @@
 # REPORT
-## [2026-09-16] `test_class_format.rs` 변이 저항 감사 — ★**고칠 것이 없었고, 제안의 전제는 «이미 거짓»이었다** (rustjava-adopt-cp-tag-passthrough-detectable-p0)
+## [2026-09-17] 신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다 (rustjava-adopt-cp-tag-passthrough-detectable-p0-fix)
+- 무엇을: `string_concat.rs` 의 부트스트랩 신원 **4축**(kind·class·name·descriptor) 중 ★**3축이 «관측되지 않고» 있었다** —
+  근접 실패 픽스처가 **class 축 하나**뿐이었기 때문이다. 나머지 3축의 픽스처를 만들었다. ★**제품 코드 무접촉.**
+- 왜: 게이트② **request-changes**(PR #55 · 핀 `ab13a3c7`). 검수자가 **축을 하나씩** 지워 ★**kind·name·descriptor 개악이
+  «전 스위트 green 인 채로» 살아남는 것**을 찾았다(직전 감사 회차의 굵은 개악 M7 은 4축을 한꺼번에 지워 그것을 못 봤다).
+- 사용자 영향: 없다(테스트 픽스처). ★바뀐 것은 ★**「아무것이나 링크해도 테스트가 green」인 상태가 사라진 것**이다.
+- ★★**전/후**: kind·name·descriptor 축 단독 삭제 → **SURVIVED**(`--all` 570/0/1 green) ⇒ ★**KILLED**
+  (신규 `test_each_axis_of_the_factory_identity_is_observable`) · class 축은 **여전히 KILLED**(이제 2개를 죽인다 — 옛 커버리지 유지).
+- ★**픽스처는 «적법한 파일»이어야 값한다**: `NotMakeConcatWithConstants`(name · `makeConcat` 은 실재 부트스트랩) ·
+  `NotFactoryDescriptor`(descriptor · 여전히 적법한 서술자) · `NotInvokeStaticFactory`(kind **7** · JVMS 4.4.8 상 Methodref 와 적법).
+  ⇒ 넷 다 **신원 검사까지 도달**해 `UnsupportedOperationException` 로 거부된다(상류가 먼저 거부하면 «다른 이유»로 통과하는 것이다).
+- ★★**감사 방법론에 «역»을 남겼다**: 원 회신은 「죽지 않았다 ≠ 테스트가 약하다」를 적었는데 그 역이 빠져 있었다 ⇒
+  ★**「죽었다 ≠ 그 가지가 «전부» 덮였다」 — 다축 술어를 통째로 지우는 굵은 개악은 «어느 한 축이 덮였다»만 증명한다.**
+- ★**하네스가 실제로 트리를 오염시켰다**(러너 SIGKILL → `finally` 미실행) — ★계약 ⒡ 의 **「치환 1건 단언」이 그것을 잡았다**.
+  복원 후 4축 전부 재측했고, 이 사건이 「하네스를 커밋하지 않는다」 결정의 **실증**이다.
+- 검증: 회귀 표본 2종(BSM 경계 off-by-one · `Ldc2W` arm 제거) **여전히 KILLED** ·
+  `test_class_format` **11 → 12** · `cargo test --all --no-fail-fast` **570 → 571 / 0 failed** · 픽스처 재생성 **멱등** · DoD 7명령 rc=0.
+
+## [2026-09-16] `test_class_format.rs` 변이 저항 감사 — ★**«고칠 것이 없다»는 «한 자리에서» 거짓이었다**(위 `-fix` 가 정정) (rustjava-adopt-cp-tag-passthrough-detectable-p0)
 - 무엇을: 이 스위트의 단언 **11개**가 「자기가 이름 붙인 가지」의 개악에 **실제로 죽는지** 쟀다. ★**코드 변경 0**(감사 회차).
 - 왜: 채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p0` — 「통과하지만 아무것도 재지 않는 단언이 더 있는지 보라」.
 - 사용자 영향: 없다(측정). 바뀐 것은 ★**「없다」를 «추측»에서 «실측»으로 옮긴 것**이다.

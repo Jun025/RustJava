@@ -1,37 +1,49 @@
 {
-  "schema": "worklog/v1",
-  "date": "2026-09-16",
-  "taskId": "rustjava-adopt-cp-tag-passthrough-detectable-p0",
-  "summary": "Audited every assertion in tests/test_class_format.rs for mutation resistance. All 11 die to a mutation of the branch they name, so there is nothing to fix. The proposal's premise — that several tests corrupt a referenced slot of Hello.class — was already false when it was written.",
-  "changes": [
-    "No code change. docs/worklog, REPORT.md and STATE.md record the mutation table and the result."
-  ],
-  "verification": [
-    "10 mutations applied one at a time to product code and reverted, each followed by cargo test --test test_class_format; the table of which tests died is in the .md",
-    "all 11 tests are killed by at least one mutation: M1 bad_magic, M2 unsupported_constant_pool_tag, M3/M4 ldc_of_an_illegal_constant, M4 constant_tag_below_its_minimum, M5 dynamic_constant_naming_a_missing_bootstrap_method, M6 three unsupported-not-malformed tests, M7 string_concat linking, M8 ldc_of_method_handle_family, M9 truncated plus five others, M10 missing_class",
-    "trap recorded: the first pass (M1-M7) left three tests alive, and calling that 'three weak assertions' would have been wrong — the branches those tests name were missing from my mutation list, not from the tests. Adding M8/M9/M10 killed all three",
-    "premise re-measured at the commit that wrote the proposal (eb8b4eb): of three Hello.class-derived fixtures, zero corrupt a referenced constant pool slot — truncation, a magic byte, and an untouched copy used as a bystander",
-    "working tree restored after every mutation; git status clean apart from the untracked .serena/ directory",
-    "full suite: 570 passed / 0 failed / 1 ignored, summed across all 27 result lines",
-    "DoD 7 commands all rc=0"
-  ],
-  "issues": [
-    "The audit answers 'does each test die to a mutation of the branch it names', not 'no weakness of any kind remains'. The mutation list is hand-picked and, as the trap above shows, can be incomplete.",
-    "Fixture single-defectness is a separate axis and was not re-audited here; only the assertions were.",
-    "No harness was committed. It matches product source text, so it would silently skip mutations after any refactor — a script that passes while measuring nothing is the exact shape this proposal hunts."
-  ],
-  "adoptedProposals": [
-    "2026-09-16-cp-tag-passthrough-detectable#p0"
-  ],
-  "proposals": [
-    {
-      "title": "Audit the fixtures for single-defectness, not just the assertions",
-      "plainSummary": "We checked that each test fails when the thing it tests is broken. We did not check that each test file is broken in exactly one way.",
-      "userBenefit": "A test whose fixture is wrong in two ways keeps passing after one of them is fixed, and nobody notices the other stopped being covered.",
-      "why": "The round that produced this proposal fixed a test whose fixture was corrupt along several paths at once, and built replacements that carry exactly one defect. That discipline has been applied per round since, but never measured across the existing fixtures: for each fixture, does it still fail for its stated reason once every other defect is repaired?",
-      "tradeoff": "It needs a per-fixture repair to be meaningful — 'remove the named defect and check the file now loads' — which is close to rebuilding each fixture. For the generated ones the generator can do it cheaply; for the byte-mutated ones there is nothing to generate from, so the work is manual and the payoff may be a row of 'already fine'.",
-      "effort": "M",
-      "target": "test-data/src/, tests/test_class_format.rs"
-    }
-  ]
+ "schema": "worklog/v1",
+ "date": "2026-09-16",
+ "taskId": "rustjava-adopt-cp-tag-passthrough-detectable-p0",
+ "summary": "Audited every assertion in tests/test_class_format.rs for mutation resistance. Corrected after gate-2 review: all 11 die to a mutation of the branch they name, but that was read as 'the branch is covered' — and for the four-axis factory identity check it was not. Three of the four axes survived single-axis deletion with the whole suite green; this round added the missing near-miss fixtures so each axis is observable.",
+ "changes": [
+  "No code change. docs/worklog, REPORT.md and STATE.md record the mutation table and the result.",
+  "test-data/src/indy/make_indy_fixtures.py: near_miss_call_site takes bootstrap_kind (default 6, the previous hard-coded value, so existing output is byte-identical); three fixtures added, one per remaining identity axis",
+  "test-data/indy/NotMakeConcatWithConstants.class, NotFactoryDescriptor.class, NotInvokeStaticFactory.class: near misses differing in method name, descriptor and reference kind respectively",
+  "tests/test_class_format.rs: test_each_axis_of_the_factory_identity_is_observable",
+  "docs/worklog/2026-09-16-class-format-mutation-audit.md: §정정 section — what the audit got wrong, and the methodology line it was missing"
+ ],
+ "verification": [
+  "10 mutations applied one at a time to product code and reverted, each followed by cargo test --test test_class_format; the table of which tests died is in the .md",
+  "all 11 tests are killed by at least one mutation: M1 bad_magic, M2 unsupported_constant_pool_tag, M3/M4 ldc_of_an_illegal_constant, M4 constant_tag_below_its_minimum, M5 dynamic_constant_naming_a_missing_bootstrap_method, M6 three unsupported-not-malformed tests, M7 string_concat linking, M8 ldc_of_method_handle_family, M9 truncated plus five others, M10 missing_class",
+  "trap recorded: the first pass (M1-M7) left three tests alive, and calling that 'three weak assertions' would have been wrong — the branches those tests name were missing from my mutation list, not from the tests. Adding M8/M9/M10 killed all three",
+  "premise re-measured at the commit that wrote the proposal (eb8b4eb): of three Hello.class-derived fixtures, zero corrupt a referenced constant pool slot — truncation, a magic byte, and an untouched copy used as a bystander",
+  "working tree restored after every mutation; git status clean apart from the untracked .serena/ directory",
+  "full suite: 570 passed / 0 failed / 1 ignored, summed across all 27 result lines",
+  "DoD 7 commands all rc=0",
+  "single-axis mutations of the factory identity, before this round: kind, name and descriptor each SURVIVED with cargo test --all at 570 passed / 0 failed; owning class was KILLED",
+  "after: all three are KILLED by test_each_axis_of_the_factory_identity_is_observable, and the kind mutation also makes cargo test --all non-green",
+  "owning class still KILLED and now kills two tests, so the new fixtures did not displace the old coverage",
+  "regression sample of two previously-dead mutations: BSM bound off-by-one (< to <=) KILLED, dropping the Ldc2W arm KILLED",
+  "baseline: test_class_format 11 -> 12 passed; cargo test --all --no-fail-fast 570 -> 571 passed / 0 failed / 1 ignored",
+  "fixtures come from the generator: rerunning make_indy_fixtures.py reproduces them and leaves NotStringConcatFactory byte-identical",
+  "all four new/old near misses are refused with UnsupportedOperationException: invokedynamic and not ClassFormatError, i.e. each is a valid file that reaches the identity check",
+  "the first harness run was SIGKILLed by a runner timeout before its restore, leaving one axis mutated; the replacement-count assertion caught it on the next axis, and every figure above was re-measured on a clean tree"
+ ],
+ "issues": [
+  "The audit's original conclusion was wrong at one place: 'each test dies to a mutation of the branch it names' does not imply 'the branch is fully covered'. A coarse mutation of a multi-axis predicate only proves one axis is observed.",
+  "Fixture single-defectness is still a separate axis and was not re-audited here.",
+  "Still no harness committed — and this round produced the evidence for that: a source-rewriting harness leaves the tree mutated when it is killed."
+ ],
+ "adoptedProposals": [
+  "2026-09-16-cp-tag-passthrough-detectable#p0"
+ ],
+ "proposals": [
+  {
+   "title": "Audit the fixtures for single-defectness, not just the assertions",
+   "plainSummary": "We checked that each test fails when the thing it tests is broken. We did not check that each test file is broken in exactly one way.",
+   "userBenefit": "A test whose fixture is wrong in two ways keeps passing after one of them is fixed, and nobody notices the other stopped being covered.",
+   "why": "The round that produced this proposal fixed a test whose fixture was corrupt along several paths at once, and built replacements that carry exactly one defect. That discipline has been applied per round since, but never measured across the existing fixtures: for each fixture, does it still fail for its stated reason once every other defect is repaired?",
+   "tradeoff": "It needs a per-fixture repair to be meaningful — 'remove the named defect and check the file now loads' — which is close to rebuilding each fixture. For the generated ones the generator can do it cheaply; for the byte-mutated ones there is nothing to generate from, so the work is manual and the payoff may be a row of 'already fine'.",
+   "effort": "M",
+   "target": "test-data/src/, tests/test_class_format.rs"
+  }
+ ]
 }
