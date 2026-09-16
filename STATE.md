@@ -4,6 +4,32 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-indy-fixture-jdk-pin-and-slot-accounting-test] ★★**시험 위생 둘 — indy 픽스처 JDK 핀을 «검사»로 박고, 슬롯 회계를 파서 단위에서 직접 물게 했다.**
+  채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 전건 기록):
+  `2026-09-16-cp-tags-16-17-execution-fixtures#p0` · `#p1`.
+  ★★**⒜ 핀은 «기록»이 아니라 «검사»다** — 이 repo 엔 `rust-toolchain.toml` 부재 · CI `setup-java` **0건** ·
+  PATH 에 `javac` 부재(실물은 `/opt/homebrew/opt/openjdk/bin/javac` **26.0.1**, PATH 밖) ⇒
+  ★**컴파일러에게 묻는 검사는 원리적으로 불가능**하고, 잴 수 있는 것은 **커밋된 바이트**뿐이다.
+  `tests/test_fixture_pins.rs` 가 `test-data/indy` 의 javac 산출물에 **65.0**(=`--release 21`)을 요구한다.
+  ★**핀 값과 강제 지점이 같은 파일**이라 「기록했는데 검사가 다른 값을 본다」가 성립하지 않는다.
+  ★★**핀 대상을 «`.java` 짝이 있는 것»으로 구조적으로 골랐다** — 형제 **PR #48** 이 같은 디렉터리에
+  **합성 픽스처**(`NotStringConcatFactory.class` · major **52**)를 넣는다 ⇒ ★디렉터리 전수 핀이었으면
+  **#48 착지 순간 red** 였다(그 파일을 실제로 받아 버전을 재서 확인했다). 새 javac 픽스처는 `.java` 를 넣는 순간 자동 편입된다.
+  ★**양방향**: 핀 값 오기 → red · ★**실제 사고 재현**(`javac` 26.0.1 을 `--release` 없이 → major **70**) → red ·
+  ★**개악**(검사를 상수 통과로) → 그 major 70 파일이 **green** ⇒ red 의 출처가 검사임이 선다.
+  ※재현 실험 픽스처는 `git checkout` 원복(status 0건) — ★**커밋된 픽스처 재생성 0.**
+  ★★**⒝ 판정은 「예」인데, 제안의 전제는 «절반만» 참이었다** — 「직접 시험 0」은 거짓이다
+  (`long_must_fit_in_two_constant_pool_slots` 실재). ⇒ 추가하기 전에 **개악으로 «무엇이 안 잡히나»를 쟀다**:
+  ★**Double 을 1칸으로 바꾸면 red 는 `test_class` 단 1건**(전 JVM · 40초)이고,
+  「long·double **만**」 축(Integer 를 2칸으로)은 **실물 클래스 파일을 통째로 읽는 시험**에서만 잡혔다.
+  ⇒ `only_long_and_double_consume_two_constant_pool_slots` 를 넣어 개악 **3종 전건**을 **0.01초 파서 시험**이 잡게 했다.
+  ★공개 API `parse_all` 의 **결과 인덱스**(1·2·4)를 보므로 구현 세부에 결합하지 않는다.
+  ★★**계측 함정을 남긴다 — `cargo test` 는 «첫 실패 바이너리에서 멈춘다».** `--no-fail-fast` 없이 센 첫 측정은
+  「전건 `test_class` 1건만 red」라는 **과소계상**이었다. 개악 대조를 세는 회차는 그 플래그를 반드시 붙여라.
+  ★**범위**: `parse_all` 구현 무접촉 · 픽스처 재생성 0 · 형제 셋 무접촉(★시험을 `tests/test_class_format.rs` 꼬리가 아니라
+  **새 파일**에 두어 #48·#49 와 충돌 0 — 그 둘이 그 파일 꼬리를 만진다).
+  ★**남긴 것**: 핀은 **목표 버전**을 고정하지 **컴파일러 바이너리**를 고정하지 않는다(javac 21·26 둘 다 65.0) ·
+  핀 범위는 `test-data/indy` 뿐이고 **루트는 65×61·52×40·66×8·70×3·68×1 로 다섯 버전이 섞여 있다** — 둘 다 후속 추천.
 - [rustjava-bound-bootstrap-method-attr-index] ★★**`bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 — 「파손」을 되찾았다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 에 **전건** 기록):
   `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0` —

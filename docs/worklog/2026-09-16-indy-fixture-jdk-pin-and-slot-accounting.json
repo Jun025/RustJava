@@ -1,0 +1,48 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-indy-fixture-jdk-pin-and-slot-accounting-test",
+  "summary": "Pinned the class file version of the javac-compiled test-data/indy fixtures with a test that reads the committed bytes (no JDK exists to ask), and added the direct slot-accounting test the mutation measurement said was missing for Double.",
+  "changes": [
+    "tests/test_fixture_pins.rs: new. Asserts 65.0 on every test-data/indy/*.class that has a .java source under test-data/src/indy; synthetic fixtures are excluded structurally, so PR #48's byte-built major-52 fixture does not turn it red",
+    "classfile/src/constant_pool.rs: new unit test only_long_and_double_consume_two_constant_pool_slots — feeds [Integer, two-slot, Integer] to parse_all and asserts the resulting indices are 1, 2 and 4"
+  ],
+  "verification": [
+    "cargo test --all: 570 passed / 0 failed / 1 ignored (568 before; +2 tests)",
+    "pin, wrong value (PINNED_MAJOR=70) -> red",
+    "pin, real accident reproduced: /opt/homebrew/opt/openjdk/bin/javac 26.0.1 without --release regenerates Lambda.class at major 70 -> red; fixture restored with git checkout, git status clean",
+    "pin, neutered to a constant pass -> that same major-70 file goes green, so the red is the assertion's",
+    "slot accounting, before this round: M1 long->1slot caught by the existing unit test + 3 end-to-end; M2 double->1slot caught ONLY by tests/test_class.rs; M3 integer->2slot caught only by whole-class-file tests",
+    "slot accounting, after: M1, M2 and M3 are each red in cargo test -p classfile --lib (0.01s) via the new test",
+    "measurement caveat: cargo test stops at the first failing binary — the mutation counts above needed --no-fail-fast",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The pin fixes the target release, not the compiler binary: javac 21 and javac 26 both emit 65.0 at --release 21. Filed as p1.",
+    "Only test-data/indy is pinned. test-data/ root carries five different class file versions today (65 x61, 52 x40, 66 x8, 70 x3, 68 x1) — visible evidence of the same accident. Filed as p0."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-cp-tags-16-17-execution-fixtures#p0",
+    "2026-09-16-cp-tags-16-17-execution-fixtures#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Extend the class file version pin to the rest of test-data",
+      "plainSummary": "Only the indy fixtures are pinned to a compiler target. The main test-data directory holds fixtures built with five different Java versions.",
+      "userBenefit": "A regenerated fixture cannot quietly start testing a different Java version's bytecode shapes, which is how a test can keep passing while no longer covering what its name says.",
+      "why": "Measured this round: test-data/ root is 65 x61, 52 x40, 66 x8, 70 x3, 68 x1, and test-data/ldc is 55 x4, 52 x7. Three files sitting at major 70 are JDK 26 output — literally 'whatever javac happened to be installed', the accident the indy pin now blocks one directory away.",
+      "tradeoff": "Unlike test-data/indy these directories were never compiled to one target, so pinning means first deciding the intended target per fixture or per directory — and any fixture recompiled to match would change bytes, which can change what it exercises. The decision is the work; the assertion is ten lines.",
+      "effort": "M",
+      "target": "tests/test_fixture_pins.rs, test-data/"
+    },
+    {
+      "title": "Record which javac built each fixture, not just which release it targets",
+      "plainSummary": "The pin proves a fixture targets Java 21. It cannot prove which compiler produced it, and different compilers targeting Java 21 do not always emit the same thing.",
+      "userBenefit": "Fixtures keep exercising the bytecode shape they were chosen for, instead of silently drifting to whatever the next compiler prefers.",
+      "why": "javac 21 and javac 26 both stamp 65.0 at --release 21, so the bytes cannot tell them apart. This repo has already measured a shape that moves with the compiler: enum switch compiles to a condy under a modern javac, which is exactly why test-data/indy/ConstantKinds.class carries tag 17. The only assertions holding that axis today are the constant counts in classfile/src/constant_pool.rs, and they cover one fixture.",
+      "tradeoff": "Nothing offline can verify a recorded compiler version — a record is only as good as the person writing it, so this buys provenance, not enforcement. The enforceable half is asserting the constant shapes each fixture was added for, which is more assertions to maintain and couples tests to javac's choices.",
+      "effort": "S",
+      "target": "test-data/src/indy/, classfile/src/constant_pool.rs"
+    }
+  ]
+}
