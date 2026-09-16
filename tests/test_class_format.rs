@@ -205,21 +205,30 @@ async fn test_a_constant_tag_below_its_minimum_class_file_version_is_malformed()
     }
 }
 
-// The band this round leaves open, asserted as what it is rather than left unmentioned. Bounding
-// `bootstrap_method_attr_index` needs the `BootstrapMethods` attribute parsed, which belongs to
-// the invokedynamic-execution work, so today we still answer "unsupported" for a file OpenJDK 26
-// rejects outright ("Missing BootstrapMethods attribute"). When that round lands this assertion
-// flips — and it should fail loudly then rather than quietly keep passing.
+// The band that used to be left open, now closed — this is the flipped assertion the previous
+// round asked for by name. A Dynamic entry has to name a real bootstrap method (JVMS 4.4.10,
+// 4.7.23), and it can fail either way: the attribute absent, or the index past the end of a table
+// that is present. Both were answered "this runtime does not support that yet" about files
+// OpenJDK 26 rejects outright, which is the one sentence this lineage exists to keep honest.
 #[tokio::test]
-async fn test_a_dynamic_constant_with_no_bootstrap_methods_attribute_is_still_only_unsupported() {
-    let path = Path::new("test-data/ldc/LdcDynamicNoBSM.class");
+async fn test_a_dynamic_constant_naming_a_missing_bootstrap_method_is_malformed() {
+    for (name, how) in [
+        ("LdcDynamicNoBSM", "no BootstrapMethods attribute at all"),
+        ("LdcDynamicBSMIndexPastEnd", "index 1 into a one-entry table"),
+    ] {
+        let path = PathBuf::from(format!("test-data/ldc/{name}.class"));
 
-    let err = run_class(path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+        let err = run_class(&path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
 
-    assert!(
-        err.contains("java.lang.UnsupportedOperationException"),
-        "known gap: expected the unsupported-feature diagnosis, got: {err}"
-    );
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "{name} ({how}): expected ClassFormatError, got: {err}"
+        );
+        assert!(
+            !err.contains("UnsupportedOperationException"),
+            "{name} ({how}): a file no JVM can read is not merely unsupported, got: {err}"
+        );
+    }
 }
 
 // The same sentence, for the harder shape. A lambda's `BootstrapMethods` entry carries

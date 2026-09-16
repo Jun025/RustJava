@@ -4,6 +4,39 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-bound-bootstrap-method-attr-index] ★★**`bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 — 「파손」을 되찾았다.**
+  채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 에 **전건** 기록):
+  `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0` —
+  ★**서로 다른 회차가 «독립으로» 같은 결함에 닿았다**(그래서 총괄이 둘을 합쳐 발권했다).
+  ★**전/후**: `UnsupportedOperationException`(「이 런타임이 아직 못 한다」) → ★`ClassFormatError`(「이 파일이 깨졌다」).
+  ★**JVMS 근거**: **4.4.10**(Dynamic/InvokeDynamic 의 `bootstrap_method_attr_index` 는 `BootstrapMethods` 의
+  `bootstrap_methods` 배열에 대한 «유효한 인덱스»여야 한다) · **4.7.23**(그 상수를 가진 클래스는 그 속성을 «가져야» 한다).
+  ★**참조 JVM**: OpenJDK 26 은 부재 형상에 `ClassFormatError: Missing BootstrapMethods attribute` 를 낸다.
+  ★★**두 축이 «한 술어»다 — 분기를 둘로 만들지 않았다**(티켓 계약 1): 속성 부재 = «항목 0개짜리 표»라
+  어떤 인덱스도 못 가리킨다 ⇒ `bootstrap_method_count.is_some_and(|count| (index as usize) < count)` 한 줄이 둘을 다 문다.
+  ★**자리 = `validate_class` 의 `bootstrap_method_indices_resolve`** — `validate_constant_pool` 이 아닌 이유는
+  ★**풀과 «클래스 속성»을 둘 다 쥔 유일한 자리**이기 때문이고, 그 교차가 이 검사가 여태 없던 이유였다
+  (그 자리의 낡은 주석이 스스로 그렇게 적고 「원하는 회차에 맡긴다」고 했다 — ★**이 회차가 그 회차다**).
+  ★**새 에러 타입 0** — 기존 `ClassFileError::InvalidFormat` 에 접었다(계약 2⒞: 늘리는 대신 접을 수 있으면 그쪽이 낫다).
+  ★**픽스처 +1**(`LdcDynamicBSMIndexPastEnd` = 1항목 표에 인덱스 1) — ★**생성기를 통해서만 만들 수 있다**(표를 쓰는 자리가 거기뿐).
+  ★**재생성 멱등 확인**: 기존 10개 **바이트 불변** · 신규 1개만 추가.
+  ★★**개악 3종 — `false` 하나로는 ⒝⒟ 가 «겹친다»**(그래서 셋을 돌렸다):
+  상수 `true` → 새 테스트 red(**⒜⒞**) · 상수 `false` → **24 테스트** red(⒝⒟ 혼재) ·
+  ★**내부 술어만 `false`** → **8 테스트** red(전건 dynamic 보유 클래스 = **⒝**)이고 `test_hello`·`test_switch`·
+  `test_odd_even`·`test_superclass` 는 **green**(= **⒟** 무영향) ⇒ ★**두 축이 실제로 갈렸다.**
+  ★`cargo test --all` **568 / 0 failed / 1 ignored**(★**수 불변** — 테스트를 «치환»했다. 수로는 안 보이므로 개악으로 물었다) · DoD **7줄 전건 rc=0**.
+  ★★**남긴 것**: `BootstrapMethods` **중복 선언**은 여전히 거부하지 않는다(JVMS 4.7.23 은 «최대 1개» · 지금은 `find_map` 이 첫 것만 본다) —
+  ★**이 회차 범위 밖이고 후속 추천에 적었다.**
+  ★★**게이트③ 착지 — PR #47 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `3b3667d6` **불이동**(동봉 전 실측 — 로컬·원격·PR head·리뷰 줄2 **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN** · `mergeable` **MERGEABLE/CLEAN** · 자식 PR **0건** ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 8파일 · `.github/workflows/` 6개 전건 deploy 어휘 0건).
+  ★★**묶지 «못한» 이유가 이 리니지의 산물이다** — `rustjava` 는 upstream 동기 등재라 묶음 경로에 `merge_strategy:` 를
+  담을 파일이 없고, 그러면 `bin/queue-lint` 검사22 와 집행 STOP **두 방어선이 «둘 다» 사라진다**
+  (`orch-upstream-sync-repos-cannot-bundle-gate3-ever`). ⇒ 별 `-merge` 티켓이 그 «선언을 담을 파일»이다.
+  ★★**형제 «둘»이 열려 있다 — 이 착지가 그 둘을 깬다**: **#48**(`StringConcatFactory` 링크 · 게이트② 대기) ·
+  **#49**(상수풀 태그 pass-through 개악 탐지). ★**셋 다 `tests/test_class_format.rs` + 원장 2파일을 만진다**
+  (코드 파일은 갈린다 ⇒ **기능 의존 0**). ⇒ ★**그 둘은 각자 base 당기기가 필요하다** — 해소는 그쪽 회차 몫이고 여기서 만지지 않았다.
 - [rustjava-invokedynamic-bootstrapmethods-and-methodhandle] ★★**`BootstrapMethods` 를 «구조»로 읽는다 — ④-1 의 ⒜ 를 닫았다. ★콜사이트 링크 0줄.**
   채택 제안 `2026-09-16-cp-tags-15-18-parse#p0`(worklog json `adoptedProposals` 에 기록).
   ★**`AttributeInfo::BootstrapMethods(Vec<u8>)` → `Vec<BootstrapMethod>`** · 신규 공개 타입 3종
@@ -867,7 +900,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    ★**안 되는 것(전부 이름으로)**: ⑴클래스 로드 0 ⑵멤버 조회 0(그 메서드가 실재하는지 아무도 안 본다) ⑶접근 검사 0(JVMS 5.4.3.5) ·
    ⑷★**`java.lang.invoke` 런타임 클래스가 «0개»다**(실측: `rustjava-runtime/src/classes/java/` 에 `invoke` 디렉터리 **부재** · 문자열 참조 **0건**) ⇒ **`MethodHandle` «객체»는 만들 수 없다** ·
    ⑸종류↔대상 짝짓기는 **`validation.rs` 가 진다**(파서는 일부러 중복하지 않는다 — 테스트로 잠갔다) ·
-   ⑹`Dynamic`/`InvokeDynamic` 의 `bootstrap_method_attr_index` 는 **여전히 배열 크기로 «경계 검사되지 않는다»**(④-2 후속과 한 묶음) ·
+   ⑹`Dynamic`/`InvokeDynamic` 의 `bootstrap_method_attr_index` 는 ★**[2026-09-16 닫힘 · `rustjava-bound-bootstrap-method-attr-index`] 경계 검사된다**(부재 = 0항목 표로 함께 문다) ·
    ⑺★**부트스트랩 «정적 인자»는 «인덱스 그대로»** 둔다(아래 ★).
    ★★**⑺ 이 이 회차의 급소다 — 「인덱스를 `ConstantPoolReference` 로 풀어라」는 «회귀»다**(M3 로 측정):
    `LambdaMetafactory.metafactory` 의 인자는 **MethodType·MethodHandle·MethodType** 이라 해석을 강제하면
