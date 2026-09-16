@@ -39,20 +39,28 @@ async fn test_truncated_class_raises_class_format_error() {
     assert!(err.contains("java.lang.ClassFormatError"), "expected ClassFormatError, got: {err}");
 }
 
+// 13 and 14 are unassigned by JVMS 4.4; 19 (Module) is assigned but only legal inside a
+// module-info. Widening the parser to the method-handle tags (15..=18) must not have widened it
+// to "anything goes" — a file carrying a tag that cannot appear here is still a corrupt file, not
+// a file using a feature we have not implemented.
+//
+// The fixtures carry that tag on a **trailing, unreferenced, payload-free** pool entry, so the
+// unknown tag is the only thing wrong with the file. That is what makes this test able to fail:
+// the previous version overwrote the tag of `Hello.class`'s first entry, which is a Methodref the
+// code invokes, so the file broke along several paths at once. `ClassFileError` flattens every
+// parse failure into "Invalid class file", so that assertion could not tell "rejected because the
+// tag is unknown" from "rejected because the class fell apart" — and measurably did not: with the
+// tag switch's pass-through branch mutated from reject to accept, it still passed.
+// See `test-data/src/cp/make_cp_fixtures.py`.
 #[tokio::test]
 async fn test_unsupported_constant_pool_tag_raises_class_format_error() {
-    // 13 and 14 are unassigned by JVMS 4.4; 19 (Module) is assigned but only legal inside a
-    // module-info. Widening the parser to the method-handle tags (15..=18) must not have
-    // widened it to "anything goes" — a file carrying a tag that cannot appear here is still
-    // a corrupt file, not a file using a feature we have not implemented.
     for tag in [13u8, 14, 19] {
-        let mut bytes = hello_class();
-        // offset 10 is the first constant pool tag; 10 (Methodref) in the committed fixture
-        assert_eq!(bytes[10], 10, "test-data/Hello.class layout changed; adjust the mutation offset");
-        bytes[10] = tag;
-        let (dir, path) = fixture(&format!("BadTag{tag}Hello.class"), &bytes);
+        let path = PathBuf::from(format!("test-data/cp/UnreferencedTag{tag}.class"));
 
-        let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
+        let err = run_class(&path, &[Path::new("./test-data/cp/")], &[])
+            .await
+            .expect_err("a tag that cannot appear in a class file must be rejected")
+            .to_string();
         assert!(
             err.contains("java.lang.ClassFormatError"),
             "tag {tag}: expected ClassFormatError, got: {err}"

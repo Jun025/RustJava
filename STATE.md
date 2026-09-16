@@ -4,6 +4,29 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-cp-tag-switch-passthrough-mutation-detectable] ★★**「알 수 없는 태그를 거부한다」는 테스트가 그것을 «지키지 않았다» — 지키게 했다.**
+  채택 제안 `2026-09-16-ldc-tags-15-16-17#p1`(worklog json `adoptedProposals` 기록).
+  ★**제품 코드 변경 «0»** — 개악은 실증용 임시이고 전부 되돌렸다(`git status classfile/ jvm-bytecode/` **0건**으로 확인).
+  ★★**대전제를 «먼저» 실증했다**(티켓 ⓐ): 태그 switch 의 `_ => Err(...)` 를 `_ => Ok(Integer(0))` 로 개악하니
+  ★**그 테스트는 «ok»** 였고 스위트에서 무는 것은 `constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected`
+  **단 1건**이었다 ⇒ ★**end-to-end 층에는 그 가지를 무는 것이 «없었다»**(직전 회차가 「M5 층 어긋남」으로 남긴 그것).
+  ★★**근인 — 판별 실험으로 좁혔다(추측 아님)**: 옛 테스트는 `Hello.class` **상수풀 1번**의 태그를 덮는데
+  그 슬롯은 ★**코드가 참조하는 Methodref** 라 덮는 순간 파일이 **여러 경로로 동시에** 깨진다. 그리고 `ClassFileError` 가
+  모든 파싱 실패를 ★**「Invalid class file」로 평탄화**하므로(그 테스트 파일이 스스로 적어 둔 사실) 단언이
+  ★**「태그가 미지라 거부」와 「클래스가 무너져 거부」를 구별하지 못한다.**
+  ★**바이트 어긋남(desync)은 근인이 «아니다»** — 4바이트를 정확히 소비하는 개악(B)으로도 **여전히 green** 이었다.
+  ⇒ ★**두 가설 중 하나를 실험으로 기각했다.**
+  ★★**그러므로 처방이 «단언 조이기»가 아니다** — 문면이 평탄해 조일 것이 없다. 티켓 계약 1 이 예측한 대로
+  ★**입력이 그 가지에 «유일한 결함»으로 도달하게** 만들었다: `test-data/cp/UnreferencedTag{13,14,19}.class`
+  (생성기 `test-data/src/cp/make_cp_fixtures.py` 신규) = ★**참조되지 않고 · 페이로드 0 · 상수풀 «맨 끝»** 인 엔트리 하나.
+  ★**세 성질이 전부 값한다** — 맨 끝 + 페이로드 0 이라야 pass-through 개악이 ★**«정상 동작하는» 클래스**를 만들고,
+  그래야 테스트가 red 가 된다(그렇지 않으면 «다르게 깨진» 파일이 되어 또 green 이다).
+  ★★**전/후 — 같은 개악, 다른 결과**: **전** = 그 테스트 **ok** / **후** = ★**red**
+  (실패 문면 `a tag that cannot appear in a class file must be rejected: ""` — ★빈 출력 = 클래스가 «성공적으로 실행»됐다).
+  ★**⒞ 다른 가지 개악**(태그 16 거부) → **6 테스트 red** ⇒ 스위트가 여전히 switch 전체를 지킨다(이 회차가 좁히지 않았다).
+  ★`cargo test --all` **568 / 0 failed / 1 ignored**(★수 불변 — 테스트 1개 «치환») · DoD **7줄 전건 rc=0** · 픽스처 재생성 **멱등**.
+  ★**계약 2⒜ 전수 확인**: 옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 **0건** · `hello_class()`·`fixture()` 헬퍼는 여전히 **4·5회** 쓰여 고아 0.
+  ★**계약 2⒝ 오탐**: 새 단언은 ★**오탐이 늘지 않는다** — 픽스처가 «유일한 결함»만 갖도록 지어져 있어 다른 변경이 이 테스트를 흔들 경로가 좁다.
 - [rustjava-invokedynamic-bootstrapmethods-and-methodhandle] ★★**`BootstrapMethods` 를 «구조»로 읽는다 — ④-1 의 ⒜ 를 닫았다. ★콜사이트 링크 0줄.**
   채택 제안 `2026-09-16-cp-tags-15-18-parse#p0`(worklog json `adoptedProposals` 에 기록).
   ★**`AttributeInfo::BootstrapMethods(Vec<u8>)` → `Vec<BootstrapMethod>`** · 신규 공개 타입 3종
@@ -900,8 +923,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    참조 JVM 은 `Missing BootstrapMethods attribute` 인데 우리는 **여전히 「미지원」**이다.
    ★그 경계 검사는 **속성 파싱이 정말로 필요**하므로 ④-1(PR #45 리니지) 몫이다 — ★**픽스처와 테스트로 «현재 답»을 잠가 뒀으니
    그 회차가 닫으면 그 단언이 «시끄럽게» 진다.**
-   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
-   `test_class_format` 이 **못 잡는다**(무는 것은 `classfile` 단위 테스트) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
+   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: ★**[2026-09-16 닫힘 · `rustjava-cp-tag-switch-passthrough-mutation-detectable`] 이제 `test_class_format` 이 «잡는다»**(픽스처를 «유일한 결함»으로 다시 지었다 — 종전엔 참조되는 Methodref 슬롯을 덮어 «다른 이유»로 통과했다) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
 3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
 
 ---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----
