@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use jvm_types::ClassAccessFlags;
 
-use classfile::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference, Opcode};
+use classfile::{AttributeInfo, BootstrapMethod, ClassFileError, ClassInfo, ConstantPoolReference, MethodHandleKind, Opcode};
 
 #[test]
 fn test_hello() {
@@ -197,4 +197,108 @@ fn test_class_info_validation_rejects_invalid_names_descriptors_and_code_layout(
 #[test]
 fn test_array_clone_method_owner_is_a_valid_class_constant() {
     assert!(ClassInfo::parse(include_bytes!("../../test-data/Array.class")).is_ok());
+}
+
+fn bootstrap_methods(class: &ClassInfo) -> &[BootstrapMethod] {
+    class
+        .attributes
+        .iter()
+        .find_map(|attribute| match attribute {
+            AttributeInfo::BootstrapMethods(x) => Some(x.as_slice()),
+            _ => None,
+        })
+        .expect("class has no BootstrapMethods attribute")
+}
+
+// Every field is asserted, and that is the point: the attribute is nested counted arrays
+// (JVMS 4.7.23), so reading any one width at the wrong offset shifts everything after it into
+// garbage. An assertion on the entry count alone survives that; these do not.
+#[test]
+fn test_bootstrap_methods_parses_into_structure() {
+    let class = ClassInfo::parse(include_bytes!("../../test-data/indy/StringConcat.class")).unwrap();
+
+    let methods = bootstrap_methods(&class);
+
+    assert_eq!(methods.len(), 1);
+    assert_eq!(methods[0].method.kind, MethodHandleKind::InvokeStatic);
+    assert_eq!(methods[0].method.member.class, "java/lang/invoke/StringConcatFactory".to_string().into());
+    assert_eq!(methods[0].method.member.name, "makeConcatWithConstants".to_string().into());
+    assert_eq!(
+        methods[0].method.member.descriptor,
+        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"
+            .to_string()
+            .into()
+    );
+
+    // The single static argument is the concat recipe. Asserting what the index *points at*,
+    // not just its value, is what makes a shifted read visible here rather than three files away.
+    assert_eq!(methods[0].arguments.len(), 1);
+    assert!(matches!(
+        ConstantPoolReference::from_constant_pool(&class.constant_pool, methods[0].arguments[0]),
+        Some(ConstantPoolReference::String(x)) if x == "a\u{1}".to_string().into()
+    ));
+}
+
+// The arguments stay indices on purpose (see `BootstrapMethod::arguments`), and a lambda is the
+// case that makes the difference load-bearing: its bootstrap arguments are MethodType and
+// MethodHandle constants. If a later round resolves arguments eagerly, this class stops parsing
+// and a lambda goes from "unsupported" back to "corrupt file".
+#[test]
+fn test_bootstrap_method_arguments_of_a_lambda_survive_as_indices() {
+    let class = ClassInfo::parse(include_bytes!("../../test-data/indy/Lambda.class")).unwrap();
+
+    let methods = bootstrap_methods(&class);
+
+    assert_eq!(methods.len(), 1);
+    assert_eq!(methods[0].method.member.class, "java/lang/invoke/LambdaMetafactory".to_string().into());
+    assert_eq!(methods[0].method.member.name, "metafactory".to_string().into());
+    // samMethodType, implMethod, instantiatedMethodType — the first and last are the same entry
+    assert_eq!(methods[0].arguments.len(), 3);
+    assert_eq!(methods[0].arguments[0], methods[0].arguments[2]);
+    assert_ne!(methods[0].arguments[0], methods[0].arguments[1]);
+}
+
+// Two rules meet at the same byte, and they are owned by different code. `MethodHandleKind`
+// covers exactly reference kinds 1..=9, so anything outside that is a handle this parser cannot
+// describe. *Which* kind goes with *which* member reference (JVMS 4.4.8) is `validation`'s rule,
+// deliberately not duplicated here — this pins that it really is enforced there, so the
+// duplication stays unnecessary rather than merely absent.
+#[test]
+fn test_bootstrap_method_reference_kinds_outside_the_set_and_mispaired_kinds_are_both_rejected() {
+    let string_concat = include_bytes!("../../test-data/indy/StringConcat.class");
+    let class = ClassInfo::parse(string_concat).unwrap();
+    assert_eq!(bootstrap_methods(&class)[0].method.kind, MethodHandleKind::InvokeStatic);
+
+    // constant pool entry #34 is `MethodHandle 6:#35`, where #35 is a Methodref
+    let handle = string_concat
+        .windows(4)
+        .position(|window| window == [15, 6, 0, 35])
+        .expect("test-data/indy/StringConcat.class layout changed; the MethodHandle entry moved");
+
+    let parse_with_kind = |reference_kind: u8| {
+        let mut mutated = string_concat.to_vec();
+        mutated[handle + 1] = reference_kind;
+        ClassInfo::parse(&mutated).err()
+    };
+
+    // outside 1..=9 — rejected by `MethodHandleKind`
+    for reference_kind in [0u8, 10, 255] {
+        assert_eq!(
+            parse_with_kind(reference_kind),
+            Some(ClassFileError::InvalidFormat),
+            "reference kind {reference_kind} must not parse"
+        );
+    }
+
+    // inside the set but mispaired with a Methodref target — rejected by `validation`
+    for reference_kind in [1u8, 4, 9] {
+        assert_eq!(
+            parse_with_kind(reference_kind),
+            Some(ClassFileError::InvalidFormat),
+            "reference kind {reference_kind} does not pair with a Methodref"
+        );
+    }
+
+    // and a kind that does pair with a Methodref still parses, so the above is not vacuous
+    assert_eq!(parse_with_kind(5), None);
 }

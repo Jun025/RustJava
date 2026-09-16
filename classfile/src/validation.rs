@@ -114,8 +114,13 @@ fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bo
             .get(descriptor_index)
             .and_then(ConstantPoolItem::utf8)
             .is_some_and(|descriptor| is_method_descriptor(&descriptor)),
-        // The bootstrap method index is not checked here: `BootstrapMethods` is still an
-        // unparsed byte blob, so there is nothing to bound it against.
+        // The bootstrap method index is still not checked here, but the reason changed:
+        // `BootstrapMethods` is no longer a byte blob (see `AttributeInfo::BootstrapMethods`), so
+        // there now *is* something to bound it against — it just is not reachable from this
+        // function, which only gets the constant pool. Doing it needs `validate_class` to cross
+        // the pool with the class attributes, and that is a behaviour change (files that parse
+        // today would start being rejected), so it is left to the round that wants it. Tracked
+        // alongside the tag-vs-major-version check in `STATE.md` ④-2.
         ConstantPoolItem::Dynamic { name_and_type_index, .. } | ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => {
             constant_pool.get(name_and_type_index).and_then(ConstantPoolItem::name_and_type).is_some()
         }
