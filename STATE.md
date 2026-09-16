@@ -100,6 +100,70 @@
   `tests/test_class_format.rs` 꼬리와 원장 2파일을 «다시» 충돌시킨다** — 그쪽은 base 당기기가 한 번 더 필요하다.
   ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#44·#46)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
   파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
+- [rustjava-cp-tags-16-17-execution-fixtures] ★★**javac 은 태그 17(condy)을 «낸다» — 직전 회차의 「못 찾았다」를 뒤집었다.** `.rs` 런타임 **0줄**.
+  채택 제안 `2026-09-16-cp-tags-15-18-parse#p2`(worklog json `adoptedProposals` 에 기록).
+  ★★**직전 회차 기록 정정이 아니라 «승계»다** — 그 회차는 「javac 가 그 둘을 내는 평범한 코드를 **찾지 못했다**」고
+  ★**정직하게** 적었다(거짓 단언이 아니다). ⇒ ★**이 회차가 찾았다.**
+  ★**태그 17 의 산출 조건(이 원장에 처음 박는다)**: ★**`switch` 의 case 라벨이 «정규화된 enum 상수»이고 선택자가 enum 이 아닐 때**(JEP 441).
+  javac 이 각 상수를 `java/lang/Enum$EnumDesc` 로 기술하며 `ConstantBootstraps.invoke` condy 를 낸다.
+  ★**평범한 enum switch 도, sealed 인터페이스 pattern switch 도 «0» 이다**(둘 다 실측 — 그 둘만 보고 「javac 은 condy 를 안 낸다」로 닫으면 틀린다).
+  ★★**희소도를 쟀다**: OpenJDK 26 자체 jmods **27,902 클래스 중 태그 17 보유 = «1»**(`jdk/jpackage/internal/PackageBuilder` · 3항목) ↔
+  태그 16 은 **1,747 클래스 · 8,434 항목**. ⇒ ★**16 은 흔하고 17 은 «사실상 없다»** — 그래서 실물 픽스처가 값을 한다.
+  ★**픽스처 `test-data/indy/ConstantKinds.class`**(javac `--release 21` · 소스 동봉) — ★**한 파일이 네 태그를 전부** 낸다
+  (MethodHandle **7** · MethodType **1** · Dynamic **3** · InvokeDynamic **3**). ★참조 JVM 이 **끝까지 실행**한다(`h3` · rc=0).
+  ★★**제안이 예측한 실패 형태가 «실재한다» — 그것을 측정한 것이 이 회차의 값이다.**
+  제안 문면: 「오프셋 실수가 **단위 테스트를 통과하고 실물에서만** 드러나는 형태가 이 파서에서 가능하다」.
+  ⇒ ★**가능하다**: `parse_all` 의 `is_double_entry` 에 `Dynamic`(또는 `MethodType`)을 더하면
+  ★**격리 단위 테스트 `parses_method_handle_family_tags` 는 «ok»**(그것은 `parse_tagged` 를 직접 부른다)인데
+  ★**실물 풀은 전 항목이 밀려 `ClassFormatError` 로 죽는다.**
+  ★★**양방향 — 출력으로**: ⒜**픽스처 테스트 제거 + 같은 개악** → 전 스위트 ★**558 passed / 0 failed(green)** = ★**그 축을 무는 것이 아무것도 없었다**
+  ⒝**픽스처 복원 + 같은 개악** → ★**2층 red**(`constant_pool` 단위 + end-to-end `ClassFormatError: Invalid class file`) · 복원 green.
+  ★**단언마다 무는 축**: 「실행이 미지원이라 말한다」 = end-to-end · ★**「픽스처가 그 태그를 «실제로 갖고 있다»」 = `constant_pool.rs` 단위 계수**
+  (이것이 없으면 javac 판올림으로 condy 가 사라져도 end-to-end 는 **초록인 채 아무것도 단언하지 않는다**).
+  ★**태그 15 는 이 회차 몫이 아니다**(형제 `rustjava-ldc-tags-15-16-17-still-malformed`) — 겹치는 단언을 쓰지 않았다.
+  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **7줄 전건 rc=0** ·
+  ★`verifier.rs`·`interpreter.rs` **무접촉** · ★`BootstrapMethods` 파싱 **0줄**(형제 L 티켓 몫).
+  ★★**[-fix 회차] 게이트③가 `blocked`(code-file-conflict)로 섰다 — 형제 #45 가 «같은 파일 꼬리»에 착지했다.**
+  `git merge origin/main`(★리베이스·force-push 0)으로 base 를 당기고 **3파일을 합집합**으로 해소했다:
+  `tests/test_class_format.rs`(★**두 테스트를 둘 다** — 픽스처가 `ConstantKinds.class` ↔ `Lambda.class` 로 달라 간섭 0) ·
+  `REPORT.md`·`STATE.md`(먼저 착지한 #45 기록을 앞에, 내 기록을 뒤에). ★**제품 로직 변경 0** ·
+  ★`constant_pool.rs` 는 **자동 병합**(충돌 아님). ⇒ ★**해소가 만든 «절 구분 빈 줄» 1곳을 REPORT.md 에서 복원했다** —
+  `=======` 마커가 그 구분 역할을 하고 있었다(이 repo 에서 두 번째다).
+  ★★**게이트③ 착지 — PR #46 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  ★★**이 리니지의 게이트③은 «두 번»이다** — 1회차(`…-execution-fixtures-merge`)가 `blocked`(2-c⒝ `code-file-conflict` ·
+  `tests/test_class_format.rs`)로 서서 **머지 0 · 동봉 0** 이었고, 그것이 `-fix`(base 당기기)를 낳았다. ★**그 거부가 옳았다.**
+  게이트② **-fix 회차 approve**(반려 0) · 핀 `25bb796f` **불이동**(동봉 전 실측 — 로컬·원격·PR head **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN**(3건 전건 완료·성공) · 자식 PR **0건**(head 브랜치 `feat/rustjava-cp-tags-16-17-fixtures` 기준) ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 10파일을 `origin/main...HEAD` 로 냈고, `.github/workflows/` 6개 전건
+  deploy·publish·release·wrangler·pages 어휘 **0건**).
+  ★★**착지 순서 — 형제 #44 가 «다시» 겹친다**(`ldc` 태그 15·16·17 · `-fix`+`-fix2` 얹힘). ★**#44 도 이 착지 직전까지
+  `origin/main = 20a6aa21` 을 base 로 합집합했으므로**, 이 커밋이 들어가면 그쪽 `tests/test_class_format.rs` 꼬리와
+  원장 2파일이 **다시 충돌한다** ⇒ ★**#44 는 base 당기기 회차가 한 번 더 필요하다.**
+  ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#46·#44)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
+  파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
+  ★★**[-fix2 회차] 위 「게이트③ 착지」 블록은 «예측»이었고 방향이 반대로 실현됐다 — 정정한다.**
+  그 블록은 「#46 이 먼저 착지해 #44 를 깬다」로 적었는데, 실제로는 ★**#44 가 먼저 착지(`dc03593`)해 #46 을 깼다**
+  (게이트③ 2회차가 `blocked`/`code-file-conflict`). ★**틀린 것은 «구조»가 아니라 «순서»다** —
+  「같은 파일 꼬리를 무는 두 PR 중 나중 쪽이 base 당기기를 치른다」는 그대로 참이었다.
+  ⇒ 이 회차가 그 값을 치렀다: `git merge origin/main`(★리베이스·force-push 0)으로 base(`dc03593`)를 당기고 **3파일 합집합**.
+  ⒜`tests/test_class_format.rs` — ★**#44 의 4테스트를 «전부» 받아들였다**(`…method_handle_family…` ·
+  `…illegal_constant…` · `…below_its_minimum_class_file_version…` · `…no_bootstrap_methods_attribute…`) **+ 내 `…every_method_handle_family_tag…` + #45 의 `…lambda_class_reports…`** ⇒ 파일 test fn **7 → 11**.
+  ⒝`REPORT.md`·`STATE.md` — 착지분을 앞에, 내 기록을 뒤에. ★**`STATE.md` 는 «양쪽이 같은 꼬리 1줄»을 공유해**
+  그 줄이 충돌면 «밖»으로 접혔다(머지 템플릿 2-c⒟ 가 경고한 바로 그 형상) ⇒ ★**꼬리를 양쪽에 복제**해 두 블록을 각자 닫았다.
+  ★**제품 로직 변경 0** · `classfile/src/constant_pool.rs` 는 **자동 병합**(충돌 아님).
+  ★★**그리고 이번엔 «다시 겹칠» 형제가 없다** — RustJava 열린 PR 은 **#46 하나뿐**이다(실측).
+  ★★**게이트③ 착지 — PR #46 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  ★★★**이 리니지의 게이트③은 «세 번»이었다 — 그 사료를 남긴다**:
+  1차 `…-execution-fixtures-merge` **blocked**(`code-file-conflict` · **#45 착지**) → `-fix` base 당기기 ·
+  2차 `…-fix-merge` **blocked ×2**(`ci-pending` 자동 재배차 2회 → green → 그 뒤 `code-file-conflict` · **#44 착지**) → `-fix2` base 당기기 ·
+  3차(이 회차) **착지**. ★**1·2차의 「해소를 시도하지 않고 blocked」가 둘 다 옳았다** — 게이트③이 게이트②를 삼키지 않게 한 값이다.
+  ★★**근인은 «워커 판단»이 아니라 «배열»이었다**(총괄이 원장에 자인): 같은 파일을 무는 형제 PR 둘의 게이트③를 **동시에** 열면
+  ★**먼저 착지하는 쪽이 나머지를 «반드시» 깬다 — 확률이 아니라 구조**다. ⇒ 규율 = 「같은 파일을 무는 형제 PR 의 게이트③는 **직렬**로 연다」.
+  게이트② **`-fix2` 회차 approve** · 핀 `02628dbe` **불이동**(동봉 전 실측 — 로컬·원격·PR head·리뷰 줄2 **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN** · `mergeable` **MERGEABLE/CLEAN** · 자식 PR **0건** ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 10파일 · `.github/workflows/` 6개 전건 deploy 어휘 0건).
+  ★**착지 후 검증**: `tests/test_class_format.rs` 테스트 **11개**(기존 5 + 이 회차 1 + #44 의 4 + #45 의 1) ·
+  `cargo test --all` **568** 에서 줄지 않음(= `562(origin/main) + 2(#46) + 4(#44)` 가산 검증값).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).

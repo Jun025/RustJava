@@ -444,6 +444,31 @@ mod tests {
         }
     }
 
+    // The tests above feed each tag one at a time, straight into `parse_tagged`. That fixes each
+    // operand width but never exercises `parse_all`'s slot accounting, so a mistake there — the
+    // classic one is treating an entry as the two-slot kind that only Long and Double are — is
+    // invisible to them and only shows up on a pool read end to end.
+    //
+    // This is also the only place that asserts the fixture still *contains* tags 16 and 17. It is
+    // real javac output, and a compiler that stopped emitting them would otherwise turn the
+    // end-to-end test in tests/test_class_format.rs into a green assertion about nothing.
+    #[test]
+    fn real_javac_output_carries_the_method_handle_family_through_a_whole_pool() {
+        let class = crate::ClassInfo::parse(include_bytes!("../../test-data/indy/ConstantKinds.class")).unwrap();
+
+        let count = |predicate: fn(&ConstantPoolItem) -> bool| class.constant_pool.values().filter(|x| predicate(x)).count();
+
+        assert_eq!(count(|x| matches!(x, ConstantPoolItem::MethodType { .. })), 1);
+        assert_eq!(count(|x| matches!(x, ConstantPoolItem::Dynamic { .. })), 3);
+        assert_eq!(count(|x| matches!(x, ConstantPoolItem::MethodHandle { .. })), 7);
+        assert_eq!(count(|x| matches!(x, ConstantPoolItem::InvokeDynamic { .. })), 3);
+
+        // A shifted read does not usually lose entries, it misattributes them — so pin that the
+        // last entry is still reachable and is what javac put there.
+        let last = class.constant_pool.keys().next_back().copied().unwrap();
+        assert!(matches!(class.constant_pool.get(&last), Some(ConstantPoolItem::Utf8(_))));
+    }
+
     #[test]
     fn long_must_fit_in_two_constant_pool_slots() {
         assert!(ConstantPoolItem::parse_all(&[0x00, 0x02, 0x05, 0, 0, 0, 0, 0, 0, 0, 0]).is_err());

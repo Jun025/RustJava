@@ -65,6 +65,29 @@
   ⑵M5 가 드러난 층 어긋남 표기 ⑶서드파티 bytecode 생성기 corpus 측정(저우선).
   상세 = `docs/worklog/2026-09-16-ldc-tags-15-16-17.md`.
 
+## [2026-09-16] javac 은 태그 17(condy)을 «낸다» — 실물 픽스처로 잠갔다 (rustjava-cp-tags-16-17-execution-fixtures)
+- 무엇을: 상수풀 태그 **16(MethodType)·17(Dynamic)** 을 **실제 javac 산출물**에서 읽는 픽스처
+  `test-data/indy/ConstantKinds.class`(소스 동봉)를 커밋하고, **두 층**(실행 · 상수풀 계수)에서 잠갔다. ★런타임 `.rs` **0줄**.
+- 왜: 채택 제안 `2026-09-16-cp-tags-15-18-parse#p2`. 그 회차는 네 태그를 더했는데 **실물로 검증된 것은 15·18 뿐**이었고,
+  16·17 은 «손으로 만든 바이트»로만 시험됐다. 제안의 논거는 「**오프셋 실수가 단위 테스트를 통과하고 실물에서만 드러난다**」였다.
+- 사용자 영향: **없다**(제안 자신이 「없음 — 회귀 방어의 깊이만 는다」고 적었다). 바뀐 것은 **그 방어의 깊이**다.
+- ★★**직전 회차의 「못 찾았다」를 «뒤집었다» — 그러나 그것은 «정정»이 아니라 «승계»다.**
+  그 회차는 「javac 가 그 둘을 내는 평범한 코드를 **찾지 못했다**」고 정직하게 적었다(거짓 단언이 아니다). ⇒ **이 회차가 찾았다.**
+- ★**태그 17 의 산출 조건**: ★**`switch` case 라벨이 «정규화된 enum 상수»이고 선택자가 enum 이 아닐 때**(JEP 441) —
+  javac 이 각 상수를 `Enum$EnumDesc` 로 기술하며 `ConstantBootstraps.invoke` condy 를 낸다.
+  ★**평범한 enum switch·sealed pattern switch 는 둘 다 «0»** 이다(실측 — 그 둘만 보면 「javac 은 condy 를 안 낸다」로 오답한다).
+- ★★**희소도를 쟀다**: OpenJDK 26 자체 jmods **27,902 클래스 중 태그 17 보유 «1»**(`jdk/jpackage/…/PackageBuilder`) ↔
+  태그 16 은 **1,747 클래스 · 8,434 항목**. ⇒ **16 은 흔하고 17 은 사실상 없다** — 그래서 실물 픽스처가 값을 한다.
+- ★★**제안이 예측한 실패 형태가 «실재한다» — 측정했다**: `parse_all` 의 `is_double_entry` 에 `Dynamic`(또는 `MethodType`)을 더하면
+  ★**격리 단위 테스트는 «ok»**(그것은 `parse_tagged` 를 직접 부른다) ↔ ★**실물 풀은 전 항목이 밀려 `ClassFormatError`** 로 죽는다.
+- ★★**양방향(출력으로)**: ⒜픽스처 테스트 제거 + 같은 개악 → 전 스위트 ★**558 passed / 0 failed(green)** ⇒ **그 축을 무는 것이 아무것도 없었다**
+  ⒝픽스처 복원 + 같은 개악 → ★**2층 red** · 복원 green.
+- 검증: `cargo test --all` **558 → 560 / 0 / 1**(신규 2 · 감소 0) · DoD 7줄 rc=0 ·
+  ★`verifier.rs`·`interpreter.rs` **무접촉** · `BootstrapMethods` 파싱 **0줄**(형제 L 티켓 몫) · 태그 15 축 **무접촉**(형제 회차 몫).
+- 후속 추천: ⑴JDK 판올림 시 `ConstantKinds` 재컴파일 여부 판정(condy 산출 조건은 preview 가 아니라 정식이라 안정적이나 «재지 않았다»)
+  ⑵`parse_all` 의 슬롯 회계를 단위 테스트가 직접 덮게 할지 판정 ⑶서드파티 생성기 corpus 미측정(형제 회차와 같은 한계).
+  상세 = `docs/worklog/2026-09-16-cp-tags-16-17-execution-fixtures.md`.
+
 ## [2026-09-16] javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 (rustjava-cp-tags-15-18-parse-and-honest-diagnosis)
 - 무엇을: 상수풀 태그 **15·16·17·18** 과 ★**opcode `0xba`** 를 파싱하게 해서, javac 9+ 산출물의 진단을
   `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`
