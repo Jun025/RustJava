@@ -108,6 +108,99 @@ async fn test_missing_class_still_raises_no_class_def_found_error() {
     );
 }
 
+// Synthetic, by necessity: javac has no source construct that makes `ldc` name a
+// CONSTANT_MethodHandle/MethodType/Dynamic entry — measured over the 27,902 javac-compiled
+// classes of the JDK's own jmods (1.27M ldc sites, zero hits) and over targeted sources at
+// --release 21/25/26; see docs/worklog/2026-09-16-ldc-tags-15-16-17.md. So these fixtures are
+// assembled byte by byte (test-data/src/ldc/make_ldc_fixtures.py). OpenJDK 26 loads and runs
+// all four without complaint, which is the whole point: files this runtime cannot *do*, not
+// files it cannot *read*.
+#[tokio::test]
+async fn test_ldc_of_method_handle_family_reports_unsupported_feature_not_malformed() {
+    for (name, feature) in [
+        ("LdcMethodHandle", "ldc of a method handle"),
+        ("LdcMethodType", "ldc of a method type"),
+        ("LdcDynamic", "ldc of a dynamically-computed constant"),
+        ("Ldc2WDynamic", "ldc of a dynamically-computed constant"),
+    ] {
+        let path = PathBuf::from(format!("test-data/ldc/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains(feature),
+            "{name}: expected the unsupported-feature diagnosis, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: a file OpenJDK loads is not malformed, got: {err}"
+        );
+    }
+}
+
+// The other direction. Widening `ldc` must not have widened it to "anything the constant pool
+// holds": a wide `ldc2_w` still takes only wide constants, and a constant pool tag that cannot
+// appear in a class file at all is still a corrupt file. Without this, replacing the ldc arms
+// with a constant `Ok` would pass the test above.
+#[tokio::test]
+async fn test_ldc_of_an_illegal_constant_is_still_malformed() {
+    for name in ["Ldc2WMethodType", "LdcTag13", "LdcTag14", "LdcUnknownTag", "LdcDynamicOldMajor"] {
+        let path = PathBuf::from(format!("test-data/ldc/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "{name}: expected ClassFormatError, got: {err}"
+        );
+    }
+}
+
+// The version rule is a four-row table (JVMS 4.4), and the reviewer's case was one row. The
+// others are reached by lowering the version of a class that already carries the tag, which is
+// this file's existing idiom and costs no new binary — including one real javac class, so the
+// rule is not only exercised against fixtures we assembled ourselves.
+#[tokio::test]
+async fn test_a_constant_tag_below_its_minimum_class_file_version_is_malformed() {
+    // (fixture, tags it carries, a major version that predates them)
+    for (source, tags, major) in [
+        ("test-data/ldc/LdcMethodHandle.class", "15", 50u16),
+        ("test-data/ldc/LdcMethodType.class", "16", 50),
+        ("test-data/indy/StringConcat.class", "15 and 18", 50),
+        ("test-data/ldc/LdcDynamic.class", "17", 54),
+    ] {
+        let mut bytes = fs::read(source).unwrap();
+        bytes[6..8].copy_from_slice(&major.to_be_bytes());
+        // a distinct name per case: one shared name would let a stale file pass for the next
+        let stem = source.rsplit('/').next().unwrap().trim_end_matches(".class");
+        let (dir, path) = fixture(&format!("OldMajor{stem}.class"), &bytes);
+
+        let err = run_class(&path, &[dir.as_path()], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "tag {tags} at major {major}: expected ClassFormatError, got: {err}"
+        );
+    }
+}
+
+// The band this round leaves open, asserted as what it is rather than left unmentioned. Bounding
+// `bootstrap_method_attr_index` needs the `BootstrapMethods` attribute parsed, which belongs to
+// the invokedynamic-execution work, so today we still answer "unsupported" for a file OpenJDK 26
+// rejects outright ("Missing BootstrapMethods attribute"). When that round lands this assertion
+// flips — and it should fail loudly then rather than quietly keep passing.
+#[tokio::test]
+async fn test_a_dynamic_constant_with_no_bootstrap_methods_attribute_is_still_only_unsupported() {
+    let path = Path::new("test-data/ldc/LdcDynamicNoBSM.class");
+
+    let err = run_class(path, &[Path::new("./test-data/ldc/")], &[]).await.unwrap_err().to_string();
+
+    assert!(
+        err.contains("java.lang.UnsupportedOperationException"),
+        "known gap: expected the unsupported-feature diagnosis, got: {err}"
+    );
+}
+
 // The same sentence, for the harder shape. A lambda's `BootstrapMethods` entry carries
 // MethodType and MethodHandle constants as static arguments, which nothing here can resolve —
 // so parsing the attribute is exactly where a lambda class could start being called corrupt

@@ -379,12 +379,18 @@ impl Opcode {
             0x94 => success(Opcode::Lcmp).parse(data),
             0x09 => success(Opcode::Lconst(0)).parse(data),
             0x0a => success(Opcode::Lconst(1)).parse(data),
+            // JVMS 6.5 (ldc/ldc_w): int, float, String, Class, MethodType, MethodHandle, or a
+            // dynamically-computed constant. The last three are parsed but not resolvable — the
+            // verifier rejects them as unsupported, which is a different sentence from "corrupt".
             0x12 => map_res(u8, |x| match ConstantPoolReference::from_constant_pool(constant_pool, x as u16) {
                 Some(
                     reference @ (ConstantPoolReference::Integer(_)
                     | ConstantPoolReference::Float(_)
                     | ConstantPoolReference::String(_)
-                    | ConstantPoolReference::Class(_)),
+                    | ConstantPoolReference::Class(_)
+                    | ConstantPoolReference::MethodHandle
+                    | ConstantPoolReference::MethodType
+                    | ConstantPoolReference::Dynamic),
                 ) => Ok(Opcode::Ldc(reference)),
                 _ => Err(()),
             })
@@ -394,13 +400,20 @@ impl Opcode {
                     reference @ (ConstantPoolReference::Integer(_)
                     | ConstantPoolReference::Float(_)
                     | ConstantPoolReference::String(_)
-                    | ConstantPoolReference::Class(_)),
+                    | ConstantPoolReference::Class(_)
+                    | ConstantPoolReference::MethodHandle
+                    | ConstantPoolReference::MethodType
+                    | ConstantPoolReference::Dynamic),
                 ) => Ok(Opcode::LdcW(reference)),
                 _ => Err(()),
             })
             .parse(data),
+            // JVMS 6.5 (ldc2_w) takes only the wide kinds: long, double, or a dynamically-computed
+            // constant of one of those types. A MethodHandle/MethodType here is a corrupt file.
             0x14 => map_res(be_u16, |x| match ConstantPoolReference::from_constant_pool(constant_pool, x) {
-                Some(reference @ (ConstantPoolReference::Long(_) | ConstantPoolReference::Double(_))) => Ok(Opcode::Ldc2W(reference)),
+                Some(reference @ (ConstantPoolReference::Long(_) | ConstantPoolReference::Double(_) | ConstantPoolReference::Dynamic)) => {
+                    Ok(Opcode::Ldc2W(reference))
+                }
                 _ => Err(()),
             })
             .parse(data),
