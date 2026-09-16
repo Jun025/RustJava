@@ -93,14 +93,19 @@ def dynamic_without_bootstrap_methods(cp, _attributes):
     return cp.add(u1(17) + u2(0) + u2(cp.name_and_type("x", "Ljava/lang/Object;")))
 
 
-def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index=0):
+def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index=0, static_arguments=()):
     """A real condy, so the file is structurally complete: JVMS 4.7.23 requires the
     BootstrapMethods attribute that a Dynamic entry indexes into.
 
     `attr_index` is the `bootstrap_method_attr_index` written into the entry. It defaults to 0,
     the one entry this builder emits; passing anything else produces the out-of-range case, which
     is the other half of the same rule and cannot be built any other way — the table is written
-    here, so only here can the index be made to overshoot it."""
+    here, so only here can the index be made to overshoot it.
+
+    `static_arguments` are the `bootstrap_arguments` pool indices. The default is empty, which is
+    what `ConstantBootstraps.nullConstant` takes; passing an index that is not in the pool is the
+    only way to build the unbounded-argument case, for the same reason — the table is written
+    here."""
 
     def build(cp, attributes):
         bootstrap = cp.add(
@@ -110,7 +115,8 @@ def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index
         )
         entry = cp.add(u1(17) + u2(attr_index) + u2(cp.name_and_type(name, descriptor)))
 
-        body = u2(1) + u2(bootstrap) + u2(0)  # one bootstrap method, no static arguments
+        arguments = b"".join(u2(x) for x in static_arguments)
+        body = u2(1) + u2(bootstrap) + u2(len(static_arguments)) + arguments  # one bootstrap method
         attributes.append(u2(cp.utf8("BootstrapMethods")) + u4(len(body)) + body)
         return entry
 
@@ -119,6 +125,9 @@ def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index
 
 LOOKUP = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;"
 null_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP)
+# Same file, but the bootstrap method's one static argument names a pool index that is not there.
+# 0xFFFF is past the end of any pool this generator builds, and index 0 is never a valid entry.
+bad_argument_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP, static_arguments=(0xFFFF,))
 # Same file, but the entry names bootstrap method 1 of a table holding only method 0.
 past_end_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP, attr_index=1)
 # Long.MAX_VALUE, i.e. `J`-typed, which JVMS 6.5 puts on the `ldc2_w` side of the split.
@@ -160,6 +169,9 @@ FIXTURES = {
     # name a real bootstrap method. It can fail by the attribute being absent, or by the index
     # overshooting a table that is present — OpenJDK 26 rejects both.
     "LdcDynamicNoBSM.class": ("LdcDynamicNoBSM", dynamic_without_bootstrap_methods, ldc, 1, 55),
+    # Negative control 5 (JVMS 4.7.23): a bootstrap method's static arguments are pool indices too,
+    # and an index naming nothing is a broken file rather than a feature we have not implemented.
+    "LdcDynamicBSMArgPastEnd.class": ("LdcDynamicBSMArgPastEnd", bad_argument_constant, ldc, 1, 55),
     "LdcDynamicBSMIndexPastEnd.class": ("LdcDynamicBSMIndexPastEnd", past_end_constant, ldc, 1, 55),
 }
 
