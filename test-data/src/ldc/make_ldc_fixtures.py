@@ -89,15 +89,18 @@ def unknown_tag(tag):
 def dynamic_without_bootstrap_methods(cp, _attributes):
     """A Dynamic entry naming bootstrap method 0 of an attribute that is not there. JVMS 4.7.23
     requires the attribute whenever the pool holds a Dynamic/InvokeDynamic entry, so this is a
-    corrupt file — OpenJDK 26 says `ClassFormatError: Missing BootstrapMethods attribute`.
-    Bounding the index needs the attribute parsed, which is a different round's work, so this
-    fixture pins what we answer *today* rather than what we should."""
+    corrupt file — OpenJDK 26 says `ClassFormatError: Missing BootstrapMethods attribute`."""
     return cp.add(u1(17) + u2(0) + u2(cp.name_and_type("x", "Ljava/lang/Object;")))
 
 
-def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor):
+def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor, attr_index=0):
     """A real condy, so the file is structurally complete: JVMS 4.7.23 requires the
-    BootstrapMethods attribute that a Dynamic entry indexes into."""
+    BootstrapMethods attribute that a Dynamic entry indexes into.
+
+    `attr_index` is the `bootstrap_method_attr_index` written into the entry. It defaults to 0,
+    the one entry this builder emits; passing anything else produces the out-of-range case, which
+    is the other half of the same rule and cannot be built any other way — the table is written
+    here, so only here can the index be made to overshoot it."""
 
     def build(cp, attributes):
         bootstrap = cp.add(
@@ -105,7 +108,7 @@ def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor):
             + u1(6)
             + u2(cp.methodref(cp.klass("java/lang/invoke/ConstantBootstraps"), cp.name_and_type(bootstrap_method, bootstrap_descriptor)))
         )
-        entry = cp.add(u1(17) + u2(0) + u2(cp.name_and_type(name, descriptor)))
+        entry = cp.add(u1(17) + u2(attr_index) + u2(cp.name_and_type(name, descriptor)))
 
         body = u2(1) + u2(bootstrap) + u2(0)  # one bootstrap method, no static arguments
         attributes.append(u2(cp.utf8("BootstrapMethods")) + u4(len(body)) + body)
@@ -116,6 +119,8 @@ def dynamic(name, descriptor, bootstrap_method, bootstrap_descriptor):
 
 LOOKUP = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;"
 null_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP)
+# Same file, but the entry names bootstrap method 1 of a table holding only method 0.
+past_end_constant = dynamic("x", "Ljava/lang/Object;", "nullConstant", LOOKUP, attr_index=1)
 # Long.MAX_VALUE, i.e. `J`-typed, which JVMS 6.5 puts on the `ldc2_w` side of the split.
 long_constant = dynamic("MAX_VALUE", "J", "getStaticFinal", LOOKUP)
 
@@ -151,9 +156,11 @@ FIXTURES = {
     # (JVMS 4.4 ties tag 17 to major >= 55). OpenJDK 26: "Class file version does not support
     # constant tag 17". Widening `ldc` removed the accidental backstop that used to catch this.
     "LdcDynamicOldMajor.class": ("LdcDynamicOldMajor", null_constant, ldc, 1, 52),
-    # The band this round does NOT close: a Dynamic entry whose bootstrap method does not
-    # exist. Bounding that index needs BootstrapMethods parsed, which is another round's work.
+    # Negative control 4, two halves of one rule (JVMS 4.4.10 / 4.7.23): a Dynamic entry has to
+    # name a real bootstrap method. It can fail by the attribute being absent, or by the index
+    # overshooting a table that is present — OpenJDK 26 rejects both.
     "LdcDynamicNoBSM.class": ("LdcDynamicNoBSM", dynamic_without_bootstrap_methods, ldc, 1, 55),
+    "LdcDynamicBSMIndexPastEnd.class": ("LdcDynamicBSMIndexPastEnd", past_end_constant, ldc, 1, 55),
 }
 
 if __name__ == "__main__":

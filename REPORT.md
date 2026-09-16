@@ -23,6 +23,25 @@
   ★**옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 0건**(전수 확인) · `hello_class()`·`fixture()` 헬퍼는 여전히 4·5회 쓰인다(고아 0).
 - 후속 추천: ⑴같은 자를 다른 «조용한» 단언에 대 보기(개악 내성 감사) ⑵`ClassFileError` 에 원인 변종을 되살릴지 판정(상류 과제).
   상세 = `docs/worklog/2026-09-16-cp-tag-passthrough-detectable.md`.
+## [2026-09-16] `bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 (rustjava-bound-bootstrap-method-attr-index)
+- 무엇을: `Dynamic`/`InvokeDynamic` 상수의 `bootstrap_method_attr_index` 가 **BootstrapMethods 테이블 안**을 가리키는지
+  검사한다(JVMS 4.4.10·4.7.23). ★**두 축이 한 술어다** — 속성이 «아예 없는» 경우는 «항목 0개짜리 표»여서 어떤 인덱스도 못 가리킨다.
+- 왜: 채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0`(서로 다른 회차가 **독립으로** 같은 결함에 닿았다).
+- 사용자 영향: ★**진단이 바뀐다** — 그 두 형상이 `UnsupportedOperationException`(「이 런타임이 아직 못 한다」) →
+  ★`ClassFormatError`(「이 파일이 깨졌다」). ★**어떤 JVM 도 못 읽는 파일을 «미지원»이라 부르던 것을 그만둔다.**
+- ★★**의도된 «거부 확대»다 — 하류에는 회귀로 보인다.** 지금까지 조용히 「미지원」으로 넘어가던 클래스 파일이 **거부**된다.
+  ★그 전환이 이 회차의 산출물 자체이고, OpenJDK 26 은 같은 파일에 `ClassFormatError: Missing BootstrapMethods attribute` 를 낸다.
+- ★**검증 지점을 하나로 모았다**(계약 1): `validate_class` 안의 `bootstrap_method_indices_resolve` **한 함수** ·
+  ★**새 에러 타입 0**(기존 `ClassFileError::InvalidFormat` 에 접었다 — 호출부 변종 증가 0).
+  ★`validate_constant_pool` 이 아니라 `validate_class` 인 이유 = **풀과 클래스 속성을 «둘 다» 쥔 유일한 자리**이고,
+  그 교차가 이 검사가 여태 없던 이유였다(그 자리의 낡은 주석이 그렇게 적고 「원하는 회차에 맡긴다」고 했다 — 이 회차가 그것이다).
+- ★**개악 3종**: 상수 `true` → 새 테스트 red(축 ⒜⒞) · 상수 `false` → **24 테스트** red(축 ⒝⒟) ·
+  ★내부 술어만 `false` → **8 테스트** red이고 `test_hello` 류는 **green** ⇒ ★**⒝ 와 ⒟ 가 갈린다**(`false` 하나로는 둘이 겹친다).
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개를 «치환»했다) · DoD 7줄 rc=0 ·
+  ★픽스처 재생성 **멱등**(기존 10개 바이트 불변 · 신규 1개만 추가).
+- 후속 추천: ⑴`BootstrapMethods` 중복 선언 거부(JVMS 4.7.23 은 «최대 1개» — 지금은 첫 것만 본다)
+  ⑵`MethodHandleKind` 의 위치 재판정(형제 티켓) ⑶`StringConcatFactory` 콜사이트 링크(L · 별 티켓).
+  상세 = `docs/worklog/2026-09-16-bound-bootstrap-method-attr-index.md`.
 
 ## [2026-09-16] `BootstrapMethods` 를 «구조»로 읽는다 — 콜사이트 링크는 0줄 (rustjava-invokedynamic-bootstrapmethods-and-methodhandle)
 - 무엇을: `AttributeInfo::BootstrapMethods` 를 **`Vec<u8>` → `Vec<BootstrapMethod>`**(JVMS 4.7.23)로 파싱하고,
