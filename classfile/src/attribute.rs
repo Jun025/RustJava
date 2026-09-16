@@ -16,6 +16,16 @@ use crate::{ConstantPoolReference, FieldMethodref, constant_pool::ConstantPoolIt
 /// not say `invokestatic` to anyone reading the call site code. Which kinds pair with which
 /// member reference is *not* checked here — `validation::validate_constant_pool` owns that rule,
 /// and duplicating it would give the two places a chance to disagree.
+///
+/// Lives in the attribute file, not in `constant_pool.rs`, and that was re-decided rather than
+/// inherited. `constant_pool.rs` has already settled how much of a CONSTANT_MethodHandle a
+/// constant pool reader gets: `ConstantPoolReference::MethodHandle`, carrying no operand, because
+/// nothing resolves one. This deeper decode exists for exactly one reader — the `BootstrapMethods`
+/// attribute below, which is the only thing that calls `MethodHandleRef::resolve`. Moving it over
+/// would stand two different decodings of the same constant side by side in one file and read as a
+/// contradiction. Re-open the question when something outside this attribute decodes a method
+/// handle — the `ldc` path is the likely one, and today it answers `UnsupportedFeature` instead
+/// (`jvm_bytecode::verifier`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MethodHandleKind {
     GetField,

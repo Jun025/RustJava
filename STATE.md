@@ -4,6 +4,28 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-methodhandlekind-placement-revisit-after-pr44] ★★**`MethodHandleKind` 위치 «재결정» — 답은 「그대로 둔다」.**
+  채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p2`(worklog json `adoptedProposals` 기록).
+  ★**낱말이 `Re-decide` 다 — 「아니오」도 정당한 답이고, 이 회차의 답이 그것이다.** 코드 변경은
+  **판단과 재개 조건을 doc 주석에 적은 것뿐**(타입·`impl`·`lib.rs` re-export **무접촉** · 공개 API 변화 **0** · 동작 변경 **0**).
+  ★★**제안이 적은 배치 사유 «둘» 중 «하나»만 만료됐다** — 그 구분이 이 회차의 전부다:
+  ⑵「형제 회차가 `constant_pool.rs` 를 **열어 두고** 있었다」 = ★**만료**(PR **#44** `MERGED` ·
+  `2026-09-16T02:13:39Z` · 머지커밋 `dc03593` · ★**그 PR 파일 목록에 `classfile/src/constant_pool.rs` 가 실재**) ·
+  ⑴「**유일한 소비자**가 `BootstrapMethods` 속성이다」 = ★**여전히 참**(전수: `MethodHandleRef::resolve` 호출부
+  **`attribute.rs:116` 단 1곳**·`resolve` 는 `pub` 도 아니다 · `MethodHandleKind` 읽기는 **전건 `bootstrap.method.kind` 경유**).
+  ★★**제안이 스스로 건 조건이 이미 충족됐고 그 조건이 «declined» 를 가리킨다** — 「⒝(콜사이트 링크) 착지 «후»에 정하라」의
+  그 ⒝ 가 **오늘 PR #48 로 착지**했는데 ★**그 소비자마저 `bootstrap.method.kind` 로 읽는다**(`jvm-bytecode/src/string_concat.rs:81`).
+  ★★**그러나 그 escape 절에 기대지 않았다 — 코드에서 «더 나은» 이유를 찾았다**: `constant_pool.rs` 는 **이미**
+  CONSTANT_MethodHandle 의 해독 깊이를 정해 뒀다 — `ConstantPoolReference::MethodHandle` = ★**피연산자 0**
+  (그 자리 주석: 「resolve 하려면 없는 기구가 필요하고 유일한 소비자 verifier 는 "not implemented" 로 바꾼다」).
+  ⇒ ★**옮기면 «같은 상수의 두 해독»이 한 파일에 나란히 서서 «모순»으로 읽힌다** — 이동이 없애려던 오해를 **키운다**.
+  ★**잃는 것을 숨기지 않는다**: 「속성 파일이 상수 풀 타입을 갖는다」는 오해는 **남는다**. 이동이 아니라 **주석**으로 갚았고,
+  ★**재개 조건**을 함께 박았다 — 「이 속성 «밖»의 무언가가 method handle 을 해독하면 다시 열어라」(유력 후보 `ldc` ·
+  지금은 `jvm-bytecode/src/verifier.rs:32` 가 `UnsupportedFeature` 로 답한다).
+  ★**불변 증명**(이동 0이라 개악 대조가 아니라 «불변»이 그 자리를 진다): `cargo test --all` **570 / 0 failed / 1 ignored**
+  = ★직전 형상 `b3a20ae` 와 **동일** · `numstat` **10+/0−**(★**삽입 의도**이므로 「치환인데 삭제행 0이면 의심하라」 **비해당** — 선언해 둔다) ·
+  ★「옮기기 전 위치 참조 0」 축은 **해당 없음**(이동이 없다) · DoD **7줄 전건 rc=0**.
+  ★**후속 제안 카드 0** — 「X 가 생기면 다시 열어라」를 cockpit 열린 추천으로 띄우면 **집행 불가한 카드가 영구히 남는다.**
 - [rustjava-indy-fixture-jdk-pin-and-slot-accounting-test] ★★**시험 위생 둘 — indy 픽스처 JDK 핀을 «검사»로 박고, 슬롯 회계를 파서 단위에서 직접 물게 했다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 전건 기록):
   `2026-09-16-cp-tags-16-17-execution-fixtures#p0` · `#p1`.
