@@ -26,6 +26,15 @@
   ★**낡은 주석 전수 정정**(`ledger-grep -rn 'BootstrapMethods'` 로 세어 닫았다): `constant_pool.rs`(「still kept as raw bytes」) ·
   `validation.rs`(「unparsed byte blob 이라 경계 지을 것이 없다」 → 이제 **있는데 이 함수가 못 본다**로 사유 교체). ★사료 구절(완료 절·REPORT 후속 추천)은 그대로 뒀다.
   ★`cargo test --all` **558 → 562 / 0 failed / 1 ignored**(신규 4 · ★감소 0) · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #45 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **1회차 approve**(반려 0) · 핀 `992dfa53` **불이동**(동봉 전 실측 — PR head 와 바이트 일치) ·
+  `ci-presence` **rc=0 CI_GREEN**(6셀 전건 pass) · 자식 PR **0건**(head 브랜치 `feat/rustjava-bootstrap-methods` 기준) ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 13파일을 `origin/main...HEAD` 로 냈고, `.github/workflows/` 6개 중
+  deploy·publish·release·wrangler 어휘 **0건** — coverage/CI/schedule/dependabot 뿐이다).
+  ★★**착지 순서 — 형제 PR 이 «둘» 남는다**: **#44**(`ldc` 태그 15·16·17 · `-fix` 승계 얹힘) · **#46**(태그 16·17 실행 픽스처).
+  ★**코드 충돌은 없을 것이다**(#44-fix 는 `validation.rs` 본문 · #46 은 `constant_pool.rs` 단위 테스트 · 이 회차는 `attribute.rs`) —
+  ★**그러나 원장 2파일(`STATE.md`·`REPORT.md`) 최상단은 이 착지 뒤에 겹친다** ⇒ ★**그 둘이 합집합 해소를 진다.**
+  ※`validation.rs` 는 이 회차(주석 1블록)와 #44-fix(`validate_class` 본문+새 함수)가 **다른 헌크**라 자동 병합될 것으로 보이나, 해소 주체는 뒤에 착지하는 쪽이다.
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
