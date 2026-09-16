@@ -1,0 +1,47 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-bound-bootstrap-method-attr-index",
+  "summary": "Bound bootstrap_method_attr_index against the BootstrapMethods table, and require that attribute when the pool needs it — one predicate, because an absent attribute is a zero-entry table.",
+  "changes": [
+    "classfile/src/validation.rs: new bootstrap_method_indices_resolve, called from validate_class; replaces the note that deferred this check",
+    "test-data/src/ldc/make_ldc_fixtures.py: dynamic() takes attr_index; emits LdcDynamicBSMIndexPastEnd",
+    "test-data/ldc/LdcDynamicBSMIndexPastEnd.class: new fixture (index 1 into a one-entry table)",
+    "tests/test_class_format.rs: the deferred assertion flipped — both failure shapes now assert ClassFormatError"
+  ],
+  "verification": [
+    "cargo test --all: 568 passed / 0 failed / 1 ignored (count unchanged: a test was replaced, not added)",
+    "mutation whole-predicate=true -> 1 test red (axes a, c)",
+    "mutation whole-predicate=false -> 24 tests red (axes b and d, conflated)",
+    "mutation inner-predicate=false -> 8 tests red, all dynamic-carrying; test_hello/test_switch stay green (axis b alone)",
+    "fixture regeneration idempotent: 10 existing .class files byte-identical, 1 added",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "BootstrapMethods is still not rejected when declared more than once; JVMS 4.7.23 allows at most one, and find_map takes the first. Out of scope for this round, filed as a proposal below."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bootstrap-methods-and-method-handle#p1",
+    "2026-09-16-ldc-tags-15-16-17#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Reject a class declaring BootstrapMethods more than once",
+      "plainSummary": "A class file is only allowed one BootstrapMethods attribute. We currently read the first one and ignore any others.",
+      "userBenefit": "A hand-built or corrupted class file that carries two bootstrap tables is reported as broken instead of being silently read using whichever table came first.",
+      "why": "JVMS 4.7.23 says at most one BootstrapMethods attribute may appear in the attributes table of a ClassFile. bootstrap_method_indices_resolve uses find_map, which takes the first and never looks for a second, so the index is bounded against a table that may not be the only one.",
+      "tradeoff": "Another parse-time rejection of files that currently load, in a shape no compiler emits — so the benefit is narrow and the risk of surprising a real user is correspondingly small. It also needs a fixture the generator cannot currently build, since the attribute list is assembled per fixture.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs, test-data/src/ldc/make_ldc_fixtures.py"
+    },
+    {
+      "title": "Bound the static-argument indices of each bootstrap method",
+      "plainSummary": "Each bootstrap method carries a list of constant pool indices for its arguments. Nothing checks those point at real pool entries.",
+      "userBenefit": "The same honesty this round bought for the bootstrap method index, applied to its arguments: a file naming an argument that does not exist is broken, not unsupported.",
+      "why": "BootstrapMethod.arguments is deliberately kept as raw u16 indices (see the doc comment in attribute.rs) because resolving them would turn every lambda-carrying class from unsupported back into corrupt. Bounding them is not resolving them: checking that an index is present in the pool costs nothing semantic and closes the same class of lie.",
+      "tradeoff": "Must not drift into resolution. The attribute.rs comment explains at length why resolving is a regression; a bounds check has to stay a bounds check, and a future reader may not see the difference.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs"
+    }
+  ]
+}

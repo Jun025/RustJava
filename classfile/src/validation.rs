@@ -15,6 +15,7 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
         || class.interfaces.iter().any(|name| !is_internal_class_name(name))
         || !validate_constant_pool(&class.constant_pool)
         || !constant_pool_tags_fit_the_class_file_version(class)
+        || !bootstrap_method_indices_resolve(class)
     {
         return Err(ClassFileError::InvalidFormat);
     }
@@ -97,6 +98,42 @@ fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
     })
 }
 
+/// JVMS 4.4.10 and 4.7.23: `bootstrap_method_attr_index` is an index into the `bootstrap_methods`
+/// array of the `BootstrapMethods` attribute, and that attribute must be present whenever the pool
+/// holds a Dynamic or InvokeDynamic entry. Both halves are the same sentence — the index has to
+/// name a real entry — so they are one predicate rather than two: an absent attribute is a table of
+/// no entries, which no index can name.
+///
+/// This lives in `validate_class` rather than `validate_constant_pool` because it is the only place
+/// that holds both the pool and the class attributes. That crossing is the whole reason the check
+/// did not exist before; the note it replaces said as much and left it to the round that wanted it.
+///
+/// What this rejects was already being rejected by every real JVM — OpenJDK 26 answers
+/// `ClassFormatError: Missing BootstrapMethods attribute` for the absent case. What we answered
+/// was `UnsupportedOperationException`, i.e. *this runtime cannot do that yet*, about a file no
+/// runtime can read. That sentence is what the lineage exists to make true, so narrowing it here
+/// is the point rather than a side effect.
+fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
+    let bootstrap_method_count = class.attributes.iter().find_map(|attribute| match attribute {
+        AttributeInfo::BootstrapMethods(methods) => Some(methods.len()),
+        _ => None,
+    });
+
+    class.constant_pool.values().all(|item| {
+        let index = match item {
+            ConstantPoolItem::Dynamic {
+                bootstrap_method_attr_index, ..
+            }
+            | ConstantPoolItem::InvokeDynamic {
+                bootstrap_method_attr_index, ..
+            } => *bootstrap_method_attr_index,
+            _ => return true,
+        };
+
+        bootstrap_method_count.is_some_and(|count| (index as usize) < count)
+    })
+}
+
 fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {
     constant_pool.values().all(|item| match item {
         ConstantPoolItem::Class { name_index } => constant_pool
@@ -142,13 +179,9 @@ fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bo
             .get(descriptor_index)
             .and_then(ConstantPoolItem::utf8)
             .is_some_and(|descriptor| is_method_descriptor(&descriptor)),
-        // The bootstrap method index is still not checked here, but the reason changed:
-        // `BootstrapMethods` is no longer a byte blob (see `AttributeInfo::BootstrapMethods`), so
-        // there now *is* something to bound it against — it just is not reachable from this
-        // function, which only gets the constant pool. Doing it needs `validate_class` to cross
-        // the pool with the class attributes, and that is a behaviour change (files that parse
-        // today would start being rejected), so it is left to the round that wants it. Tracked
-        // alongside the tag-vs-major-version check in `STATE.md` ④-2.
+        // The bootstrap method index is bounded by `bootstrap_method_indices_resolve`, not here:
+        // it needs the class attributes, and this function only gets the pool. What is left for
+        // this arm is the half that the pool alone can answer.
         ConstantPoolItem::Dynamic { name_and_type_index, .. } | ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => {
             constant_pool.get(name_and_type_index).and_then(ConstantPoolItem::name_and_type).is_some()
         }

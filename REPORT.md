@@ -1,5 +1,28 @@
 # REPORT
 
+## [2026-09-16] 「알 수 없는 태그를 거부한다」는 테스트가 ★**그것을 지키지 않았다** — 지키게 했다 (rustjava-cp-tag-switch-passthrough-mutation-detectable)
+- 무엇을: `test_unsupported_constant_pool_tag_raises_class_format_error` 가 ★**상수풀 태그 switch 의 pass-through 가지를
+  개악해도 green** 이었다. 그 가지가 «끝에서 끝까지» 관측되도록 **픽스처를 바꿔** 이제 **red** 가 되게 했다.
+  ★**제품 코드 변경 0**(개악은 실증용 임시 · 전부 되돌렸다 · `git status` 로 확인).
+- 왜: 채택 제안 `2026-09-16-ldc-tags-15-16-17#p1`. ★**「소비되지 않는 경보는 장식이다」의 테스트판** — 상수 pass 로 바꿔도
+  통과하는 단언은 «없는 것과 같다».
+- 사용자 영향: **없다**(테스트만 바뀐다). 바뀐 것은 ★**그 단언이 실제로 무엇을 잠그는가**다.
+- ★★**근인 — 「통과한 진짜 이유」를 판별 실험으로 좁혔다.** 옛 테스트는 `Hello.class` **상수풀 1번**의 태그 바이트를 덮었는데,
+  그 슬롯은 ★**코드가 `invokespecial` 로 «참조»하는 Methodref** 다 ⇒ 덮는 순간 파일이 **여러 경로로 동시에** 깨진다.
+  `ClassFileError` 는 모든 파싱 실패를 ★**「Invalid class file」로 평탄화**하므로(그 파일이 스스로 적어 둔 사실)
+  단언이 ★**「태그가 미지라 거부」와 「클래스가 무너져 거부」를 구별하지 못한다.**
+  ★**바이트 폭 어긋남(desync)은 근인이 «아니었다»** — 4바이트를 정확히 소비하는 개악으로도 **여전히 green** 이었다(판별 실험 B).
+- ★**처방은 단언 조이기가 «아니다»**(문면이 평탄해 불가능하다) — ★**입력이 그 가지에 «유일한 결함»으로 도달하게** 했다:
+  `test-data/cp/UnreferencedTag{13,14,19}.class`(신규 생성기 `test-data/src/cp/make_cp_fixtures.py`) =
+  ★**참조되지 않고 · 페이로드가 없고 · 상수풀 «맨 끝»**인 엔트리 하나만 미지 태그다.
+  ★그 세 성질이 «전부» 값한다 — 맨 끝 + 페이로드 0이라야 pass-through 개악이 **정상 동작하는 클래스**를 만들고, 그래야 red 가 된다.
+- ★★**전/후 — 같은 개악, 다른 결과**: ⑴**전**: pass-through 개악 → 그 테스트 **ok**(스위트에서 무는 것은 `classfile` 단위 테스트 1건뿐)
+  ⑵**후**: 같은 개악 → ★**red**(실패 문면이 `must be rejected: ""` = 클래스가 «성공적으로 실행»됐다는 뜻).
+  ⑶**다른 가지 개악**(태그 16 거부) → **6 테스트 red** ⇒ 스위트가 여전히 switch 전체를 지킨다.
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개 치환) · DoD 7줄 rc=0 · 픽스처 재생성 멱등 ·
+  ★**옛 픽스처(`BadTag*`)를 쓰던 다른 테스트 0건**(전수 확인) · `hello_class()`·`fixture()` 헬퍼는 여전히 4·5회 쓰인다(고아 0).
+- 후속 추천: ⑴같은 자를 다른 «조용한» 단언에 대 보기(개악 내성 감사) ⑵`ClassFileError` 에 원인 변종을 되살릴지 판정(상류 과제).
+  상세 = `docs/worklog/2026-09-16-cp-tag-passthrough-detectable.md`.
 ## [2026-09-16] javac 의 문자열 `+` 가 «실제로 돈다» — 호출 지점 «하나»만 이었다 (rustjava-link-stringconcatfactory-makeconcatwithconstants)
 - 무엇을: `invokedynamic` 중 ★**`StringConcatFactory.makeConcatWithConstants` 한 부트스트랩만** 링크한다.
   javac 9+ 가 문자열 `+` 를 내리는 그 형태다. ★**나머지 부트스트랩은 전부 종전대로 거부**된다.
@@ -20,6 +43,25 @@
 - ★**잃는 것**: 위험의 «종류»가 「안 돈다」 → ★**「잘못 돌 수 있다」**로 바뀐다. 그래서 판정을 **출력값 대조**로 잡았다.
 - 후속 추천: ⑴`makeConcat`(인자 없는 형제 팩토리) ⑵부트스트랩 정적 인자가 String 이 아닌 레시피 형태 ⑶`LambdaMetafactory`(L).
   상세 = `docs/worklog/2026-09-16-link-stringconcatfactory.md`.
+## [2026-09-16] `bootstrap_method_attr_index` 가 «실재하는» 부트스트랩 메서드를 가리키게 했다 (rustjava-bound-bootstrap-method-attr-index)
+- 무엇을: `Dynamic`/`InvokeDynamic` 상수의 `bootstrap_method_attr_index` 가 **BootstrapMethods 테이블 안**을 가리키는지
+  검사한다(JVMS 4.4.10·4.7.23). ★**두 축이 한 술어다** — 속성이 «아예 없는» 경우는 «항목 0개짜리 표»여서 어떤 인덱스도 못 가리킨다.
+- 왜: 채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p1` · `2026-09-16-ldc-tags-15-16-17#p0`(서로 다른 회차가 **독립으로** 같은 결함에 닿았다).
+- 사용자 영향: ★**진단이 바뀐다** — 그 두 형상이 `UnsupportedOperationException`(「이 런타임이 아직 못 한다」) →
+  ★`ClassFormatError`(「이 파일이 깨졌다」). ★**어떤 JVM 도 못 읽는 파일을 «미지원»이라 부르던 것을 그만둔다.**
+- ★★**의도된 «거부 확대»다 — 하류에는 회귀로 보인다.** 지금까지 조용히 「미지원」으로 넘어가던 클래스 파일이 **거부**된다.
+  ★그 전환이 이 회차의 산출물 자체이고, OpenJDK 26 은 같은 파일에 `ClassFormatError: Missing BootstrapMethods attribute` 를 낸다.
+- ★**검증 지점을 하나로 모았다**(계약 1): `validate_class` 안의 `bootstrap_method_indices_resolve` **한 함수** ·
+  ★**새 에러 타입 0**(기존 `ClassFileError::InvalidFormat` 에 접었다 — 호출부 변종 증가 0).
+  ★`validate_constant_pool` 이 아니라 `validate_class` 인 이유 = **풀과 클래스 속성을 «둘 다» 쥔 유일한 자리**이고,
+  그 교차가 이 검사가 여태 없던 이유였다(그 자리의 낡은 주석이 그렇게 적고 「원하는 회차에 맡긴다」고 했다 — 이 회차가 그것이다).
+- ★**개악 3종**: 상수 `true` → 새 테스트 red(축 ⒜⒞) · 상수 `false` → **24 테스트** red(축 ⒝⒟) ·
+  ★내부 술어만 `false` → **8 테스트** red이고 `test_hello` 류는 **green** ⇒ ★**⒝ 와 ⒟ 가 갈린다**(`false` 하나로는 둘이 겹친다).
+- 검증: `cargo test --all` **568 / 0 failed / 1 ignored**(수 불변 — 테스트 1개를 «치환»했다) · DoD 7줄 rc=0 ·
+  ★픽스처 재생성 **멱등**(기존 10개 바이트 불변 · 신규 1개만 추가).
+- 후속 추천: ⑴`BootstrapMethods` 중복 선언 거부(JVMS 4.7.23 은 «최대 1개» — 지금은 첫 것만 본다)
+  ⑵`MethodHandleKind` 의 위치 재판정(형제 티켓) ⑶`StringConcatFactory` 콜사이트 링크(L · 별 티켓).
+  상세 = `docs/worklog/2026-09-16-bound-bootstrap-method-attr-index.md`.
 
 ## [2026-09-16] `BootstrapMethods` 를 «구조»로 읽는다 — 콜사이트 링크는 0줄 (rustjava-invokedynamic-bootstrapmethods-and-methodhandle)
 - 무엇을: `AttributeInfo::BootstrapMethods` 를 **`Vec<u8>` → `Vec<BootstrapMethod>`**(JVMS 4.7.23)로 파싱하고,
