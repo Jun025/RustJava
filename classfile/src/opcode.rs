@@ -1,4 +1,4 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use nom::{
     IResult, Parser,
@@ -10,6 +10,21 @@ use nom::{
 };
 
 use crate::constant_pool::{ConstantPoolItem, ConstantPoolReference};
+
+/// A `StringConcatFactory.makeConcatWithConstants` call site, resolved against the class's
+/// `BootstrapMethods` attribute.
+///
+/// JVMS-wise this is the shape javac 9+ lowers `+` on strings to. The recipe (the first static
+/// bootstrap argument) is a template: `\u{1}` takes the next argument off the stack, `\u{2}` takes
+/// the next entry from `constants` — which is the remaining static arguments — and every other
+/// character is literal text.
+#[derive(Clone, Debug)]
+pub struct StringConcatCallSite {
+    pub recipe: Arc<String>,
+    /// The call site descriptor, i.e. what the stack holds. The return type is always `String`.
+    pub descriptor: Arc<String>,
+    pub constants: Vec<Arc<String>>,
+}
 
 #[derive(Clone, Debug)]
 pub enum Opcode {
@@ -106,6 +121,18 @@ pub enum Opcode {
     Ineg,
     Instanceof(ConstantPoolReference),
     Invokedynamic(ConstantPoolReference),
+    /// An `invokedynamic` already resolved to `StringConcatFactory.makeConcatWithConstants`.
+    ///
+    /// **The parser never produces this.** `parse_opcode` only ever emits `Invokedynamic`, because
+    /// deciding which bootstrap method a call site names needs the class's `BootstrapMethods`
+    /// attribute and this module only has the constant pool. `jvm-bytecode` rewrites the opcode at
+    /// class definition time, where both are in hand. The variant lives here rather than there
+    /// because `Opcode` is the vocabulary the interpreter reads, and the interpreter is handed a
+    /// `Code` attribute and nothing else — so a resolved call site has to travel inside the code.
+    ///
+    /// `classfile/src/opcode.rs` tests lock the half of that sentence this crate owns: no input
+    /// makes the parser emit it.
+    InvokedynamicStringConcat(StringConcatCallSite),
     Invokeinterface(ConstantPoolReference, u8, u8),
     Invokespecial(ConstantPoolReference),
     Invokestatic(ConstantPoolReference),
