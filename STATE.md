@@ -152,6 +152,18 @@
   그 줄이 충돌면 «밖»으로 접혔다(머지 템플릿 2-c⒟ 가 경고한 바로 그 형상) ⇒ ★**꼬리를 양쪽에 복제**해 두 블록을 각자 닫았다.
   ★**제품 로직 변경 0** · `classfile/src/constant_pool.rs` 는 **자동 병합**(충돌 아님).
   ★★**그리고 이번엔 «다시 겹칠» 형제가 없다** — RustJava 열린 PR 은 **#46 하나뿐**이다(실측).
+  ★★**게이트③ 착지 — PR #46 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  ★★★**이 리니지의 게이트③은 «세 번»이었다 — 그 사료를 남긴다**:
+  1차 `…-execution-fixtures-merge` **blocked**(`code-file-conflict` · **#45 착지**) → `-fix` base 당기기 ·
+  2차 `…-fix-merge` **blocked ×2**(`ci-pending` 자동 재배차 2회 → green → 그 뒤 `code-file-conflict` · **#44 착지**) → `-fix2` base 당기기 ·
+  3차(이 회차) **착지**. ★**1·2차의 「해소를 시도하지 않고 blocked」가 둘 다 옳았다** — 게이트③이 게이트②를 삼키지 않게 한 값이다.
+  ★★**근인은 «워커 판단»이 아니라 «배열»이었다**(총괄이 원장에 자인): 같은 파일을 무는 형제 PR 둘의 게이트③를 **동시에** 열면
+  ★**먼저 착지하는 쪽이 나머지를 «반드시» 깬다 — 확률이 아니라 구조**다. ⇒ 규율 = 「같은 파일을 무는 형제 PR 의 게이트③는 **직렬**로 연다」.
+  게이트② **`-fix2` 회차 approve** · 핀 `02628dbe` **불이동**(동봉 전 실측 — 로컬·원격·PR head·리뷰 줄2 **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN** · `mergeable` **MERGEABLE/CLEAN** · 자식 PR **0건** ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 10파일 · `.github/workflows/` 6개 전건 deploy 어휘 0건).
+  ★**착지 후 검증**: `tests/test_class_format.rs` 테스트 **11개**(기존 5 + 이 회차 1 + #44 의 4 + #45 의 1) ·
+  `cargo test --all` **568** 에서 줄지 않음(= `562(origin/main) + 2(#46) + 4(#44)` 가산 검증값).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
