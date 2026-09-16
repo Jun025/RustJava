@@ -35,6 +35,71 @@
   ★**코드 충돌은 없을 것이다**(#44-fix 는 `validation.rs` 본문 · #46 은 `constant_pool.rs` 단위 테스트 · 이 회차는 `attribute.rs`) —
   ★**그러나 원장 2파일(`STATE.md`·`REPORT.md`) 최상단은 이 착지 뒤에 겹친다** ⇒ ★**그 둘이 합집합 해소를 진다.**
   ※`validation.rs` 는 이 회차(주석 1블록)와 #44-fix(`validate_class` 본문+새 함수)가 **다른 헌크**라 자동 병합될 것으로 보이나, 해소 주체는 뒤에 착지하는 쪽이다.
+- [rustjava-ldc-tags-15-16-17-still-malformed] ★★**`ldc` 태그 15·16·17 도 «미지원»이라고 말한다 — ★④-2 를 닫았다.**
+  ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: ldc of a method handle`(/`method type`/`dynamically-computed constant`).
+  ★**직전 회차와 «같은 관용»을 썼다**(파싱 → verifier 거부) — 새 관용을 만들지 않았다(티켓 ①).
+  ★★**⓪ 판정이 «둘»로 갈렸다 — 이 회차의 핵심이다**: ⒜**재현됐다**(4종 전건 `Malformed`)
+  ⒝★**javac 은 그 형태를 «내지 않는다» — 「재현 불가」가 아니라 «측정된 부재»다.**
+  JDK 자체 jmods **27,902 클래스 · `ldc`/`ldc_w`/`ldc2_w` 1,252,714 자리 · ★0건**
+  (★**계측기를 대조군으로 검증**: 같은 corpus 에서 String 1,176,232 · Integer 23,292 · Long 20,006 … 를 되찾았고 디코드 드리프트 **0.28%**) ·
+  `--release 21/25/26+preview` 로 문자열연결·람다·메서드참조·레코드·sealed/enum/pattern switch 등 **14종** → 태그 15·16 은
+  ★**부트스트랩 «인자»로만** 등장하고 태그 17 은 **0** · 이 repo `test-data/` 127클래스 500자리 **0건**.
+  ⇒ ★★**픽스처는 «합성»이고 3곳(생성기·테스트·worklog)에 그렇게 적었다.** ★**「평범한 코드에서 나온다」로 적지 않았다.**
+  ★**못 잰 축도 적는다**: ASM·Kotlin 류 서드파티 jar corpus 는 이 머신에 **0개**(`$HOME`·`.m2`·`.gradle`·`.ivy2`·Cellar 전수) ⇒ **미측정**.
+  ★**그럼에도 고친 정당화는 «도달성»이 아니라 «인접성»이다** — 그 셋이 ④-1(`invokedynamic` 실행)이 필요로 할 **바로 그 상수들**이다.
+  ★★**참조 JVM 이 근거다**(`AGENTS.md` 허용 축 = observable behavior · OpenJDK 소스 **미참조**):
+  OpenJDK 26.0.1 이 양성 픽스처 **4종을 전부 로드·실행**한다 ⇒ ★**「못 읽는 파일」이 아니라 「못 하는 파일」**임이 선다.
+  ★★**그 참조 JVM 이 내 픽스처를 «두 번» 반려했고 그것이 부수 산출물이다** — 태그 17 은 **major ≥ 55** 필요 ·
+  `Dynamic` 은 **`BootstrapMethods` 속성 필수**(JVMS 4.7.23). ★**우리 `validation.rs` 는 «둘 다» 검사하지 않는다**(④-2 에 남겼다).
+  ★**대가(②) 미지불을 «음성 대조군»으로 보였다**: `ldc2_w` 에 MethodType(JVMS 6.5 위반) · `ldc` 대상이 태그 19
+  ⇒ ★**둘 다 여전히 `ClassFormatError`**(참조 JVM 도 각각 VerifyError·ClassFormatError). ※우리는 파싱 시점에 끊어 phylum 이 다르다 — 단언하지 않았다.
+  ★개악 **5종**: M1 verifier 새 분기 제거 → ★`panicked at jvm-bytecode/src/interpreter.rs:1063`(**호스트 abort** = 직전 회차가 `todo!()` 에서 잰 것과 같은 형태) ·
+  M2 `from_constant_pool` 원복 · M3 opcode 분기 원복 · M4 `ldc2_w` 확장 → **전건 red** · 복원 green.
+  ★★**M5 는 «내 테스트가 못 잡았다» — 숨기지 않는다**: 상수풀 태그 switch 를 pass-through 로 만들어도
+  `tests/test_class_format.rs` 는 **전건 green**(내 `LdcUnknownTag` 는 «인접한 이유»로 통과한다). 실제로 무는 것은
+  ★**직전 회차의 `classfile::constant_pool::tests::tags_outside_the_accepted_set_are_still_rejected`** 다.
+  ⇒ ★**축은 잠겨 있으나 «내가 단언한 층»이 아니다.**
+  ★`cargo test --all` **558 → 560 / 0 failed / 1 ignored**(신규 2 · ★감소 0) · DoD **7줄**(= 파리티 검사기 기준 **명령 6개**) 전건 rc=0 ·
+  ★`verifier.rs` 의 `Invokedynamic` 줄 **무접촉** · ★`interpreter.rs` **무접촉**(`git diff --stat` 부재).
+  ★★**[-fix 회차 2026-09-16 · 게이트② `request-changes` 승계] ★이 회차가 «구멍을 만들었다» — 검수자가 만들어서 쟀고, 내가 재현했다.**
+  ★**넓힌 수용집합이 «우연한 백스톱»을 대체 없이 걷어냈다** ⇒ 참조 JVM «도» 못 읽는 파손 condy 2종이 「미지원」이라 답했다
+  (`LdcDynamicOldMajor` 태그 17 @ major 52 · `LdcDynamicNoBSM` BSM 부재). ★**before `ab872b7` 는 둘 다 `ClassFormatError`** 였다 — 내가 격리 worktree 로 재측.
+  ★★**그 재측에서 «계측 함정»을 하나 밟았다 — 적어 둔다**: 두 워크트리가 **`CARGO_TARGET_DIR` 를 공유**하면
+  cargo 가 **낡은 테스트 바이너리를 그대로 링크**해 ★**정반대 답**(before 가 「미지원」)을 준다. 깨끗한 타깃으로 다시 재서야 `ClassFormatError` 가 나왔다.
+  ⇒ ★**worktree 간 측정은 타깃 디렉터리를 «분리»하고, 빌드 결과에 그 판본의 문자열이 있는지 `strings` 로 확인하라.**
+  ★**고른 갈래 = ⒜ major 버전 축**(`validation.rs` +28줄 · **속성 파싱 0** · `attribute.rs` 무접촉 ⇒ PR #45 와 겹치지 않는다).
+  ★★**검수자의 1행을 «4행 표»로 넓혔다 — 추측이 아니라 실측이 시켰다**: 같은 결함이 **태그 15·16 에도** 있었다(major 50 실측).
+  ⇒ **15·16·18 ≥ 51 · 17 ≥ 55**(JVMS 4.4). ★**대가 0**: jmods **27,902 클래스 위반 0**
+  (★그 corpus 는 전부 major 69·70 이라 ≥51 행을 **시험하지 못한다** — 숨기지 않는다).
+  ★**양방향**: M1 새 검사 제거 → 「파손」 축 **2 red**(양성 4종은 ok) · ★**M2 「전부 파손으로 되돌리기」**(수용집합 원복) → ★**양성 4종 red**
+  ⇒ ★**되돌리기는 통과 방법이 아니다**(Acceptance ⑶) · 복원 green · `git diff --stat` 으로 `opcode.rs` 원복 확인.
+  ★**픽스처 +4**(`LdcTag13`·`LdcTag14`·`LdcDynamicOldMajor`·`LdcDynamicNoBSM`) — ★검수자가 「태그 13·14 로는 구성 불가」가
+  **거짓**임을 만들어서 보였다(같은 `_ => Err` 한 줄이 19 에도 적용되므로 자기 증거로 자기를 반증한다). ⇒ **Acceptance 문면을 글자 그대로 덮는다.**
+  ★**남는 대역 = 1**(`LdcDynamicNoBSM`) · ★**문안 정정 3건**(0.28% 는 «상한»이 아니라 «탐지 가능 오디코드 관측치» · DoD 수 통일 · jmod **68개**).
+  ★`cargo test --all` **560 → 562 / 0 / 1**(신규 2 · 감소 0).
+  ★★**[-fix2 회차] 게이트② approve 인데 ⓒ`CONFLICTING` 이라 게이트③로 못 갔다 — 형제 #45 가 «같은 파일 꼬리»에 착지했다.**
+  `git merge origin/main`(★리베이스·force-push 0)으로 base 를 당기고 **3파일을 해소**했다. ★**제품 로직 변경 0.**
+  ⒜`tests/test_class_format.rs` — ★**양쪽을 «둘 다»**(이 리니지 4테스트 + #45 의 `test_lambda_…` · 픽스처가 `test-data/ldc/*` ↔ `Lambda.class` 로 달라 간섭 0).
+  ⒝`REPORT.md`·`STATE.md` 완료 절 — #45 기록을 앞에, 내 기록을 뒤에(순수 합집합 · 삭제 0).
+  ⒞★**`STATE.md` 「다음」 절 항목 2 는 «합집합»이 답이 아니었다 — 숨기지 않는다.** 둘 다 남기면 **모순되는 「2.」가
+  두 개**(닫힘 ↔ 여전히 열림) 생긴다. ★**그런데 이건 «내 판단»이 아니라 «실측»으로 끝났다**: `origin/main` 쪽 그 블록은
+  ★**머지베이스 `ab872b7` 와 바이트 동일**이고(#45 의 기록이 «아니다» — 상속 원문이다) ★**approve 핀 `e9151acf` 가 이미
+  그 5줄을 지운 상태**다(`grep -cxF` 전건 0). ⇒ ★**머지가 «승인된 삭제»를 따랐을 뿐 새로 지운 줄이 0 이다.**
+  ★#45 가 «실제로 더한» 1줄(항목 1 꼬리 — `verifier.rs` 무접촉 실측)은 **보존**했다.
+  ★`classfile/src/validation.rs`·`constant_pool.rs` 는 **자동 병합**(충돌 아님 — #45 예측 적중).
+  ★★**게이트③ 착지 — PR #44 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  게이트② **`-fix2` 회차 approve** · 핀 `b5f268c0` **불이동**(동봉 전 실측 — 로컬·원격·PR head·리뷰 줄2 **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN**(3건 전건 완료·성공) · `mergeable` **MERGEABLE/CLEAN** · `merge-tree` 충돌 **0** ·
+  자식 PR **0건**(head 브랜치 `feat/rustjava-ldc-tags-15-16-17` 기준) ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 20파일을 `origin/main...HEAD` 로 냈고, `.github/workflows/` 6개 전건
+  deploy·publish·release·wrangler·pages 어휘 **0건**).
+  ★★**이 리니지의 `-merge` 는 «두 번 렌더»됐다** — 1차(`…-fix-merge`)는 낡은 head `e9151acf` 기준이라 `hold:` 가 걸려
+  **큐에 들어가지 못했고**(queue-lint 검사26), 2차(`…-fix2-merge`)가 새 head `b5f268c0` 로 렌더돼 이 착지를 냈다.
+  ★**그 `hold:` 가 값을 했다** — 낡은 렌더본이 그대로 돌았으면 게이트③이 `CONFLICTING` 으로 섰다.
+  ★★**형제 #46 이 «아직 열려 있다**(head `72db4923` · 게이트③ `blocked(ci-pending)` 재배차 중) ⇒ ★**이 착지가 그 PR 의
+  `tests/test_class_format.rs` 꼬리와 원장 2파일을 «다시» 충돌시킨다** — 그쪽은 base 당기기가 한 번 더 필요하다.
+  ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#44·#46)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
+  파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
 - [rustjava-cp-tags-16-17-execution-fixtures] ★★**javac 은 태그 17(condy)을 «낸다» — 직전 회차의 「못 찾았다」를 뒤집었다.** `.rs` 런타임 **0줄**.
   채택 제안 `2026-09-16-cp-tags-15-18-parse#p2`(worklog json `adoptedProposals` 에 기록).
   ★★**직전 회차 기록 정정이 아니라 «승계»다** — 그 회차는 「javac 가 그 둘을 내는 평범한 코드를 **찾지 못했다**」고
@@ -76,6 +141,17 @@
   원장 2파일이 **다시 충돌한다** ⇒ ★**#44 는 base 당기기 회차가 한 번 더 필요하다.**
   ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#46·#44)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
   파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
+  ★★**[-fix2 회차] 위 「게이트③ 착지」 블록은 «예측»이었고 방향이 반대로 실현됐다 — 정정한다.**
+  그 블록은 「#46 이 먼저 착지해 #44 를 깬다」로 적었는데, 실제로는 ★**#44 가 먼저 착지(`dc03593`)해 #46 을 깼다**
+  (게이트③ 2회차가 `blocked`/`code-file-conflict`). ★**틀린 것은 «구조»가 아니라 «순서»다** —
+  「같은 파일 꼬리를 무는 두 PR 중 나중 쪽이 base 당기기를 치른다」는 그대로 참이었다.
+  ⇒ 이 회차가 그 값을 치렀다: `git merge origin/main`(★리베이스·force-push 0)으로 base(`dc03593`)를 당기고 **3파일 합집합**.
+  ⒜`tests/test_class_format.rs` — ★**#44 의 4테스트를 «전부» 받아들였다**(`…method_handle_family…` ·
+  `…illegal_constant…` · `…below_its_minimum_class_file_version…` · `…no_bootstrap_methods_attribute…`) **+ 내 `…every_method_handle_family_tag…` + #45 의 `…lambda_class_reports…`** ⇒ 파일 test fn **7 → 11**.
+  ⒝`REPORT.md`·`STATE.md` — 착지분을 앞에, 내 기록을 뒤에. ★**`STATE.md` 는 «양쪽이 같은 꼬리 1줄»을 공유해**
+  그 줄이 충돌면 «밖»으로 접혔다(머지 템플릿 2-c⒟ 가 경고한 바로 그 형상) ⇒ ★**꼬리를 양쪽에 복제**해 두 블록을 각자 닫았다.
+  ★**제품 로직 변경 0** · `classfile/src/constant_pool.rs` 는 **자동 병합**(충돌 아님).
+  ★★**그리고 이번엔 «다시 겹칠» 형제가 없다** — RustJava 열린 PR 은 **#46 하나뿐**이다(실측).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
@@ -750,7 +826,9 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    그대로 `Malformed` 로 이어졌다(개악 M3 이 그 자리에서 증명). ⇒ ★**「한 티켓으로 묶는다」는 «세 칸»이었다**:
    ⒜상수풀 태그 ⒝opcode `0xba` ⒞실행. **⒜⒝ 착지 · ⒞ 미착수.**
    ★**`todo!()` 는 도달하지 않는다 — 측정했다**(verifier 분기만 빼면 `interpreter.rs:631` 호스트 abort · 넣으면 게스트 예외).
-   ⇒ ★**남은 것은 ④ 의 새 1번 항목**(아래).
+   ★★**[2026-09-16 갱신] 칸은 «셋»이 아니라 «넷»이었다** — `rustjava-ldc-tags-15-16-17-still-malformed` 가
+   ⒜′**`ldc` 계열이 그 상수를 «집을» 때**를 닫았다(⒜ 는 상수풀 파싱이고 이것은 opcode 수용이다 — `0xba` 와 같은 형태의 별 칸).
+   ⇒ ★**⒜⒜′⒝ 착지 · ⒞ 미착수.** ★남은 것은 ④ 의 1번 항목뿐이다.
    ---- 이하 사료 ----
    ★**「한 티켓으로 묶는 이유」가 2026-08-16 로 바뀌었다.** 구판 논거(「파서만 고치면 인터프리터가
    `todo!()` 로 죽는다」)는 ★**①머지 뒤 성립하지 않는다** — upstream 이 `jvm_rust/src/verifier.rs` 로
@@ -789,10 +867,29 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    (태그 회차 M4 · 이 회차 M4: 분기 제거 시 `panicked at jvm-bytecode/src/interpreter.rs:631` **호스트 abort** ↔ 현 트리는 게스트 예외).
    ⇒ ★**분기 제거와 인터프리터 구현은 «같은 커밋»이어야 한다.** 따로 하면 그 사이에 호스트 abort 가 산다.
    ★**이 회차는 그 분기를 «건드리지 않았다»**(`git diff --stat jvm-bytecode/src/verifier.rs` **빈 출력**).
-2. ★**`ldc` 로 실린 태그 15·16·17 은 «여전히 `Malformed`» 다**(2026-09-16 신규 관측 · S).
-   `ConstantPoolReference::from_constant_pool` 이 그 셋에 `None` 을 돌려주고 `0x12`/`0x13`/`0x14` 분기가
-   그 `None` 을 파싱 실패로 바꾼다. ★**이번 회차가 고친 것과 «같은 종류의 거짓말»이 한 자리 더 남아 있다.**
-   ★**먼저 «재라»** — javac 가 그 형태를 내는 평범한 코드를 확인하지 못했다. 재현 불가면 그 사실이 산출물이다.
+2. ★★**[닫힘 2026-09-16 · `rustjava-ldc-tags-15-16-17-still-malformed`] `ldc` 태그 15·16·17 — «미지원»이라고 말한다.**
+   진단이 `ClassFormatError: Invalid class file` → `UnsupportedOperationException: Unsupported class file feature: ldc of a …`.
+   ★**판정은 «둘»이다 — 하나로 접지 마라**: ⒜**재현됐다** ⒝★**javac 은 그 형태를 내지 않는다**(측정된 부재 —
+   JDK jmods **27,902 클래스 · `ldc` 1,252,714 자리 · 0건** · `--release 21/25/26+preview` 14종 소스 0건).
+   ⇒ ★**픽스처는 «합성»이다**(`test-data/src/ldc/make_ldc_fixtures.py` · 6종). ★**그렇게 적었다 — 「평범한 코드」로 적지 마라.**
+   ★**정당화는 «도달성»이 아니라 «인접성»이다**: 그 셋이 ④-1 이 필요로 할 바로 그 상수들이다.
+   ★**참조 JVM 이 양성 4종을 전부 로드·실행**한다 ⇒ 「못 읽는 파일」이 아님이 실측으로 선다.
+   ★★**[갱신 2026-09-16 · `-fix` · 게이트② request-changes] 위 「남긴 것 ⑴」은 «미검사»가 아니라 «오진»이었다 — 이 회차가 만든 구멍이다.**
+   ★**수용집합을 넓히면서 «우연한 백스톱»을 대체 없이 걷어냈다**: 전에는 `Dynamic → None → opcode 파싱 실패` 라서
+   **참조 JVM «도» 못 읽는 파손 condy** 가 `ClassFormatError` 로 끊겼는데, 넓힌 뒤 ★**「미지원」이라고 답한다**
+   ⇒ ★**이 리니지의 문장(「못 «읽는» 파일이 아니라 못 «하는» 파일이다」)이 정확히 반대로 뒤집힌 대역**이다.
+   ★**공정하게**: before 가 옳았던 것은 «검사해서»가 아니다 — 검사는 애초에 없었다. 그래도 **커버리지 삭제**다.
+   ★★**고른 갈래 = ⒜ «major 버전 축»**(`validation.rs` 의 `constant_pool_tags_fit_the_class_file_version` · **속성 파싱 0**).
+   ★**그리고 이 회차가 「검수자의 1행」을 «4행 표»로 넓혔다 — 실측이 시켰다**: 같은 결함이 태그 **15·16** 에도 있었다
+   (major 50 에서 `ldc of a method handle`/`method type` ↔ 참조 JVM 은 `Class file version does not support constant tag 15/16`).
+   ⇒ 표 = **15·16·18 ≥ 51 · 17 ≥ 55**(JVMS 4.4). ★**대가 «0»**: OpenJDK 26 jmods **27,902 클래스 중 위반 0**
+   (★단 그 corpus 는 전부 major 69·70 이라 ≥51 행을 «시험하지 못한다» — 숨기지 않는다) · 이 repo `test-data` 위반은 **이 회차가 만든 픽스처 1건뿐**.
+   ★★**남는 대역 = «1»**: **`LdcDynamicNoBSM`**(`bootstrap_method_attr_index` 가 가리키는 `BootstrapMethods` 가 **없다**) —
+   참조 JVM 은 `Missing BootstrapMethods attribute` 인데 우리는 **여전히 「미지원」**이다.
+   ★그 경계 검사는 **속성 파싱이 정말로 필요**하므로 ④-1(PR #45 리니지) 몫이다 — ★**픽스처와 테스트로 «현재 답»을 잠가 뒀으니
+   그 회차가 닫으면 그 단언이 «시끄럽게» 진다.**
+   ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: 상수풀 태그 pass-through 개악을
+   `test_class_format` 이 **못 잡는다**(무는 것은 `classfile` 단위 테스트) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
 3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
 
 ---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----
