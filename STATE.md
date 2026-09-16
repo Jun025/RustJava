@@ -64,6 +64,18 @@
   `REPORT.md`·`STATE.md`(먼저 착지한 #45 기록을 앞에, 내 기록을 뒤에). ★**제품 로직 변경 0** ·
   ★`constant_pool.rs` 는 **자동 병합**(충돌 아님). ⇒ ★**해소가 만든 «절 구분 빈 줄» 1곳을 REPORT.md 에서 복원했다** —
   `=======` 마커가 그 구분 역할을 하고 있었다(이 repo 에서 두 번째다).
+  ★★**게이트③ 착지 — PR #46 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 스쿼시는 부모 2개를 1개로 접어 계보를 지운다).
+  ★★**이 리니지의 게이트③은 «두 번»이다** — 1회차(`…-execution-fixtures-merge`)가 `blocked`(2-c⒝ `code-file-conflict` ·
+  `tests/test_class_format.rs`)로 서서 **머지 0 · 동봉 0** 이었고, 그것이 `-fix`(base 당기기)를 낳았다. ★**그 거부가 옳았다.**
+  게이트② **-fix 회차 approve**(반려 0) · 핀 `25bb796f` **불이동**(동봉 전 실측 — 로컬·원격·PR head **4값 일치**) ·
+  `ci-presence` **rc=0 CI_GREEN**(3건 전건 완료·성공) · 자식 PR **0건**(head 브랜치 `feat/rustjava-cp-tags-16-17-fixtures` 기준) ·
+  ★**배포 워크플로 0개 ⇒ 배포 0**(착지 diff 10파일을 `origin/main...HEAD` 로 냈고, `.github/workflows/` 6개 전건
+  deploy·publish·release·wrangler·pages 어휘 **0건**).
+  ★★**착지 순서 — 형제 #44 가 «다시» 겹친다**(`ldc` 태그 15·16·17 · `-fix`+`-fix2` 얹힘). ★**#44 도 이 착지 직전까지
+  `origin/main = 20a6aa21` 을 base 로 합집합했으므로**, 이 커밋이 들어가면 그쪽 `tests/test_class_format.rs` 꼬리와
+  원장 2파일이 **다시 충돌한다** ⇒ ★**#44 는 base 당기기 회차가 한 번 더 필요하다.**
+  ★★**구조적 근인은 남는다** — 네 PR(#43·#45·#46·#44)이 **같은 파일의 «꼬리»에 테스트를 덧붙인다**.
+  파일을 가르거나 테스트를 모듈로 쪼개지 않는 한 **다음 회차도 같은 자리에서 충돌한다**(고치지 않고 적는다).
 - [rustjava-cp-tags-15-18-parse-and-honest-diagnosis] ★★**javac 9+ 클래스가 «파손»이 아니라 «미지원»이라고 말한다 — ★실행은 0줄.**
   ★**전/후 실행 출력**: `ClassFormatError: Invalid class file` → ★`UnsupportedOperationException: Unsupported class file feature: invokedynamic`.
   픽스처 `test-data/indy/StringConcat.class` = `System.out.println("a" + args.length);` **한 줄**(`javac --release 21` · major **65**).
