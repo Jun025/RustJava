@@ -1,0 +1,52 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-ldc-tags-15-16-17-real-world-generator-survey",
+  "summary": "Measured whether real-world bytecode generators emit ldc of constant pool tags 15/16/17. ASM does — demonstrated by generating a class with all three. Kotlin, Scala and Lombok output: zero across 5,479 classes and 17,819 ldc sites, but their pools are full of MethodHandle/MethodType as bootstrap arguments, which is a different finding from never using them.",
+  "changes": [
+    "scripts/survey-ldc-constant-tags.py: new survey tool. Walks Code attributes with an exact opcode-length table (including wide, tableswitch, lookupswitch), resolves every ldc/ldc_w/ldc2_w operand to its constant pool tag, and separately censuses whether tags 15/16/17 merely appear in the pool. No crate touched.",
+    "docs/worklog/2026-09-16-ldc-tags-real-world-generator-survey.{md,json}: the per-tool table, with the cells that stayed unmeasured named as such",
+    "REPORT.md, STATE.md: round record"
+  ],
+  "verification": [
+    "instrument validated on test-data/ first: found 8 of 8 planted positives (LdcMethodHandle -> 15, LdcMethodType and Ldc2WMethodType -> 16, five Dynamic fixtures -> 17)",
+    "the single 'impossible operand' in that control is the deliberately corrupt LdcUnknownTag.class (an ldc naming a Module constant), so the scanner's real misdecode rate on the control is 0 — the prior round's scanner reported 0.28%",
+    "ASM 9.7.1, dynamic: a 15-line program using visitLdcInsn(Handle), visitLdcInsn(Type.getMethodType) and visitLdcInsn(ConstantDynamic) produced LdcByAsm.class, which the scanner reads as MethodHandle 1, MethodType 1, Dynamic 1 at ldc sites",
+    "ASM 9.7.1, static: javap on the jar shows visitLdcInsn(java.lang.Object) plus public Handle, ConstantDynamic and Type.getMethodType",
+    "kotlin-stdlib 2.0.21: 994 classes / 11,107 ldc sites / 0 target tags; pool has MethodHandle 10, MethodType 5",
+    "kotlinx-coroutines-core-jvm 1.9.0: 826 / 1,791 / 0; pool MethodHandle 68, MethodType 59",
+    "scala3-library_3 3.5.2: 583 / 651 / 0; pool MethodHandle 310, MethodType 143",
+    "scala-library 2.13.15: 2,889 / 3,755 / 0; pool MethodHandle 1,604, MethodType 723",
+    "lombok 1.18.48 compiled through javac 26 (-proc:full): @Data @Builder @Log output, 2 classes / 2 ldc sites / 0. Lombok 1.18.34 crashes on JDK 26, which is why the newer release was used",
+    "tag 17 (condy) is absent from every third-party pool measured, not just from their ldc sites",
+    "scanner error bar (operands no ldc can legally take) was 0.00% on every real-world corpus",
+    "DoD 7 commands all rc=0; no crate touched, so cargo test --all is unchanged at 570 passed / 0 failed / 1 ignored"
+  ],
+  "issues": [
+    "Not measured: kotlinc and scalac driven over targeted feature shapes. Only their own stdlib output was scanned, which is one project per compiler, so the zero is a property of that corpus and not of the language.",
+    "Not measured: tools built on ASM (ByteBuddy, Mockito, Groovy, instrumentation agents). ASM exposes and emits the shape; whether its downstream users call that API was not checked."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-ldc-tags-15-16-17#p2"
+  ],
+  "proposals": [
+    {
+      "title": "Regenerate the ldc tag 15/16/17 fixtures with ASM instead of hand-built bytes",
+      "plainSummary": "Our test files for these constants are assembled byte by byte in Python. A real bytecode library can now be shown to produce the same shape, so the fixtures could be real output instead of a hand-made imitation.",
+      "userBenefit": "The tests would be pinned to what a bytecode generator actually emits, so a fixture cannot drift into a shape no real tool produces while still passing.",
+      "why": "This round demonstrated that ASM emits all three tags at ldc sites from a 15-line program, which is exactly what test-data/src/ldc/make_ldc_fixtures.py builds by hand. The generator script already documents the fixtures as synthetic; replacing the positive cases removes that caveat for them.",
+      "tradeoff": "It trades a zero-dependency Python generator for one that needs asm.jar at a pinned version and checksum, on a machine that has no JVM toolchain on PATH today. The negative fixtures (deliberately corrupt files) cannot be produced by ASM at all and would have to stay hand-built, so the generator would end up with two mechanisms instead of one.",
+      "effort": "S",
+      "target": "test-data/src/ldc/make_ldc_fixtures.py, test-data/ldc/"
+    },
+    {
+      "title": "Drive kotlinc and scalac over targeted shapes, not just their stdlib output",
+      "plainSummary": "We checked what the Kotlin and Scala compilers produced for their own libraries. We did not ask them to compile the specific language features most likely to produce these constants.",
+      "userBenefit": "Turns 'zero in this corpus' into 'zero for these features', which is the sentence anyone reading the survey will assume it already says.",
+      "why": "The corpora measured here are one project per compiler. javac's own measurement in the prior round had both axes: the JDK's class files and targeted source shapes. This survey has only the first, because installing kotlinc and scalac was outside the effort budget and would change the machine's toolchain state.",
+      "tradeoff": "Installing two compilers for one question, on a machine deliberately kept free of JVM toolchains — and the answer may well be the same zero, in which case the cost bought a narrower error bar and nothing else.",
+      "effort": "M",
+      "target": "scripts/survey-ldc-constant-tags.py"
+    }
+  ]
+}

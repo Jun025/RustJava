@@ -1,4 +1,25 @@
 # REPORT
+## [2026-09-16] `ldc` 태그 15/16/17 — ★**ASM 은 «낸다»**(Kotlin·Scala·Lombok 산출물은 0) (rustjava-ldc-tags-15-16-17-real-world-generator-survey)
+- 무엇을: 선행 회차가 남긴 **「못 쟀다」**(ASM·Kotlin·Scala·Lombok)를 **쟀다**. 조사 회차 — ★**크레이트 무접촉**(파서·테스트 0).
+- 왜: 채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`. javac 은 안 낸다가 이미 증명됐고, **직접 바이트코드를 짜는 도구**가 남아 있었다.
+- 사용자 영향: 없다(측정). ★**바뀐 것은 «우리 파서가 왜 그 셋을 받는가»의 근거**다 — 가설이 아니라 **실물 생성기가 내는 형상**이 됐다.
+- ★★**결론**: **ASM 9.7.1 은 태그 15·16·17 을 «전부» 낸다** — 15줄짜리 프로그램(`visitLdcInsn(Handle/Type/ConstantDynamic)`)이
+  만든 클래스에서 `{MethodHandle 1, MethodType 1, Dynamic 1}` 을 **실측**했다(정적 API 확인 + 동적 생성 **둘 다**).
+- ★**Kotlin·Scala·Lombok 산출물은 5,479 클래스 · ldc 자리 17,819 곳에서 «0»** — 그러나 ★**그 0 을 「안 쓴다」로 읽지 마라**:
+  같은 산출물 상수 풀에는 MethodHandle·MethodType 이 **가득하다**(`scala-library` 하나에 **1,604 + 723**).
+  ★**전부 «부트스트랩 인자»이고 «`ldc` 피연산자»가 아니다** — javac 에서 관측된 형태가 Kotlin·Scala 에서도 그대로다.
+  ★**태그 17(condy)은 풀에도 0** 이다.
+- ★**계측기를 «대조군»으로 먼저 검증했다**: 이 저장소 `test-data/` 에서 **심어 둔 양성 8건을 8/8** 잡았고,
+  「불가능 피연산자」 1건은 오차가 아니라 ★**심어 둔 음성**(`LdcUnknownTag`)이라 **실 오차 0**(선행 회차 계측기는 0.28%).
+- ★**비용을 이렇게 줄였다**: 툴체인을 **설치하지 않고** ★**「컴파일러의 stdlib 은 그 컴파일러 자신의 산출물」**을 이용해
+  Maven Central 에서 6개 jar(12.6MB)만 받아 **수천 클래스**를 쟀다. ★대가 = **좁음**: 컴파일러당 «한 프로젝트»다.
+- ★**못 쟀다고 적은 칸 둘**(비워 두지 않았다): ⑴kotlinc·scalac 을 **타깃 형상으로 몰아 본 시험**(미설치)
+  ⑵**ASM 위에 선 도구들**(ByteBuddy·Mockito·Groovy…)이 실제로 그 API 를 부르는지.
+- 검증: 도구 `scripts/survey-ldc-constant-tags.py`(신규 · 크레이트 밖) · 스캐너 오차 막대 **전 corpus 0.00%** ·
+  `cargo test --all` **570 / 0 failed / 1 ignored**(불변 — 크레이트 무접촉) · DoD 7명령 rc=0.
+- 후속 추천: ⑴`test-data/ldc` 양성 픽스처를 **손으로 짠 바이트 → ASM 실물 산출물**로 교체
+  ⑵kotlinc·scalac 을 설치해 **타깃 형상 축**을 채우기. 상세 = `docs/worklog/2026-09-16-ldc-tags-real-world-generator-survey.md`.
+
 
 ## [2026-09-16] indy 픽스처에 JDK 핀을 «검사»로 박고, 슬롯 회계 직접 시험을 넣었다 (rustjava-indy-fixture-jdk-pin-and-slot-accounting-test)
 - 무엇을: ⒜`test-data/indy` 의 javac 픽스처가 **class file 65.0**(= `--release 21`)을 유지하는지 **커밋된 바이트로** 검사한다.

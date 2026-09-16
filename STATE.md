@@ -4,6 +4,28 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-ldc-tags-15-16-17-real-world-generator-survey] ★★**「못 쟀다」를 «쟀다»로 바꿨다 — ASM 은 태그 15/16/17 을 «낸다».**
+  채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`(worklog json `adoptedProposals` 기록). ★**조사 회차 · 크레이트 무접촉**(파서·테스트 0).
+  ★★**ASM 9.7.1 = 낸다(실증)** — `visitLdcInsn(Handle)`·`(Type.getMethodType)`·`(ConstantDynamic)` 15줄로 만든 클래스에서
+  `{MethodHandle 1, MethodType 1, Dynamic 1}` 실측. ★**정적(공개 API `javap`)과 동적(직접 생성) «둘 다»** 잡았다.
+  ★**Kotlin·Scala·Lombok 산출물 = 이 표본에서 0**(5,479 클래스 · ldc 17,819 자리):
+  `kotlin-stdlib 2.0.21` 994/11,107 · `kotlinx-coroutines 1.9.0` 826/1,791 · `scala3-library 3.5.2` 583/651 ·
+  `scala-library 2.13.15` 2,889/3,755 · `lombok 1.18.48 × javac 26` 산출물 2/2 · lombok 자기 jar 183/507.
+  ★★**그 «0» 을 「이 상수를 안 쓴다」로 읽지 마라 — 계측기에 «풀 인구조사»를 따로 넣어 갈랐다**:
+  같은 산출물 상수 풀에 MethodHandle·MethodType 이 **가득하다**(scala-library **1,604 + 723** · scala3 **310 + 143** ·
+  coroutines **68 + 59**). ⇒ ★**전부 «부트스트랩 인자»이고 «`ldc` 피연산자»가 아니다** — javac 형태가 그대로 재현된다.
+  ★**태그 17(condy)은 풀에도 0**(우리 합성 픽스처와 ASM 산출물만 갖는다).
+  ★★**계측기를 «대조군»으로 먼저 검증했다** — `test-data/` 에서 ★**심어 둔 양성 8/8 적중**(`LdcMethodHandle`→15 ·
+  `LdcMethodType`·`Ldc2WMethodType`→16 · Dynamic 5→17)이고, 「불가능 피연산자」 1건은 오차가 아니라
+  ★**심어 둔 음성**(`LdcUnknownTag` = Module 을 가리키는 고의 불량) ⇒ ★**실 오차 0**(선행 회차 계측기는 **0.28%**).
+  ★**비용 절감의 정체**: 툴체인을 **설치하지 않았다** — ★**「컴파일러의 stdlib 은 그 컴파일러 자신의 산출물」**을 써서
+  Maven Central jar **6개(12.6MB)** 만으로 수천 클래스를 쟀다. ★**대가 = 좁음**(컴파일러당 «한 프로젝트»)이고 그것을 결론에 박았다.
+  ★★**「못 쟀다」 칸을 «비우지 않고 이름 붙였다»**: ⑴kotlinc·scalac 을 **타깃 형상**으로 몰아 본 시험(미설치)
+  ⑵**ASM 위에 선 도구들**(ByteBuddy·Mockito·Groovy…)이 그 API 를 실제로 부르는지.
+  ★**여파**: 선행 회차가 「합성 픽스처라 javac 은 안 낸다」로 정직하게 닫아 둔 자리가 ⇒ ★**「실물 생성기가 내는 형상」**으로 승격됐다.
+  형제 `…-bound-bootstrap-method-attr-index`(PR #47 착지)의 긴급도가 **사후 추인**된다.
+  ★**도구는 `scripts/survey-ldc-constant-tags.py` 로 «남겼다»** — 선행 회차 계측기가 ad hoc 이라 재현 불가였던 것이
+  이 티켓이 생긴 이유의 절반이다(Acceptance 의 「다음 사람이 그대로 쳐서 같은 답」).
 - [rustjava-indy-fixture-jdk-pin-and-slot-accounting-test] ★★**시험 위생 둘 — indy 픽스처 JDK 핀을 «검사»로 박고, 슬롯 회계를 파서 단위에서 직접 물게 했다.**
   채택 제안 **둘**을 한 회차가 닫았다(worklog json `adoptedProposals` 전건 기록):
   `2026-09-16-cp-tags-16-17-execution-fixtures#p0` · `#p1`.
