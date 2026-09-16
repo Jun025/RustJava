@@ -1,0 +1,42 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-adopt-bound-bootstrap-method-attr-index-p1",
+  "summary": "A bootstrap method's static argument indices are now bounded against the constant pool. It stays a bounds check: the entries are not read, so classes whose arguments are method types and handles keep loading as unsupported rather than becoming corrupt.",
+  "changes": [
+    "classfile/src/validation.rs: new bootstrap_method_static_arguments_are_in_the_pool predicate, wired into validate_class. attribute.rs is untouched — arguments remain raw indices, which is the design the proposal asked to preserve",
+    "test-data/src/ldc/make_ldc_fixtures.py: dynamic() takes static_arguments, mirroring the existing attr_index parameter and existing for the same reason",
+    "test-data/ldc/LdcDynamicBSMArgPastEnd.class: new fixture, one static argument at index 0xFFFF",
+    "tests/test_class_format.rs: test_a_bootstrap_method_argument_naming_nothing_is_malformed"
+  ],
+  "verification": [
+    "proposal re-measured at start: validation.rs contained the string 'arguments' zero times, so nothing bounded them",
+    "the only product consumer is jvm-bytecode/src/string_concat.rs:92, and it answers a dangling index by declining to link that call site — detected but never judged, which is why the fix belongs at parse time",
+    "reference JVM, OpenJDK 26.0.1: 'ClassFormatError: argument_index 65535 has bad constant type in class file LdcDynamicBSMArgPastEnd'",
+    "our runtime before: UnsupportedOperationException 'ldc of a dynamically-computed constant'; after: ClassFormatError",
+    "no drift into resolution, measured on the classes that actually carry static arguments: Lambda and ConstantKinds still answer UnsupportedOperationException: invokedynamic, and StringConcat still runs and prints a0",
+    "fixture structure measured: one bootstrap method, arguments [65535], pool valid range 1..19",
+    "fixture regeneration idempotent: 11 existing .class files byte-identical, 1 added",
+    "mutation M1, removing the call from validate_class: red; mutation M2, predicate body replaced with `true`: red; restore: 12 passed",
+    "full suite: 571 passed / 0 failed / 1 ignored, summed across all 27 result lines rather than read from the tail",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "Only presence is checked. JVMS 4.7.23 also requires the entry to be a loadable constant, which is a kind check and a different sentence — an argument naming a Utf8 is still accepted. OpenJDK's own message ('bad constant type') is phrased in that stronger language. Filed as a proposal.",
+    "A long or double occupies two pool slots and the second has no entry in our map, so an argument naming it is rejected. That is the intended reading of 'valid index' (nothing can be loaded from that slot), not an accident, and the predicate's doc says so."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bound-bootstrap-method-attr-index#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether bootstrap arguments must also be loadable constants",
+      "plainSummary": "We now check that each bootstrap argument points at something. We do not check that the something is a kind of constant that can actually be loaded.",
+      "userBenefit": "A file whose bootstrap argument names, say, a method descriptor string instead of a constant would be reported as broken, which is what a real JVM says about it.",
+      "why": "JVMS 4.7.23 requires each bootstrap_arguments entry to be a loadable constant (JVMS 4.4 table: Integer, Float, Long, Double, Class, String, MethodHandle, MethodType, Dynamic). This round deliberately stopped at presence because the adopted proposal was scoped to the bound, and OpenJDK 26's message for the out-of-range case — 'argument_index 65535 has bad constant type' — shows it applies the stronger rule.",
+      "tradeoff": "It is a kind check, which is the direction the attribute.rs comment warns about: the point of keeping arguments unresolved is that a lambda's arguments are method handles and types this crate has no payload for. A tag test does not read a payload, so it is not resolution — but the distinction is exactly the one a future reader may not see, and getting it wrong turns every lambda class corrupt.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-16",
+  "taskId": "rustjava-adopt-bound-bootstrap-method-attr-index-p0",
+  "summary": "A class declaring BootstrapMethods twice is now rejected as malformed instead of being read with whichever table came first. JVMS 4.7.23 allows at most one; OpenJDK 26 answers ClassFormatError: Multiple BootstrapMethods attributes for the same file.",
+  "changes": [
+    "classfile/src/validation.rs: new at_most_one_bootstrap_methods_attribute predicate, wired into validate_class's rejection chain. bootstrap_method_indices_resolve is untouched — counting tables is a different sentence from bounding an index, and folding it in would have meant renaming that function",
+    "test-data/src/ldc/make_ldc_fixtures.py: new duplicate_bootstrap_methods(inner) wrapper that re-appends the attribute its inner builder wrote",
+    "test-data/ldc/LdcDynamicDuplicateBSM.class: new fixture, the same valid table byte-for-byte twice",
+    "tests/test_class_format.rs: test_a_class_declaring_bootstrap_methods_twice_is_malformed"
+  ],
+  "verification": [
+    "proposal re-measured at start: the find_map it names is still at classfile/src/validation.rs:117, so the proposal is still live",
+    "reference JVM, OpenJDK 26.0.1: the fixture gives 'java.lang.ClassFormatError: Multiple BootstrapMethods attributes in class file LdcDynamicDuplicateBSM', while the single-table control LdcDynamic loads with rc=0 and no output",
+    "our runtime before the fix: UnsupportedOperationException 'ldc of a dynamically-computed constant'; after: ClassFormatError 'Invalid class file'; the single-table control's answer is unchanged, which shows the change is narrow",
+    "fixture structure measured, not assumed: class attributes are ['BootstrapMethods', 'BootstrapMethods'] and the two bodies are byte-identical",
+    "fixture regeneration is idempotent: 11 existing .class files byte-identical, 1 added",
+    "mutation M1, removing the call from validate_class (i.e. the pre-proposal state): the new test goes red",
+    "mutation M2, replacing the predicate body with `true` (constant pass): red at the same assertion — M1 alone would not catch a check flattened to a constant",
+    "restore: test_class_format 12 passed / 0 failed",
+    "full suite: 571 passed / 0 failed / 1 ignored, counted by summing every 'test result' line rather than reading the tail",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The proposal's tradeoff said the fixture was one 'the generator cannot currently build'. That was too strong: the attribute list is handed to each builder, so an 8-line wrapper that re-appends what the inner builder wrote is enough. The observation was right, the cost estimate was not."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bound-bootstrap-method-attr-index#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether the other class-level attributes also need cardinality rules",
+      "plainSummary": "We now reject a class that declares two bootstrap tables. Several other class attributes are also allowed only once each, and nothing checks those.",
+      "userBenefit": "The same honesty applied consistently: a file carrying two of something the spec allows one of is reported as broken, whichever attribute it is.",
+      "why": "JVMS 4.7 marks several ClassFile attributes as at-most-one (SourceFile, EnclosingMethod, Signature, SourceDebugExtension, and the module-related ones). This round added the rule for BootstrapMethods because a proposal named it and because the resolver silently picks the first of two. Whether the others deserve the same treatment is a separate question, and the answer may be no for the ones nothing reads.",
+      "tradeoff": "Rejecting more files that load today, for attributes whose duplication changes nothing we act on — the BootstrapMethods case earned its check because a duplicate makes an arbitrary choice observable downstream, and that argument does not transfer to an attribute the parser ignores. Doing it uniformly would also need a fixture per attribute.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs"
+    }
+  ]
+}

@@ -15,7 +15,9 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
         || class.interfaces.iter().any(|name| !is_internal_class_name(name))
         || !validate_constant_pool(&class.constant_pool)
         || !constant_pool_tags_fit_the_class_file_version(class)
+        || !bootstrap_method_static_arguments_are_in_the_pool(class)
         || !bootstrap_method_indices_resolve(class)
+        || !at_most_one_bootstrap_methods_attribute(class)
     {
         return Err(ClassFileError::InvalidFormat);
     }
@@ -98,6 +100,32 @@ fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
     })
 }
 
+/// JVMS 4.7.23: every entry of a bootstrap method's `bootstrap_arguments` is an index into the
+/// constant pool, so each one has to name an entry that is there.
+///
+/// ★ This is a bounds check and must stay one. `BootstrapMethod::arguments` is deliberately kept as
+/// raw indices — `attribute.rs` says why at length: *resolving* them would turn every class holding
+/// a lambda from "unsupported" back into "corrupt", because the kinds that turn up there are method
+/// types and handles this crate has no payload for. Asking "is this index in the pool?" is not that
+/// question. It reads no entry, needs no payload, and cannot fail for a class whose arguments point
+/// somewhere real — which is every class any compiler emits.
+///
+/// Presence is also all that is checked. JVMS additionally requires the entry to be a *loadable*
+/// constant; that is a kind check, it is a different sentence, and this round was scoped to the
+/// bound. A file whose argument names a Utf8 is still accepted here.
+///
+/// One consequence worth naming: a long or double occupies two pool slots and only the first is
+/// usable (JVMS 4.4.5), so the second has no entry in this map and an argument naming it is
+/// rejected. That is the intended reading of "valid index" rather than an accident of the map.
+fn bootstrap_method_static_arguments_are_in_the_pool(class: &ClassInfo) -> bool {
+    class.attributes.iter().all(|attribute| match attribute {
+        AttributeInfo::BootstrapMethods(methods) => methods
+            .iter()
+            .all(|method| method.arguments.iter().all(|index| class.constant_pool.contains_key(index))),
+        _ => true,
+    })
+}
+
 /// JVMS 4.4.10 and 4.7.23: `bootstrap_method_attr_index` is an index into the `bootstrap_methods`
 /// array of the `BootstrapMethods` attribute, and that attribute must be present whenever the pool
 /// holds a Dynamic or InvokeDynamic entry. Both halves are the same sentence — the index has to
@@ -132,6 +160,27 @@ fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
 
         bootstrap_method_count.is_some_and(|count| (index as usize) < count)
     })
+}
+
+/// JVMS 4.7.23: at most one `BootstrapMethods` attribute may appear in a ClassFile's attributes
+/// table. A file carrying two is broken, not a file using a feature this runtime lacks.
+///
+/// Kept separate from `bootstrap_method_indices_resolve` because it is a different sentence: that
+/// one asks whether an index names a real entry, this one asks how many tables exist. Folding it in
+/// would also mean renaming that function for a rule it did not previously make.
+///
+/// It matters because `bootstrap_method_indices_resolve` resolves the table with `find_map`, which
+/// stops at the first one. With two tables that choice is arbitrary — the index would be bounded
+/// against whichever came first and the other silently ignored — so the honest answer is to reject
+/// the file rather than pick. Counting is the same shape `validate_class` already uses for the
+/// per-member "at most one" rules (`ConstantValue` on a field, `Code` on a method).
+fn at_most_one_bootstrap_methods_attribute(class: &ClassInfo) -> bool {
+    class
+        .attributes
+        .iter()
+        .filter(|attribute| matches!(attribute, AttributeInfo::BootstrapMethods(_)))
+        .count()
+        <= 1
 }
 
 fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {
