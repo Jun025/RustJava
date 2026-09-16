@@ -26,6 +26,16 @@
   형제 `…-bound-bootstrap-method-attr-index`(PR #47 착지)의 긴급도가 **사후 추인**된다.
   ★**도구는 `scripts/survey-ldc-constant-tags.py` 로 «남겼다»** — 선행 회차 계측기가 ad hoc 이라 재현 불가였던 것이
   이 티켓이 생긴 이유의 절반이다(Acceptance 의 「다음 사람이 그대로 쳐서 같은 답」).
+  ★★**게이트③ 착지 — PR #52 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22`).
+  게이트② **1회차 approve**(반려 0) · 핀 `fd05b9a4` **불이동**(착수 실측 15:14:25Z · 워밍 후 재조회 `CONFLICTING/DIRTY`).
+  ★**순서를 적는다**(티켓 절차 2): 같은 큐의 **#51 이 먼저 착지**했고(`1fe7d75`) 그것이 이 PR 의 base 를 흔들었다 ⇒
+  이 회차가 **그 뒤를 잇는다**. 착지 후 이 repo 의 **열린 PR 0**.
+  ★**충돌은 `STATE.md` «하나»뿐**(측정 15:14:36Z) — `REPORT.md` 는 **자동 병합**됐고 믿지 않고 쟀다(계약 12):
+  ★**양방향 hunk 동일**(`base..theirs` == `ours..merged` · `base..ours` == `theirs..merged`) · 줄 소실 **0** · 부활·조작 **0**.
+  해소 = 전건 보존·합집합·**시간순**(이 회차 `fd05b9a` **20:53:17** > `#51` `b10b0fd` **20:25:15**) ⇒ REPORT 최종 순서
+  **survey → methodhandlekind → indy-fixture**(실측 확인).
+  ★**병합 형상에서 계측기를 다시 돌려** 대조군이 그대로임을 확인했다 — `test-data/` **148 클래스 · ldc 515 ·
+  심어 둔 양성 8/8**(`{MethodHandle 1, MethodType 2, Dynamic 5}`). `cargo test --all` **570 불변** · DoD 7줄 rc=0.
 - [rustjava-methodhandlekind-placement-revisit-after-pr44] ★★**`MethodHandleKind` 위치 «재결정» — 답은 「그대로 둔다」.**
   채택 제안 `2026-09-16-bootstrap-methods-and-method-handle#p2`(worklog json `adoptedProposals` 기록).
   ★**낱말이 `Re-decide` 다 — 「아니오」도 정당한 답이고, 이 회차의 답이 그것이다.** 코드 변경은
