@@ -132,6 +132,42 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
     }
 }
 
+// A bootstrap that *is* the factory, but whose recipe contradicts the call site it was linked to.
+// javac cannot produce this — the recipe and the descriptor are two accounts of the same
+// concatenation, written by the same compiler — so the fixtures are hand-assembled
+// (test-data/src/indy/make_indy_fixtures.py).
+//
+// What the diagnosis should be was measured rather than chosen: OpenJDK 26 refuses all three with
+// `BootstrapMethodError` caused by `StringConcatException`, at linkage. So it is neither a
+// `ClassFormatError` (the class file format has nothing to say about bootstrap argument semantics,
+// and the file parses) nor `UnsupportedOperationException` (the bootstrap *is* linked; the file is
+// what is wrong).
+//
+// `RecipeWantsFewerArguments` is the direction a guard that fires when the recipe runs out of
+// arguments cannot see: before this check, it concatenated the arguments the recipe did ask for
+// and printed a quietly wrong "a" instead of refusing.
+#[tokio::test]
+async fn test_a_recipe_that_contradicts_its_call_site_is_a_bootstrap_method_error() {
+    for (name, disagreement) in [
+        ("RecipeWantsMoreArguments", "recipe wants two arguments, the call site provides one"),
+        ("RecipeWantsFewerArguments", "recipe wants one argument, the call site provides two"),
+        ("RecipeWantsAConstant", "recipe wants a constant the bootstrap did not carry"),
+    ] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.BootstrapMethodError"),
+            "{name} ({disagreement}): expected the linkage diagnosis, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError") && !err.contains("UnsupportedOperationException"),
+            "{name}: the file parses and the bootstrap is one we link, got: {err}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn test_bad_magic_raises_class_format_error() {
     let mut bytes = hello_class();
