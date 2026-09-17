@@ -33,6 +33,14 @@
   (M2 가 그 증거다) ⇒ 「링크됐다」가 아니라 **「무엇이 연결됐나」**를 단언한다.
   ★**잃는 것**: 링크 수용 범위가 넓어졌다 — 「콜사이트 «하나»를 링크한다」가 이제 **둘**이다(제안이 경고한 그대로 · 명시 목록으로 억제).
   ★`cargo test --all` **573 → 574 / 0 failed / 1 ignored** · 픽스처 재생성 **멱등** · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #59 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `3b04712e` **불이동**(착수 실측 2026-09-17T01:40:32Z) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(이 저장소에 배포 워크플로 없음) · 주기 자동 커밋 **0건**.
+  ★**동봉은 이 기록 한 줄뿐** — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
+  ★★**착지 순서 고지 — 이 회차가 «새 `.class` 3개»를 들여온다**(`MakeConcat`·`MakeConcatWithArgument`·`MakeConcatWrongDescriptor`).
+  열린 PR **#57**(ci-pending)이 「`.class` 미등재는 핀이 **실패**시킨다」(`test-data/class-file-versions.txt`)를 세우므로,
+  ★**이 PR 이 먼저 착지하면 #57 의 표에 이 셋이 «없어»** 그 회차가 red 가 된다(해소 = `record-class-file-versions.py` 재생성).
+  ★**텍스트 충돌 0 이라 `mergeable` 로는 보이지 않는다** — 같은 고지가 #60 회신에도 있다(그쪽은 다른 3개).
 - [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
   게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
   ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은
