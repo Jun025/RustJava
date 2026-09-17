@@ -1,4 +1,16 @@
 # REPORT
+## [2026-09-18] 「어느 bootstrap argument 가 왜 나빴나」 — ★**대전제 ⓒ 에서 끝난다: 그 일을 하는 축이 이미 떠 있다**(rustjava-adopt-loadable-bootstrap-arguments-diagnostic)
+- 무엇을: 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0` 의 처분(worklog json `adoptedProposals` 기록). ★**코드 0행** — `classfile/src/{error,validation}.rs` **무접촉**.
+- ★**제안의 전제는 참이다 — CLI 로 돌려서 봤다**(`main` @ `8c7b473f`): 서로 다른 세 규칙(`LdcDynamicBSMArgPastEnd` 나쁜 argument · `LdcDynamicDuplicateBSM` 중복 속성 · `LdcDynamicOldMajor` 버전 게이트)이 ★**글자 하나 다르지 않은 `java.lang.ClassFormatError: Invalid class file`** 를 낸다.
+- ★★**그런데 겹침이 «부분»이 아니라 «전부»다** — **PR #67** 이 제안의 `target` **바로 그 두 파일**을 고치고(merge-base 대비 `error.rs` **10/1** · `validation.rs` **61/27**), ★**이 술어에 이미 사유를 준다**(`"a bootstrap method argument names nothing or is not a loadable constant"`), ★밋밋한 문면이 박힌 **두 경계 자리**(`src/runtime.rs:189`·`test-utils/src/lib.rs:334`)도 **둘 다** 고쳤다. ⇒ main 에서 시작하면 **같은 enum 을 세 번째로 고치고** 같은 커버리지 구멍을 다시 발견한다.
+  ★**제안 자신이 그렇게 적어 두었다** — `tradeoff`: 「the two should be done together rather than twice」.
+- ★**남는 것은 있다 · 다만 좁다**: `#67` 의 payload 는 **`&'static str`** 이라 ★**런타임 인덱스를 구조적으로 못 담는다** ⇒ 「기대」는 **달성**, 「인덱스」·「실제」는 **미달**. ⇒ ★**새 카드를 좁혀 냈다**(effort **S**) — 원 제안은 처분하고 잔여만 정확한 범위로 다시 세운다(안 그러면 카드와 함께 잔여도 사라진다).
+- ★**제안이 적지 않은 설계 제약**: `ClassFileError` 는 **`Copy`** 이고 네 크레이트가 그것에 기댄다(`tests/test.rs` 13 · `validation.rs` 8 · `class.rs` 7 · `jvm-bytecode/src/error.rs` 5). ★**깨지 않고도 된다** — 정적 사유 + `u16` 인덱스 + `u8` 태그면 셋 다 `Copy`. 후속이 다시 발견하지 않도록 새 카드에 적었다.
+- ★**#67 위에 쌓지 않은 이유**(선택이지 누락 아님): ⑴아직 approve 아님(게이트② 재검 중) ⑵head 가 회차마다 움직임 ⑶**자식 PR** 이 되어 base 소멸 시 자동으로 닫힌다(게이트③ 계약 5).
+- ★**잃는 것**: ★**main 은 #67 착지까지 밋밋한 채로 남는다**(오늘 사용자는 **규칙 이름조차** 못 받는다) · 이 회차는 제안의 값을 **전혀 전달하지 않았고** 전달한 것은 **순서**다 · #67 이 폐기되면 이 판단은 **한 회차를 버린 것**이 된다.
+- 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · base `8c7b473f`) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천: 새 카드 「bootstrap argument 의 인덱스와 태그를 사유 위에 얹는다」(S) — ★**#67 «뒤»에** · 상세 = `docs/worklog/2026-09-18-bootstrap-argument-diagnostic-sequencing.md`.
+
 ## [2026-09-17] 코드 2파일 합집합 — ★**그런데 ours 의 «삭제»는 의도가 아니라 선행 머지의 «조용한 롤백»이었다** (rustjava-adopt-link-stringconcatfactory-p2-fix3)
 - 무엇을: 게이트③이 `code-conflict-out-of-scope` 로 세운 PR #61 의 충돌 4파일(원장 2 + 코드 2)을 합집합으로 해소. ★제품 Rust **0줄**(테스트·픽스처 생성기만).
 - ★★**브리프의 전제 하나가 반증됐다** — 「ours 가 «의도적으로» 지운 54·16줄을 되살리지 마라」였는데, 두 파일의 성격이 **정반대**였다:

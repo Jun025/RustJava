@@ -7,6 +7,12 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-adopt-loadable-bootstrap-arguments-diagnostic] ★★**대전제 ⓒ 에서 끝났다 — 그 일을 하는 축(PR #67)이 이미 떠 있다.** 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0`(worklog json 기록). ★**코드 0행.**
+  ★**전제는 참**(CLI 실행: 세 규칙이 전부 `ClassFormatError: Invalid class file` 동일 문면) — 그러나 ★**겹침이 전부다**: #67 이 제안 `target` 두 파일을 고치고, 이 술어에 **이미 사유를 주며**, 밋밋한 문면 **두 자리**를 둘 다 고쳤다. ★제안 `tradeoff` 자신이 「두 번 하지 말고 함께 하라」고 적었다.
+  ★**남는 잔여는 좁다** — `&'static str` 이라 **인덱스를 못 담는다** ⇒ 「기대」 달성 · 「인덱스·실제」 미달 ⇒ ★**새 카드를 좁혀 냈다**(S).
+  ★**설계 제약 기록** — `ClassFileError` 는 `Copy`(4크레이트 의존) · 정적사유+`u16`+`u8` 로 **깨지 않고 된다**.
+  ★**잃는 것**: main 은 #67 착지까지 **밋밋한 채**(규칙 이름조차 없다) · 이 회차가 전달한 것은 **값이 아니라 순서**다.
+  ★`--all` **583/0/1**(불변 · base `8c7b473f`).
 - [rustjava-adopt-link-stringconcatfactory-p2-fix2] ★★**#57 의 버전 표에 25행 등재 — 「착지 순서」가 만든 부채를 갚는다(PR #61).**
   ★**막힌 것은 CI 도 충돌도 아니었다**: 핀 `85cf0fba` 에서 rc=0 CI_GREEN · `git merge origin/main` **코드 충돌 0** 인데
   ★**합친 결과**가 #57 이 세운 「미등재 픽스처는 핀을 실패시킨다」를 어겼다(미등재 **25건** 재현).

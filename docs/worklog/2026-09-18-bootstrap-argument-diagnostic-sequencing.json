@@ -1,0 +1,33 @@
+{
+ "date": "2026-09-18",
+ "taskId": "rustjava-adopt-loadable-bootstrap-arguments-diagnostic",
+ "summary": "Stopped at the ticket's own precondition: an axis already doing most of this is in flight. PR #67 rewrites exactly the two files this proposal names, already gives this very predicate a cause string, and already replaces the flat 'Invalid class file' at both boundary sites. Doing it now on main would be a third competing edit to the same enum and would rediscover the same duplicated boundary. The proposal's residue after #67 is real but narrower than the proposal describes, and it is recorded as a new, correctly scoped card.",
+ "changes": [
+  "no code: classfile/src/error.rs and classfile/src/validation.rs untouched",
+  "docs/worklog only — the finding, the measurements, and a narrowed successor proposal"
+ ],
+ "verification": [
+  "PREMISE CONFIRMED on main @ 8c7b473f, measured by running the CLI rather than by reading: three different rules all print the identical message. `rust_java -cp ./test-data/ldc LdcDynamicBSMArgPastEnd` (bad bootstrap argument), `LdcDynamicDuplicateBSM` (duplicate attribute) and `LdcDynamicOldMajor` (version gate) each answer `java.lang.ClassFormatError: Invalid class file`",
+  "OVERLAP IS TOTAL: the proposal's target is classfile/src/error.rs and classfile/src/validation.rs; PR #67 changes error.rs 10/1 and validation.rs 61/27 against their merge base. #67 already gives this exact predicate the cause 'a bootstrap method argument names nothing or is not a loadable constant'",
+  "CONTRACT 2 SWEEP: the literal 'Invalid class file' is hardcoded at two boundary sites, src/runtime.rs:189 and test-utils/src/lib.rs:334. #67 rewrites both; a round starting from main would have to change both again and would hit the same test-coverage gap #67's round already reported",
+  "RESIDUE IS REAL BUT NARROWER: #67's payload is &'static str, which structurally cannot carry a runtime index. So after #67 lands the proposal's 'expected' is delivered by the rule wording and its 'index' and 'actual' are not",
+  "DESIGN CONSTRAINT the proposal does not name: ClassFileError derives Copy. Carrying an owned String would drop Copy for every consumer (classfile/tests/test.rs 13 uses, validation.rs 8, class.rs 7, jvm-bytecode/src/error.rs 5). A Copy-preserving shape exists — the static cause plus a u16 index plus the u8 tag found — so the successor does not need to break it",
+  "cargo test --all: 583 passed / 0 failed / 1 ignored on base 8c7b473f, unchanged — this round adds no code"
+ ],
+ "issues": [
+  "Not stacking on #67's branch was a choice, not an oversight: #67 is not approved (its gate2 re-review is in flight), its head moves each round, and a PR based on it would be a child PR whose base can vanish on merge — the hazard gate3 contract 5 exists for.",
+  "This leaves the flat message in place on main until #67 lands. That is the cost of not duplicating: a user bisecting a rejected class file today still gets no cause at all, not even the rule."
+ ],
+ "adoptedProposals": ["2026-09-17-loadable-bootstrap-arguments#p0"],
+ "proposals": [
+  {
+   "title": "Name the failing bootstrap argument's index and tag, on top of the cause threading",
+   "plainSummary": "Once the rejection says which rule failed, make the bootstrap-argument rule also say which argument number was wrong and what it actually pointed at.",
+   "userBenefit": "OpenJDK says 'argument_index 4 has bad constant type'. Naming the rule gets a reader to the right sentence; naming the index and the tag gets them to the right byte without bisecting the file.",
+   "why": "This is the measured residue of 2026-09-17-loadable-bootstrap-arguments#p0 after PR #67. That PR carries the cause as a &'static str, which cannot hold a runtime index, so the 'which one and what was it' half is still missing while the 'why' half is done. The predicate already knows the index at the moment it returns false and throws it away.",
+   "tradeoff": "ClassFileError derives Copy and four crates rely on it, so the payload has to stay Copy — static cause plus u16 index plus u8 tag, not a formatted String. And it must be sequenced after #67 rather than beside it: both touch the same enum and the same function, so doing them in parallel guarantees a conflict and duplicates the boundary rewrite.",
+   "effort": "S",
+   "target": "classfile/src/error.rs, classfile/src/validation.rs"
+  }
+ ]
+}
