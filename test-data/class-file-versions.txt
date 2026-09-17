@@ -1,0 +1,173 @@
+# Class file version of every committed fixture, one per line: <major>.<minor> <path under test-data/>.
+#
+# This is a freeze, not a target. These fixtures were compiled at different times with whatever JDK
+# was installed, which is why five different majors appear below — 52 x40, 65 x62, 66 x8, 68 x1,
+# 70 x3 in the root alone. Unifying them would mean recompiling, and recompiling changes bytes,
+# which can change what a fixture exercises. So the rule here is only "it must not move on its own".
+#
+# What that catches: regenerating a fixture with a different JDK. `javac Switch.java` with no
+# --release stamps the running JDK's version, and a two-byte change inside a committed binary is
+# not something anyone notices in review. The majors 66, 68 and 70 above are that accident already
+# having happened.
+#
+# Changing a number here is allowed and sometimes correct — but it has to be a line in a diff that
+# someone chose to write, next to the recompiled fixture, rather than something that slipped in.
+#
+# Regenerate this file (after a deliberate recompile) with:
+#   python3 test-data/src/record-class-file-versions.py
+66.0 Abstract$Base.class
+66.0 Abstract$Derived.class
+66.0 Abstract.class
+65.0 Array.class
+70.0 ArrayCovariance.class
+52.0 ArrayEdgeCases.class
+70.0 ArrayStore.class
+52.0 BooleanTest.class
+52.0 CheckCast.class
+52.0 ClassMetadata$ByteLoader.class
+52.0 ClassMetadata$First.class
+52.0 ClassMetadata$Payload.class
+52.0 ClassMetadata$Sample.class
+52.0 ClassMetadata$Second.class
+52.0 ClassMetadata.class
+65.0 ClinitFailure$Bad.class
+65.0 ClinitFailure$BadError.class
+65.0 ClinitFailure.class
+52.0 CollectionsInvokeInterface.class
+65.0 ConcurrentClinit$Failing.class
+65.0 ConcurrentClinit$FailingReader.class
+65.0 ConcurrentClinit$Successful.class
+65.0 ConcurrentClinit$SuccessfulReader.class
+65.0 ConcurrentClinit.class
+65.0 Constants.class
+65.0 ConstantsReader.class
+65.0 ControlFlow.class
+65.0 CurrentThread$1.class
+65.0 CurrentThread.class
+65.0 DoubleInit.class
+66.0 Dup.class
+65.0 Exception.class
+65.0 Field.class
+52.0 FieldTypes.class
+65.0 FileErrors.class
+65.0 FileLength.class
+65.0 ForName.class
+52.0 FormatterIntegration$1.class
+52.0 FormatterIntegration$FailingAppendable.class
+52.0 FormatterIntegration$SnapshotSequence.class
+52.0 FormatterIntegration.class
+65.0 Hello.class
+65.0 IncompatibleStatic.class
+65.0 Instanceof.class
+52.0 IntegerOverflow.class
+66.0 Interface$IInterface.class
+66.0 Interface$Implementation.class
+66.0 Interface.class
+65.0 InterfaceCast$Base.class
+65.0 InterfaceCast$Derived.class
+65.0 InterfaceCast$IBase.class
+65.0 InterfaceCast$IFace.class
+65.0 InterfaceCast.class
+65.0 LazyClinit$Base.class
+65.0 LazyClinit$Derived.class
+65.0 LazyClinit$GetstaticTarget.class
+65.0 LazyClinit$IFace.class
+65.0 LazyClinit$Impl.class
+65.0 LazyClinit$NewTarget.class
+65.0 LazyClinit$PutstaticTarget.class
+65.0 LazyClinit$SelfRef.class
+65.0 LazyClinit.class
+52.0 LongDouble.class
+65.0 Method.class
+52.0 MonitorSemantics$1.class
+52.0 MonitorSemantics$CounterWorker.class
+52.0 MonitorSemantics$FailingWorker.class
+52.0 MonitorSemantics.class
+66.0 MultiArray.class
+52.0 NativeMethod.class
+52.0 NullArgGuards.class
+52.0 NullBufferGuards.class
+52.0 NullFileIoGuards.class
+52.0 NullHandling.class
+52.0 NullNetGuards$Handler.class
+52.0 NullNetGuards$JarConn.class
+52.0 NullNetGuards.class
+52.0 NullSpecGuards.class
+65.0 OddEven.class
+52.0 Pop2Test.class
+68.0 ReferenceCompare.class
+65.0 StaleHolder.class
+65.0 StaticFlag.class
+65.0 StaticInherit$Base.class
+65.0 StaticInherit$IConst.class
+65.0 StaticInherit$Impl.class
+65.0 StaticInherit$Sub.class
+65.0 StaticInherit.class
+65.0 StaticInitTrigger$Base.class
+65.0 StaticInitTrigger$Sub.class
+65.0 StaticInitTrigger.class
+65.0 StaticOrder$Helper.class
+65.0 StaticOrder.class
+65.0 StringConcat.class
+70.0 StringIntern.class
+65.0 SuperClass$InnerClass.class
+65.0 SuperClass$InnerDerivedClass.class
+65.0 SuperClass.class
+65.0 SurrogateChars.class
+65.0 Switch.class
+52.0 ThreadInterruption$DaemonWorker.class
+52.0 ThreadInterruption$JoinWorker.class
+52.0 ThreadInterruption$PreInterruptedSleepWorker.class
+52.0 ThreadInterruption$TargetWorker.class
+52.0 ThreadInterruption$WaitWorker.class
+52.0 ThreadInterruption.class
+65.0 ThrowableCause.class
+65.0 TimeApi.class
+52.0 TypeConversion.class
+65.0 UnsupportedCharset.class
+52.0 VirtualDispatchSemantics.class
+65.0 WideLocals.class
+65.0 ZipCorrupt.class
+52.0 ZipGuards.class
+52.0 cp/UnreferencedTag13.class
+52.0 cp/UnreferencedTag14.class
+52.0 cp/UnreferencedTag19.class
+52.0 dispatch/base/PackageBase.class
+52.0 dispatch/base/ProtectedBridge.class
+52.0 dispatch/base/PublicBridge.class
+52.0 dispatch/base/SamePackageChild.class
+52.0 dispatch/foreign/ForeignChild.class
+52.0 dispatch/foreign/ForeignProtectedGrandchild.class
+52.0 dispatch/foreign/ForeignPublicGrandchild.class
+52.0 dispatch/interfaces/InheritedOperation.class
+52.0 dispatch/interfaces/InterfaceImplementation.class
+52.0 dispatch/interfaces/InterfaceOwner.class
+65.0 indy/ConstantKinds$Op.class
+65.0 indy/ConstantKinds$Suit.class
+65.0 indy/ConstantKinds.class
+65.0 indy/Lambda$Op.class
+65.0 indy/Lambda.class
+52.0 indy/MakeConcat.class
+52.0 indy/MakeConcatWithArgument.class
+52.0 indy/MakeConcatWrongDescriptor.class
+52.0 indy/NotFactoryDescriptor.class
+52.0 indy/NotInvokeStaticFactory.class
+52.0 indy/NotMakeConcatWithConstants.class
+52.0 indy/NotStringConcatFactory.class
+65.0 indy/StringConcat.class
+55.0 ldc/Ldc2WDynamic.class
+52.0 ldc/Ldc2WMethodType.class
+55.0 ldc/LdcDynamic.class
+55.0 ldc/LdcDynamicBSMArgPastEnd.class
+55.0 ldc/LdcDynamicBSMIndexPastEnd.class
+55.0 ldc/LdcDynamicDuplicateBSM.class
+55.0 ldc/LdcDynamicNoBSM.class
+52.0 ldc/LdcDynamicOldMajor.class
+52.0 ldc/LdcMethodHandle.class
+52.0 ldc/LdcMethodType.class
+52.0 ldc/LdcTag13.class
+52.0 ldc/LdcTag14.class
+52.0 ldc/LdcUnknownTag.class
+52.0 loader/Base.class
+52.0 loader/Payload.class
+65.0 src/jar/JarTest.class
