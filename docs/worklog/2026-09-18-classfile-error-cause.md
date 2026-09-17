@@ -40,10 +40,10 @@ classfile::ClassFileError::InvalidFormat(&'static str)
 |---|---|
 | **M1** `src/runtime.rs` 가 다시 `"Invalid class file"` 를 박는다 | ★**red** |
 | **M2** `From` 이 다시 사유를 **버린다**(제안이 지목한 바로 그 버그) | ★**red** |
-| **M3** 서로 다른 두 사유를 **한 문자열**로 접는다 | ★**red** — 줄마다의 `assert!(err.contains(cause))` 가 잡는다(`tests/test_class_format.rs:452`) |
+| **M3** 서로 다른 두 사유를 **한 문자열**로 접는다 | ★**red** — 줄마다의 `assert!(err.contains(cause))` 가 잡는다(`tests/test_class_format.rs:450`) |
 | 복원 | **green** 17/0 |
 
-★**M3 이 없으면** 「전부 같은 문자열로 되돌려도 통과」가 가능하다 — 그래서 테스트가 **사유들이 서로 다름**까지 단언한다.
+★**M3 이 없으면** 「전부 같은 문자열로 되돌려도 통과」가 가능하다 — 그것을 잡는 것은 줄마다의 `contains` 다(아래 §대가). ★**초판은 여기에 「테스트가 «사유들이 서로 다름»까지 단언한다」고 적었는데 거짓이었다** — 그 단언은 상수끼리 비교해 공허했고 걷어냈다.
 
 ## ★대가 — 실측한 구멍 하나를 포함해서
 
