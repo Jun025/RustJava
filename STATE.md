@@ -7,6 +7,32 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-adopt-class-format-mutation-audit-p0-fix] ★★**판정식을 `given` 에서 파생시킨다 — 게이트② 반려 승계(PR #63).**
+  ★**급소 한 줄**: `repaired` 를 정본 인자로 **다시 짓고** 있어 둘째 결함을 버렸다 ⇒ 「single-defect 인가」를 묻는데 **입력이 이미 single-defect** 였다(순환 · 18중 **14건**).
+  ★처방은 발명이 아니라 **옮겨오기** — 이미 옳던 `indy` 근접실패 형태를 `add()` 한 곳으로 모아 **4족 전건**이 지나게 했고,
+  `given` 을 `inspect.signature(...).bind(*spec)` 로 **이름에 묶어** 생성기에 인자가 늘어도 자동 승계된다.
+  ★**비대칭이 검사의 전부**(`repaired` 만 파생 · `canonical` 은 아니다) ⇒ 그 비대칭을 지키는 **`AUDIT SPEC STALE`(rc=2)** 가드 신설 — 모르면 «판정하지 않는다».
+  ★★**족마다 개악**(한 족 red 의 일반화가 이번 결함을 살렸다): **M-A** ldc rc=0→**rc=1** · **M-B** cp rc=0→**rc=2(SPEC STALE)** ·
+  **M-B2** 정본 고지 후 →**rc=1(1B)** · **M-C** indy 근접실패 rc=1→**rc=1**(일하던 족 유지) · **M-D** indy LINKED rc=0→**rc=1**.
+  ★★**잃은 것**: 커밋 픽스처 18건은 **여전히 전건 통과**다 — 내려간 것은 «통과 수»가 아니라 **«통과 가능한 입력 집합»**(실패 불가 사례 **14 → 0**).
+  대신 판정이 `CANON` 표에 의존하게 됐고(틀리면 거짓 MULTI-DEFECT), 생성기가 자라면 SPEC STALE 이 **막는다**(고의). 시험 시간 증가는 ★**실측 9.57초**(개악 5종 · 스크래치 5벌) · 감사 1회 **0.31초**.
+  ★**상시 CI 검사는 만들지 않았다** — 공허한 검사를 DoD 에 박지 않으려고 판정식을 먼저 조였다. ★제품 Rust **0줄**.
+  ★★**게이트③ 착지 — PR #63 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**). ★한 PR 이 `-p0`·`-p0-fix` **두 회차**를 함께 싣는다.
+  게이트② **approve** · 핀 **`3472d642`** ↔ 착수 시 PR head **동일**(불이동) · ★**`CONFLICTING`** ⇒ 예외 사유 ⓕ(등재 repo 는 무조건 별 `-merge`)로 발권된 회차다.
+  ★**충돌은 원장 2파일뿐**(`STATE.md`·`REPORT.md` 상단 삽입 · 제품 코드 **0**) — base 당김(뒤처짐 **15**) + 합집합 해소. 보존 증명 양방향 소실 **0** · 기여 불변 `--numstat` 정확 일치.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★★**고지(비차단 · 이 회차가 고치지 않는다 · base 를 «두 번» 당긴 뒤 재측)**: 형제 회차가 병렬로 들여온 픽스처 ★**10장이 감사 범위 밖**이다 —
+  `test-data/indy/RecipeWants{AConstant,FewerArguments,MoreArguments}.class` **3장**(PR #57 계열) + `test-data/attr/Duplicate*.class` ★**7장**(PR #66 · 이 회차 중에 착지).
+  병합 트리에서 감사기 재실행 = **검사 18 · 무결함 5 · 합계 23 · rc=0** 인데 그 10장은 ★**출력에 한 줄도 없고** `AUDIT SPEC STALE` 도 **울지 않았다**.
+  ⇒ `CANON` 표가 수기라 ★**형제가 들여온 픽스처는 «조용히» 비어 있다**(감사기는 「자란 생성기」만 막는다). ★차단 사유 아님 — 총괄 승계 판정 대상.
+- [rustjava-adopt-class-format-mutation-audit-p0] ★★**픽스처 «단일 결함» 감사.** ★**[교정 · `-fix` 회차] 종전 제목의 「18/18 통과」는 «측정»이 아니었다** — 아래 교정 줄 참조. 채택 제안
+  `2026-09-16-class-format-mutation-audit#p0`(worklog json `adoptedProposals` 기록). ★**제품 코드 0줄**(감사 스크립트 1개).
+  ★**판정식을 «로드»가 아니라 «바이트 동일»로** 잡았다(생성기가 결함을 인자로 받으므로 더 강하고 더 싸다):
+  `generator(결함)==커밋본` **그리고** `generator(수리)==generator(표준)`.
+  ★★**[교정 2026-09-17 · 게이트② request-changes] 그 「전건」은 «측정»이 아니었다** — 18건 중 **14건**이 `repaired` 를 정본 인자로
+  «다시 지어» 둘째 결함을 버렸다(구조적으로 MULTI-DEFECT 불가). ★**실측된 것은 4/18**. 정정은 `-fix` 항목이 진다.
+  ★**덮지 않는 것을 스크립트에 적었다**(javac 산출물 · 적법-미구현 · 테스트 안 바이트 패치분).
+  ★개악 2종 red(둘째 결함 심기 **rc=1** · 커밋본 1바이트 반전 **rc=2**) · `--all` **576/0/1**(Rust 무접촉이라 불변).
 - [rustjava-adopt-reject-duplicate-bootstrap-methods-p0] ★★**클래스 수준 속성 개수 규칙 — 다섯에 «예».** 채택 제안 `…-reject-duplicate-bootstrap-methods#p0`(worklog json 기록). ★**제품 동작 변경 있음.**
   ★**제안 기준만으로는 «아니오»였다**(하류 `find_map` 소비자가 있는 것은 `BootstrapMethods` 뿐 · 나머지 6종 소비자 0).
   ★★**판정을 바꾼 것은 진짜 JVM 이다** — OpenJDK 26.0.1 이 `SourceFile`·`InnerClasses`·`SourceDebugExtension`·`BootstrapMethods`(52)·`NestHost`·`NestMembers`(55) 중복을 ★**전건 `ClassFormatError`** 로 거부한다
