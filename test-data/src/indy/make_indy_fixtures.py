@@ -116,7 +116,7 @@ METAFACTORY_DESCRIPTOR = (
 )
 
 
-def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6, arguments=None):
+def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor, bootstrap_kind=6, arguments=None, call_site_descriptor=None):
     """The same near-miss idea as `near_miss_call_site`, for the *other* linked factory:
     `LambdaMetafactory.metafactory`.
 
@@ -143,7 +143,11 @@ def lambda_near_miss(name, bootstrap_class, bootstrap_name, bootstrap_descriptor
     # no-op static method, so a linked call site has something real to delegate to.
     sam_type = cp.method_type("()V")
     implementation = cp.method_handle(6, cp.methodref(this_class, cp.name_and_type("impl", "()V")))
-    call_site = cp.add(u1(18) + u2(0) + u2(cp.name_and_type("run", "()Ljava/lang/Runnable;")))
+    # `call_site_descriptor` overrides what the `invokedynamic` claims to evaluate to. JVMS 4.4.6
+    # lets a NameAndType descriptor be *either* a field or a method descriptor — it has to, because
+    # Fieldref and Methodref share the entry kind — so a file whose call site says `I` is one
+    # nothing upstream rejects, and it reaches the linker. That is the shape this parameter builds.
+    call_site = cp.add(u1(18) + u2(0) + u2(cp.name_and_type("run", call_site_descriptor or "()Ljava/lang/Runnable;")))
 
     body = u1(0xBA) + u2(call_site) + u2(0) + b"\x57" + b"\xb1"  # invokedynamic; pop; return
     code_attr = u2(1) + u2(1) + u4(len(body)) + body + u2(0) + u2(0)
@@ -274,6 +278,20 @@ METAFACTORY_FIXTURES = {
         METAFACTORY_DESCRIPTOR,
         6,
         ["sam", "impl", "string"],
+    ),
+    # Identity and static arguments both correct; the *call site* descriptor is a field descriptor
+    # (`I`) rather than a method descriptor. Legal by JVMS 4.4.6 and accepted by `validation.rs`,
+    # so it reaches the linker — where reading it as a method type used to abort the host process
+    # instead of refusing the file. The linker now declines to lower it and the verifier refuses
+    # the class, which is what this fixture asserts.
+    "MetafactoryFieldDescriptorCallSite.class": (
+        "MetafactoryFieldDescriptorCallSite",
+        METAFACTORY_CLASS,
+        "metafactory",
+        METAFACTORY_DESCRIPTOR,
+        6,
+        None,
+        "I",
     ),
 }
 

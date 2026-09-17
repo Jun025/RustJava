@@ -103,10 +103,22 @@ pub(crate) fn lower(class: &mut ClassInfo) {
                 };
                 // The call site's return type is the interface being implemented. Anything else
                 // is not a `metafactory` call site whatever its bootstrap says.
-                let call_site_type = JavaType::parse(descriptor);
-                let (captures, JavaType::Class(interface)) = call_site_type.as_method() else {
+                //
+                // Parsed with `try_parse`, not `parse`, and that is not a style choice: a call
+                // site's descriptor is a string out of the class file. `validation.rs` now requires
+                // it to be a method descriptor at this usage site (JVMS 4.4.10), so a bad one is
+                // refused before reaching here — but this stays `try_parse` anyway, because the
+                // cost of being wrong is not a guest exception, it is a host abort:
+                // `JavaType::parse` panics with "Invalid type". `verifier.rs` writes the same
+                // sentence about `ldc` — "reaching it would abort the host, not the guest". Two
+                // checks for one rule is cheap; one missing check is a crashed process.
+                let Some(JavaType::Method(captures, returns)) = JavaType::try_parse(descriptor) else {
                     continue;
                 };
+                let JavaType::Class(interface) = &*returns else {
+                    continue;
+                };
+                let captures = &captures[..];
                 if !adapts(captures, &linked.sam_descriptor, &linked.implementation) {
                     continue;
                 }

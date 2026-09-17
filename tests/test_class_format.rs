@@ -180,6 +180,42 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
 //
 // Both fixtures are valid class files: OpenJDK 26.0.1 loads them and refuses at linkage with
 // BootstrapMethodError.
+// A call site whose *descriptor* is a field descriptor (`I`), bound to an otherwise perfect
+// metafactory bootstrap. JVMS 4.4.6 lets a NameAndType descriptor be a field *or* a method
+// descriptor — it has to, because Fieldref and Methodref share the entry kind — so the shape gets
+// past a reader that checks the entry in isolation, and then the linker reads it as a method type.
+//
+// It used to abort the host process there (`JavaType::parse` panics: "Invalid type"), which is the
+// one failure a JVM must not have — the same sentence `verifier.rs` writes about `ldc`. JVMS 4.4.10
+// puts the rule at the *usage* site, so that is where the check went, and the answer now matches
+// the real JVM's: OpenJDK 26 refuses this file with
+// `ClassFormatError: Method "run" in class ... has illegal signature "I"`.
+#[tokio::test]
+async fn test_a_call_site_whose_descriptor_is_a_field_descriptor_is_malformed_not_a_host_abort() {
+    let path = Path::new("test-data/indy/MetafactoryFieldDescriptorCallSite.class");
+
+    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+    assert!(
+        err.contains("java.lang.ClassFormatError"),
+        "a descriptor JVMS 4.4.10 forbids at this site makes the file malformed, got: {err}"
+    );
+    // The control the reviewer built: identical bytes but a bootstrap we do not link. It must keep
+    // its old, different diagnosis — otherwise this check is just refusing everything.
+    let control = run_class(
+        Path::new("test-data/indy/NotLambdaMetafactory.class"),
+        &[Path::new("./test-data/indy/")],
+        &[],
+    )
+    .await
+    .unwrap_err()
+    .to_string();
+    assert!(
+        control.contains("java.lang.UnsupportedOperationException") && !control.contains("ClassFormatError"),
+        "the near miss must stay 'unsupported', not become 'malformed', got: {control}"
+    );
+}
+
 #[tokio::test]
 async fn test_a_metafactory_bootstrap_with_the_wrong_static_arguments_is_not_linked() {
     for (name, wrong) in [
@@ -424,6 +460,8 @@ async fn test_every_reference_kind_a_lambda_implementation_can_have_runs() {
             "14",     // REF_newInvokeSpecial: Box::new, then doubled()
             "Box:21", // REF_invokeVirtual, receiver from the interface method's argument
             "42",     // captures an object
+            "a:7",    // ★two captures (String, int) — the assertion is the *order*, not the presence
+            "120",    // ★two captures (int, int) — a swap is invisible to any type check; only 120 vs 2001 shows it
             "named",  // REF_invokeInterface
             "base",   // super:: — javac routes it through a synthetic method, so still virtual
             "sink:9", // the interface method is void; `report` returns int and it is dropped

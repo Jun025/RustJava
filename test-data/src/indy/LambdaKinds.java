@@ -29,6 +29,19 @@ public class LambdaKinds {
         String get();
     }
 
+    // Two captures, and that is the whole point of these two. Everything else in this file
+    // captures at most one value, so the *order* the captured values are handed to the
+    // implementation is unobservable: reverse it and every assertion still passes. `Pair` mixes
+    // types so a swap shows up as swapped text; `Weighted` uses two ints, which is the case no
+    // type check could catch even in principle — only the value can.
+    interface Pair {
+        String join();
+    }
+
+    interface Weighted {
+        int total();
+    }
+
     interface Named {
         String name();
     }
@@ -107,6 +120,13 @@ public class LambdaKinds {
         Describer unbound = Box::describe;        // REF_invokeVirtual, receiver from the argument
         Sink discarding = LambdaKinds::report;    // the interface method is void, `report` is not
 
+        String label = "a";
+        int count = 7;
+        Pair pair = () -> label + ":" + count;   // captures (String, int) — order is visible in the text
+        int hundreds = 1;
+        int ones = 20;
+        Weighted weighted = () -> hundreds * 100 + ones;  // captures (int, int) — only the value shows a swap
+
         NameOf named = Named::name;              // REF_invokeInterface
         Box bound = new Box(21);
         IntOp boundRef = x -> bound.doubled() + x; // captures an object
@@ -117,6 +137,8 @@ public class LambdaKinds {
         System.out.println(constructorRef.make(7).doubled());
         System.out.println(unbound.describe(bound));
         System.out.println(boundRef.apply(0));
+        System.out.println(pair.join());
+        System.out.println(weighted.total());
         System.out.println(named.of(new NamedBox()));
         System.out.println(new Derived().superReference().get());
         discarding.accept(9);
