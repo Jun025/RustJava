@@ -4,11 +4,22 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
-- [rustjava-adopt-class-format-mutation-audit-p0] ★★**픽스처 «단일 결함» 감사 — 18/18 통과.** 채택 제안
+- [rustjava-adopt-class-format-mutation-audit-p0-fix] ★★**판정식을 `given` 에서 파생시킨다 — 게이트② 반려 승계(PR #63).**
+  ★**급소 한 줄**: `repaired` 를 정본 인자로 **다시 짓고** 있어 둘째 결함을 버렸다 ⇒ 「single-defect 인가」를 묻는데 **입력이 이미 single-defect** 였다(순환 · 18중 **14건**).
+  ★처방은 발명이 아니라 **옮겨오기** — 이미 옳던 `indy` 근접실패 형태를 `add()` 한 곳으로 모아 **4족 전건**이 지나게 했고,
+  `given` 을 `inspect.signature(...).bind(*spec)` 로 **이름에 묶어** 생성기에 인자가 늘어도 자동 승계된다.
+  ★**비대칭이 검사의 전부**(`repaired` 만 파생 · `canonical` 은 아니다) ⇒ 그 비대칭을 지키는 **`AUDIT SPEC STALE`(rc=2)** 가드 신설 — 모르면 «판정하지 않는다».
+  ★★**족마다 개악**(한 족 red 의 일반화가 이번 결함을 살렸다): **M-A** ldc rc=0→**rc=1** · **M-B** cp rc=0→**rc=2(SPEC STALE)** ·
+  **M-B2** 정본 고지 후 →**rc=1(1B)** · **M-C** indy 근접실패 rc=1→**rc=1**(일하던 족 유지) · **M-D** indy LINKED rc=0→**rc=1**.
+  ★★**잃은 것**: 커밋 픽스처 18건은 **여전히 전건 통과**다 — 내려간 것은 «통과 수»가 아니라 **«통과 가능한 입력 집합»**(실패 불가 사례 **14 → 0**).
+  대신 판정이 `CANON` 표에 의존하게 됐고(틀리면 거짓 MULTI-DEFECT), 생성기가 자라면 SPEC STALE 이 **막는다**(고의). 시험 시간 **약 40초** 증가.
+  ★**상시 CI 검사는 만들지 않았다** — 공허한 검사를 DoD 에 박지 않으려고 판정식을 먼저 조였다. ★제품 Rust **0줄**.
+- [rustjava-adopt-class-format-mutation-audit-p0] ★★**픽스처 «단일 결함» 감사.** ★**[교정 · `-fix` 회차] 종전 제목의 「18/18 통과」는 «측정»이 아니었다** — 아래 교정 줄 참조. 채택 제안
   `2026-09-16-class-format-mutation-audit#p0`(worklog json `adoptedProposals` 기록). ★**제품 코드 0줄**(감사 스크립트 1개).
   ★**판정식을 «로드»가 아니라 «바이트 동일»로** 잡았다(생성기가 결함을 인자로 받으므로 더 강하고 더 싸다):
   `generator(결함)==커밋본` **그리고** `generator(수리)==generator(표준)`.
-  ★결과 **검사 18 전건 single-defect · 무결함 유효 파일 5 · rc=0** ⇒ 회차마다 «적용»돼 온 규율을 처음으로 «측정»했다.
+  ★★**[교정 2026-09-17 · 게이트② request-changes] 그 「전건」은 «측정»이 아니었다** — 18건 중 **14건**이 `repaired` 를 정본 인자로
+  «다시 지어» 둘째 결함을 버렸다(구조적으로 MULTI-DEFECT 불가). ★**실측된 것은 4/18**. 정정은 `-fix` 항목이 진다.
   ★**덮지 않는 것을 스크립트에 적었다**(javac 산출물 · 적법-미구현 · 테스트 안 바이트 패치분).
   ★개악 2종 red(둘째 결함 심기 **rc=1** · 커밋본 1바이트 반전 **rc=2**) · `--all` **576/0/1**(Rust 무접촉이라 불변).
 - [rustjava-adopt-link-stringconcatfactory-p0] ★★**`StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다».**
