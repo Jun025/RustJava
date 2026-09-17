@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-17] #57 의 버전 표에 이 PR 의 픽스처 25행을 등재한다 — ★**착지 «순서»가 만든 부채** (rustjava-adopt-link-stringconcatfactory-p2-fix2)
+- 무엇을: `test-data/class-file-versions.txt` 에 **25행 추가**(생성기 실행 · 손편집 0) + base 당김. ★제품 Rust **0줄** · 픽스처 재생성 **0** · 테스트 코드 **무접촉**.
+- 왜: PR **#57** 이 「미등재 픽스처는 핀을 실패시킨다」를 **의도적으로** 세우고 06:37 에 착지했다. #61 의 25개 픽스처는 그보다 **먼저** 만들어졌으므로, 착지한 그 순간부터 표에 25행을 빚졌다. ★**CI 도 충돌도 아니다** — 핀에서 rc=0 CI_GREEN · `git merge origin/main` 코드 충돌 0인데 **합친 결과**가 규율을 어긴다.
+- 사용자 영향: **없다**(테스트 데이터 표). 있는 것은 게이트③ 해금.
+- ★**안전선 = 삭제행 0**: `git diff --numstat` → **`25  0`**. 기존 156행 무변경 = 픽스처가 재생성되지 않았다는 뜻이다(삭제행이 있었으면 «다른 사건»이라 멈췄을 자리).
+- ★**추가 25행 = 이 PR 이 만든 25개 `.class` 와 집합이 «정확히» 같다**(파일명 대조 · 남의 픽스처 혼입 0).
+- ★**양방향으로 쟀다**: 표에서 `65.0 indy/LambdaKinds.class` 한 행을 지우면 **red**(그 파일명을 정확히 지목) · 되돌리면 **green** ⇒ 표가 실제로 규율을 집행한다(빈 표로 통과하지 않는다).
+- ★**base 당김의 원장 충돌 2건은 «합집합»으로 풀었다** — `REPORT.md`·`STATE.md` 최상단 삽입 충돌. 한쪽 통째 채택 0 · 줄 단위 양방향 보존 증명(양측 고유줄 결손 **0** · 결과에만 있는 줄 **0**). ★코드 충돌은 **0**이었고, 같은 파일(`classfile/src/validation.rs`)을 다투던 #62 의 기여는 자동 병합 뒤에도 **전건 잔존**(loadable 집합 · 서술자 팔 «둘 다» 살아 있다).
+- 검증: `cargo test --test test_fixture_pins` **3 passed / 0 failed** · `cargo test --all` **581 / 0 / 1**(#62 착지분 +3) · DoD **7명령 전건 rc=0**.
+- ★후속: 「착지한 규율이 진행 중 PR 을 소급으로 빚지게 하는데 아무도 말해 주지 않는다」 — `docs/worklog/2026-09-17-fixture-version-table-backfill.json`.
+
 ## [2026-09-17] 부트스트랩 정적 인자는 «적재 가능 상수»여야 한다 — 경계에서 «종류»로 (rustjava-adopt-bound-bootstrap-static-arguments-p0)
 - 무엇을: 채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`. ★**제품 동작이 바뀐다** — 인자가 적재 불가 상수를 가리키는 클래스 파일이 **`ClassFormatError`** 로 거부된다.
 - 왜: JVMS 4.7.23 이 요구하는 것은 «인덱스가 어딘가에 닿는다»가 아니라 ★**「적재 가능 상수」**다(Integer·Float·Long·Double·Class·String·MethodHandle·MethodType·Dynamic).

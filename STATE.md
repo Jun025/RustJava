@@ -4,6 +4,13 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p2-fix2] ★★**#57 의 버전 표에 25행 등재 — 「착지 순서」가 만든 부채를 갚는다(PR #61).**
+  ★**막힌 것은 CI 도 충돌도 아니었다**: 핀 `85cf0fba` 에서 rc=0 CI_GREEN · `git merge origin/main` **코드 충돌 0** 인데
+  ★**합친 결과**가 #57 이 세운 「미등재 픽스처는 핀을 실패시킨다」를 어겼다(미등재 **25건** 재현).
+  ★생성기(`record-class-file-versions.py`)를 **돌려서** 채웠다 — 손편집 0. ★**삭제행 0**(`25  0`) = 기존 픽스처 재생성 0 이 이 회차의 안전선.
+  ★추가 25행이 이 PR 의 25개 `.class` 와 **집합 동일**(혼입 0) · ★**양방향**(한 행 제거 → red · 되돌림 → green).
+  ★원장 충돌 2건은 **합집합**(줄 단위 양방향 보존 · 한쪽 통째 채택 0) · #62 기여 전건 잔존.
+  ★`test_fixture_pins` **3/0** · `--all` **581/0/1** · DoD 7명령 rc=0.
 - [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
   채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
   ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
