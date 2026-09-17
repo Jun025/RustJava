@@ -18,7 +18,11 @@
   ★선행 머지 둘(`e53b2142`·`514d5b08`)이 부모2의 makeconcat 가족(`fieldref`·`make_concat_call_site`·`LINKED`)을 **결과에서 떨어뜨렸다** ⇒ **되살렸다**.
   ★반면 `.rs` 의 16줄은 **진짜 ours 의도**(metafactory 를 링크하니 「링크 안 된다」 단언이 거짓) ⇒ **되살리지 않았다**. 회계: `.py` ↔main **156/0** · `.rs` ↔HEAD **86/0** · ↔main **182/29**.
   ★**복원분이 산 코드임을 실행으로 증명** — MakeConcat 3장을 지우고 재생성 → **바이트 동일 복구**(복원 전 생성기로는 **불가**).
-  ★양방향 개악 ours 4 red / theirs 1 red · `--all` **583/0/1** · DoD 7명령 rc=0. ★착지 금지 — 핀이 움직였으니 게이트② 재검이 먼저다.
+  ★양방향 개악 ours 4 red / theirs 1 red · `--all` **583/0/1** · DoD 7명령 rc=0. ★그 회차는 「착지 금지 — 게이트② 재검이 먼저」로 끝났고, ★**그 재검이 approve 로 닫혔다**(아래).
+  ★★**게이트③ 착지 — PR #61 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**). ★한 PR 이 `-p2`·`-fix`·`-fix2`·`-fix3` **네 회차**를 함께 싣는다.
+  게이트② **approve**(리니지 최신 회신 `…-p2-fix3.review.md`) · 핀 **`5f7ce1a8`** ↔ 착수 시 PR head **동일**(불이동) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**(`-fix3` 이 이미 당겼다).
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN**(3건 전건) · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★**선행 `-merge` 두 건은 흡수할 것이 없었다** — `…-fix-merge`(`needs-fix-ticket`)·`…-fix2-merge`(`code-conflict-out-of-scope`) 둘 다 **머지 0·커밋 0·푸시 0** 으로 멈췄다.
 - [rustjava-adopt-class-format-mutation-audit-p0-fix] ★★**판정식을 `given` 에서 파생시킨다 — 게이트② 반려 승계(PR #63).**
   ★**급소 한 줄**: `repaired` 를 정본 인자로 **다시 짓고** 있어 둘째 결함을 버렸다 ⇒ 「single-defect 인가」를 묻는데 **입력이 이미 single-defect** 였다(순환 · 18중 **14건**).
   ★처방은 발명이 아니라 **옮겨오기** — 이미 옳던 `indy` 근접실패 형태를 `add()` 한 곳으로 모아 **4족 전건**이 지나게 했고,
