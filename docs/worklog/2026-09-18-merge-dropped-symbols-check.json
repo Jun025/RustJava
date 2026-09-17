@@ -1,0 +1,31 @@
+{
+ "date": "2026-09-18",
+ "taskId": "rustjava-count-symbols-dropped-from-second-parent-on-resolution",
+ "summary": "A check that reports definitions present in a merge's second parent and absent from its result, wired into the existing rust.yml. The hard part was not counting but separating accident from intent, which is recorded as a per-commit trailer rather than a file so it cannot outlive the merge it excuses. The first design had a structural exemption for merges whose tree equals their first parent's; the mandated mutation test showed that exemption also swallowed the exact failure the check exists for, so it was removed in favour of an explicit wildcard trailer.",
+ "changes": [
+  "scripts/check-merge-dropped-symbols.py: the check, with the intent trailer `Dropped-from-theirs: <name> -- <why>` and a `*` wildcard for merges that keep our tree on purpose",
+  ".github/workflows/rust.yml: a merge_drops job on the existing file (no new workflow), fetch-depth 0 because the check needs merge parents",
+  "CLAUDE.md: the DoD block gains the same command — the parity lock requires CI and DoD to match, and it now reports 7 commands on both sides"
+ ],
+ "verification": [
+  "PRECONDITION b, the gate that could have ended this ticket: reconstructed the loss on origin/main and ran every existing axis against it. Dropping a self-consistent slice (recipe_arity_call_site + RECIPE_ARITY + its write loop) leaves the generator at rc=0, audit-fixture-single-defect.py at rc=0 (23 checks), test_class_format 21 passed, test_fixture_pins 3 passed, check-dod-ci-parity rc=0, git status empty, zero conflict markers. Nothing catches it, so the gate does not fire",
+  "the same experiment with a NON-self-consistent slice does go red, but as an AttributeError crash rather than a diagnosis — which is why the silent case is the one that matters and had to be measured separately",
+  "PRECONDITION a, recount: the two resolutions e53b2142 and 514d5b08 each dropped 4 definitions, not the 3 the proposal states — LINKED, MAKECONCAT_DESCRIPTOR, def make_concat_call_site, method fieldref",
+  "MUTATION (a): a synthetic merge that discarded the other side's new function is rc=1 and names it — 'def kept_by_theirs — in the merged-in branch, not in the result'",
+  "NORMAL (b): the same merge resolved as a union is rc=0",
+  "INTENT (c): adding `Dropped-from-theirs: def kept_by_theirs -- superseded ...` makes it rc=0; removing the trailer returns it to rc=1; the `*` wildcard form is rc=0",
+  "SQUASH (d): a one-parent commit range reports '0 merge(s)' and rc=0",
+  "run against the real incident, the check reproduces by machine the same split the -fix3 round found by hand: 4 accidental drops in the generator plus 2 intentional test-function removals in tests/test_class_format.rs",
+  "cargo test --all: 583 passed / 0 failed / 1 ignored, unchanged — no product code touched",
+  "check-dod-ci-parity: OK, 7 commands and 2 toolchains matching on both sides after the wiring"
+ ],
+ "issues": [
+  "FALSE POSITIVE RATE, measured not guessed: over the last 200 commits of origin/main (83 merges) the check flags 8 merges / 19 definitions, about 9.6% of merges, and takes 4.4s per merge (368s for 83). The first and final designs give the same count. A pull request usually contains 0-2 internal merges, so the per-PR cost is roughly 0-9s. CI only walks origin/main..HEAD, so those historical merges are never re-examined and do not turn main red.",
+  "WHAT IT CANNOT SEE: a definition whose name survives while its body is emptied or gutted. The check compares name sets, so 'still there but no longer does anything' passes. It also cannot tell a genuine rename from a drop-plus-add, and a move between files reads as a drop in the old file.",
+  "THE TRAILER IS A BYPASS, and deliberately so: anyone in a hurry can write one and move on. The only brake is that a reason is required by the format and the trailer is visible in the merge commit. That is weaker than a gate and stronger than nothing; making it harder was judged over-design for a check with no track record yet.",
+  "Two of the flagged historical merges are the known incident. The rest are upstream-sync merges (S5-S8) and one `-s ours` ancestry record. The sync ones genuinely dropped upstream methods — decode_str and encode_str are absent from the whole result tree, not moved, which was checked — so whether they are findings or accepted judgements is for the sync lineage to say, not this round."
+ ],
+ "adoptedProposals": [
+  "2026-09-17-union-restores-silently-dropped-makeconcat#p0"
+ ]
+}
