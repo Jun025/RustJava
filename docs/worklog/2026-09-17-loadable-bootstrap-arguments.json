@@ -1,0 +1,34 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-bound-bootstrap-static-arguments-p0",
+  "summary": "Bootstrap arguments must be loadable constants, not merely indices that land somewhere (JVMS 4.7.23). A tag test, not resolution — which is what makes it safe for the lambda fixtures the previous round was protecting.",
+  "changes": [
+    "classfile/src/validation.rs: bootstrap_method_static_arguments_are_in_the_pool also requires the entry's kind to be loadable (Integer, Float, Long, Double, Class, String, MethodHandle, MethodType, Dynamic)",
+    "classfile/tests/test.rs: the rule is asserted by repointing StringConcat.class's single bootstrap argument at a Utf8 entry — byte patch, no new committed fixture"
+  ],
+  "verification": [
+    "OpenJDK 26.0.1 on the same mutation: ClassFormatError: argument_index 4 has bad constant type in class file StringConcat",
+    "risk the proposal named, measured: 156 committed class files parse 144 / fail 12 — identical before and after, so no lambda class became corrupt",
+    "mutation: revert to presence-only -> red; widen the loadable set by one (add Utf8) -> red, so the boundary is observable and not just the check's presence",
+    "cargo test --all: 575 passed / 0 failed / 1 ignored"
+  ],
+  "issues": [
+    "This tightens a file that open PR #61 also edits (a different function in classfile/src/validation.rs). The two should auto-merge, but whichever lands second should check.",
+    "The kind check is the last thing this predicate can do without payload access. Whether a Dynamic argument's own descriptor is a field descriptor, or whether a MethodHandle argument resolves, remains out of reach here by design."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-bound-bootstrap-static-arguments#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Say which bootstrap argument was bad, and why",
+      "plainSummary": "The file is now rejected, but the message is the same flat 'Invalid class file' every other parse failure gets.",
+      "userBenefit": "OpenJDK names the index and the problem ('argument_index 4 has bad constant type'); a person holding a rejected class file currently has to bisect it to find out which argument.",
+      "why": "This round added a rule whose value is precision, and the report of it carries none. The predicate knows the failing index at the moment it returns false.",
+      "tradeoff": "ClassFileError is flat by an upstream cut (822504b); adding variants touches the error type every validator shares. The same follow-up is already proposed from the p2-fix round, so the two should be done together rather than twice.",
+      "effort": "M",
+      "target": "classfile/src/error.rs, classfile/src/validation.rs"
+    }
+  ]
+}
