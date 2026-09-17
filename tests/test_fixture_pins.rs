@@ -18,8 +18,20 @@ use std::{collections::BTreeMap, ffi::OsStr, fs, path::Path};
 /// catches — "whatever javac happened to be installed" is how these files got here in the first
 /// place. It does *not* pin the compiler binary; two javac versions at `--release 21` both emit
 /// 65.0. That second axis is held by the constant-shape assertions on the same fixtures
-/// (`classfile/src/constant_pool.rs`, `tests/test_class_format.rs`), which count the exact
-/// constants javac put in them.
+/// (`classfile/src/constant_pool.rs`, `classfile/tests/test.rs`, `tests/test_class_format.rs`),
+/// which pin the exact constants javac put in them.
+///
+/// The line above used to be the whole record, and a record is only as good as whoever wrote it.
+/// It is not just a record any more: javac is deterministic for the same source, flags and
+/// compiler, so rebuilding is a check.
+///
+/// ```text
+/// sh test-data/src/verify-javac-fixtures.sh            # needs a JDK; CI has none, so it is manual
+/// ```
+///
+/// Measured 2026-09-17 with `javac 26.0.1`: all six class files here rebuild **byte for byte**.
+/// So the compiler recorded above is the compiler that produced them, verified rather than
+/// asserted. Re-run it after regenerating a fixture; a mismatch means the toolchain moved.
 const PINNED_MAJOR: u16 = 65;
 const PINNED_MINOR: u16 = 0;
 

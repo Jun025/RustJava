@@ -4,6 +4,43 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p0] ★★**`StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다».**
+  채택 제안 `2026-09-16-link-stringconcatfactory#p0`(worklog json `adoptedProposals` 기록).
+  ★**제품 동작 변경**: `makeConcat` 콜사이트가 **거부 대신 실행**된다. ★**실행기(`concat_with_constants`)는 한 줄도 안 바뀌었다.**
+  ★★**ⓒ 제안의 전제가 «거짓»이다**(실측 javac 26.0.1 · 같은 소스 `a + b`):
+  `--release` **9 · 11 · 17 · 21 · 26 전부 `makeConcatWithConstants`** — ★**상수 텍스트가 «없는» 경우에도** 그렇다
+  (레시피가 «자리표시자 둘 · 리터럴 0»일 뿐이다). `makeConcat` 은 **비기본 내부 플래그 `-XDstringConcat=indy`** 에서만 나오고,
+  `-XDstringConcat=inline` 은 `StringBuilder` 를 낸다.
+  ⇒ ★**「javac 이 상수 텍스트 없이 연결할 때 쓴다」도, 「javac 산출물이 더 많이 돈다」도 거짓**이다 —
+  ★**기본 javac 산출물은 이미 «전부» 링크되고 있었다.**
+  ★★**그래도 한 이유를 «바꿔서» 적는다**(제안의 근거를 그대로 베끼지 않았다):
+  ⑴★**만들 수 있는 형상**이다 — 그 플래그로 **직접 만들었다**. 이 리니지가 `ldc` 태그 지원을 정당화한 기준
+  (「ASM 이 실제로 낸다」)과 ★**같은 기준**이다 ⑵**문서화된 공개 진입점**이라 바이트코드 생성기가 택할 수 있다
+  ⑶★★**실행기에 «새 경로»가 필요 없다** — `makeConcat(n개 인자)` ≡ 레시피가 `\u{1}` **n개**인 `makeConcatWithConstants` 다
+  ⇒ 콜사이트 서술자의 인자 수로 **레시피를 합성**하면 끝. ★제안이 「a recipe-free path through the same executor」로 본 것보다 **더 싸다**.
+  ★**설계 — 제안의 「짧은 명시 목록을 유지하라」를 지켰다**: 상수 튜플 **둘**뿐 · **레지스트리 아님** ·
+  ★**이름과 서술자를 «쌍»으로 매칭**한다 ⇒ ★**#55 가 넣은 name 축 근접 실패(`NotMakeConcatWithConstants`)가 «살아 있다»**
+  (그 파일은 이름만 `makeConcat` 이고 서술자는 `makeConcatWithConstants` 의 것이라 여전히 거부된다).
+  ★**레시피 합성은 «콜사이트마다»** 한다 — 한 부트스트랩 항목을 **서술자가 다른 여러 콜사이트가 공유**할 수 있어
+  해석 단계에서 고정할 수 없다(그래서 `LinkedFactory::{WithConstants, NoRecipe}` 로 «인식»만 한다).
+  ★★**개악 대조 4종 — 처음엔 «둘»이 살아남았고, 그것이 이 회차의 교훈이다**:
+  **M1** 튜플 제거 → KILLED · **M2** 레시피 길이 `repeat(1)` → KILLED · ★**M3** 쌍 검사를 «이름만»으로 → **SURVIVED** ·
+  ★**M4** 「정적 인자 없음」 가드 제거 → **SURVIVED**.
+  ⇒ ★**직전 `…-p0-fix` 가 세운 「죽었다 ≠ 그 가지가 «전부» 덮였다」가 «내 새 코드»에 그대로 적용됐다** —
+  축마다 근접 실패를 더해(`MakeConcatWrongDescriptor` = 서술자만 다르고 정적 인자 0 · `MakeConcatWithArgument` = 이름·서술자 맞고 정적 인자 1)
+  ★**4종 전건 KILLED** 로 만들었다.
+  ★**픽스처가 «출력»한다**(`ab`) — ★**레시피를 틀린 길이로 합성해도 링크되고 실행된다.** 값을 버리면 그 오류가 «안 보인다»
+  (M2 가 그 증거다) ⇒ 「링크됐다」가 아니라 **「무엇이 연결됐나」**를 단언한다.
+  ★**잃는 것**: 링크 수용 범위가 넓어졌다 — 「콜사이트 «하나»를 링크한다」가 이제 **둘**이다(제안이 경고한 그대로 · 명시 목록으로 억제).
+  ★`cargo test --all` **573 → 574 / 0 failed / 1 ignored** · 픽스처 재생성 **멱등** · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #59 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `3b04712e` **불이동**(착수 실측 2026-09-17T01:40:32Z) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(이 저장소에 배포 워크플로 없음) · 주기 자동 커밋 **0건**.
+  ★**동봉은 이 기록 한 줄뿐** — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
+  ★★**착지 순서 고지 — 이 회차가 «새 `.class` 3개»를 들여온다**(`MakeConcat`·`MakeConcatWithArgument`·`MakeConcatWrongDescriptor`).
+  열린 PR **#57**(ci-pending)이 「`.class` 미등재는 핀이 **실패**시킨다」(`test-data/class-file-versions.txt`)를 세우므로,
+  ★**이 PR 이 먼저 착지하면 #57 의 표에 이 셋이 «없어»** 그 회차가 red 가 된다(해소 = `record-class-file-versions.py` 재생성).
+  ★**텍스트 충돌 0 이라 `mergeable` 로는 보이지 않는다** — 같은 고지가 #60 회신에도 있다(그쪽은 다른 3개).
 - [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0-fix] ★★**표 키의 경로 구분자를 «두 곳»에서 정규화 — 윈도우 CI red 를 고쳤다.**
   게이트② **request-changes** 승계(PR #57 · 핀 `3061edb7` · ★`ci-presence` → **`CI_RED` rc=1**). ★**제품 코드 무접촉 · 설계 무변경**
   (검수자가 「설계는 옳고 세 방향 전부 실제로 문다」로 확인했다 — ★**그 축은 다시 열지 않았다**).
@@ -60,6 +97,81 @@
   ★실패 문면이 **파일·두 버전·해소 명령**을 함께 말한다(`Hello.class: recorded 65.0, found 70.0`).
   ★**기록기 멱등**(재실행 시 표 **바이트 동일**) · `cargo test --all` **572 → 573 / 0 failed / 1 ignored** · DoD **7줄 전건 rc=0**.
   ★**알고 남긴 값**: 생성기 산출물 16개는 **이중 잠금**(생성기 + 표)이다 — ★**예외 목록을 두는 규칙보다 «전건 단일 규칙»이 덜 썩는다.**
+- [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1] ★★**「어느 javac 이 만들었나」를 «기록»에서 «검증»으로 바꿨다.**
+  채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1`(worklog json `adoptedProposals` 기록). ★**제품 코드 무접촉.**
+  ★★**제안의 결론 «둘»이 실측으로 반증됐다 — 그래서 제안이 «불가능»하다고 적은 쪽을 만들었다**:
+  ⑴「**Nothing offline can verify** a recorded compiler version … buys **provenance, not enforcement**」 → ★**거짓**:
+  javac 은 같은 소스·플래그·컴파일러에 **결정적**이라, 기록된 도구(`javac 26.0.1 --release 21`)로 재빌드하니
+  ★**`test-data/indy` 의 6개가 «바이트 단위로 동일»**했다. ⇒ ★**기록이 «재현»으로 검증된다.**
+  ⑵「강제 가능한 축은 `constant_pool.rs` 의 상수 개수뿐이고 **한 픽스처만** 덮는다」 → ★**거짓**:
+  ★**javac 산출 indy 픽스처 «3/3»이 형상 단언 보유** — `ConstantKinds`(MethodType 1·Dynamic 3·MethodHandle 7·InvokeDynamic 3) ·
+  `StringConcat`(부트스트랩 **4축** + 인자가 «가리키는 값» `"a\u{1}"` + ★**바이트 창** `[15,6,0,35]` · 「layout changed」로 실패) ·
+  `Lambda`(`LambdaMetafactory.metafactory` · 인자 3 · ★`args[0]==args[2]!=args[1]`).
+  ★**제안이 든 위험(「현대 javac 은 enum switch 를 condy 로 낸다」)은 `ConstantKinds` 의 Dynamic **3** 이 이미 잠그고 있다.**
+  ★**만든 것**: `test-data/src/verify-javac-fixtures.sh` — ⑴★`--release` 를 **픽스처 자신의 major − 44** 에서 읽어
+  ★**외부 표(형제 PR #57 의 버전 표)에 의존하지 않는다**(동기화할 것이 없다 · 미착지 의존도 없다)
+  ⑵★명시한 `JAVAC` 가 안 되면 **조용히 다른 컴파일러로 대체하지 않고 rc=2** — 「무엇이 검증했나」가 흐려지면 안 된다
+  ⑶★**「못 만들었다」와 「만들었는데 다르다」를 «가른다»** — 합치면 발견을 과장한다.
+  ★**CI 에 배선하지 «않았다»**: `.github/workflows/rust.yml` 에 JDK 가 없고 PATH 에도 없다 ⇒
+  JDK 를 요구하는 테스트는 ★**어디서나 실패하거나 어디서나 건너뛴다.** 이건 «재생성했을 때 사람이 돌리는» 검사다(doc 주석에 명시).
+  ★★**실패담 둘을 남긴다 — 이 회차가 실제로 밟았다**: ⑴`command -v javac` 이 macOS **스텁**(실행되는데 「JDK 없음」)을 고른다
+  ⇒ 경로가 아니라 **실행해서** 판별한다 ⑵★**`-sourcepath` 를 넣었다가 «더 나빠졌다»** — `test-data/src` 에 **`Exception.java`**·
+  `Array.java`·`Method.java` 가 있어 javac 이 `Exception` 을 ★**`java.lang.Exception` 이 아니라 그 픽스처로** 해석했다
+  (멀쩡히 재현되던 파일들이 `incompatible types` 로 무너졌다) ⇒ **되돌리고 그 대가**(형제 참조 소스는 홀로 재빌드 불가)를 **따로 보고**한다.
+  ★**개악 대조**: 커밋본 **마지막 1바이트 반전** → ★**✗ 감지** · 복원 → **6 reproduced** · 명시 `JAVAC` 부재 → ★**rc=2 「nothing was verified」**(통과 아님).
+  ★★**일반화 — 시켜 보고 «나온 값»만 적었다(고치지 않았다)**: 루트 `sh … test-data` →
+  **109 rebuilt · 104 재현 · ★5 상이 · 3 재빌드 불가**. 상이 5건 = `MonitorSemantics`(+내부 2) · `NativeMethod`(`--release 8`) · `OddEven`(`--release 21`).
+  ★**원인은 단정하지 않는다** — 「다른 컴파일러」와 「빌드 뒤 소스 수정」이 **둘 다 이 관측과 맞는다**. ★범위 밖이라 후속(M)으로 넘겼다.
+  ★**그래도 적는 이유**: ★**제안이 걱정한 드리프트가 «실재»한다는 첫 «직접» 증거**다(그전까지는 버전 분포에서의 추론이었다).
+  ★**직전 회차가 «커밋하지 않기로» 한 개악 하네스와 다른 종류다** — 그건 **제품 소스를 치환**해 죽으면 트리를 오염시켰고,
+  이건 **읽고 비교만** 한다(실패해도 트리 무변) ⇒ 그래서 **남겼다.**
+  ★`cargo test --all` **572 / 0 failed / 1 ignored**(doc 주석만 바꿔 **불변**) · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #58 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `38c02a2d` **불이동**(착수 실측 2026-09-17T00:27:39Z · 핀에서 `ci-presence` **rc=0 CI_GREEN**).
+  ★**충돌은 원장 2파일뿐**(`REPORT.md`·`STATE.md`) — 형제 **#55** 착지분과 겹쳤고 코드 파일 충돌 **0**.
+  해소는 전건 보존·합집합·**시간순**: 이 회차(`38c02a2d` 05:22)가 main 쪽 최신 항목(`30a31bda` 04:04)보다 **뒤**라 위에 얹었다.
+  ★줄 소실 **0**(양방향) · 합집합 밖 신규줄 **0** · ★계약 12 착지 diff numstat **해소 전후 동일**(6파일 · 해소면 밖 변경 0).
+  ★배포 **0** — 이 저장소에 배포 워크플로가 **없다**(CI 2종 + 스케줄 2종 + PR 댓글 1종) · 자식 PR **0건** · 주기 자동 커밋 **0건**.
+  ★★**게이트③ 2회차 — 형제 #59 가 그 사이 착지(`66bc49e8`)해 base 를 다시 당겼다.** 충돌은 또 **원장 2파일뿐**(코드 충돌 0).
+  ★**이번엔 시간순이 «뒤집혔다»** — main 쪽 항목(`3b04712e` 06:52)이 이 회차(`38c02a2d` 05:22)보다 **뒤**라 **위**에 얹었다.
+  ★두 번의 base 당김을 거쳐도 이 PR 의 기여 numstat 은 **불변**(`94/0` 검증 스크립트 · `14/2` 핀 테스트 · worklog 2건).
+- [rustjava-adopt-cp-tag-passthrough-detectable-p1] ★★**판정 — `ClassFileError` 에 «원인»을 실을 값은 있다. 단 제안의 이름·이유·범위가 «셋 다» 틀렸다.**
+  채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p1`(worklog json `adoptedProposals` 기록). 낱말이 **`Decide`** 다
+  ⇒ ★**코드 변경은 «틀린 주석 한 곳» 정정뿐** · 구현은 **범위를 바로잡아 후속으로** 넘겼다.
+  ★★**⑴역사가 거짓이다**: `822504b` 는 `error.rs` 를 **«자르지» 않고 «만들었다»**(`new file` · 지금과 동일한 2변형)이고,
+  그 이전 `ClassInfo::parse` 는 **`Option<Self>`**(실패에 정보 **0** · `.unwrap()` 투성이)였다 ⇒ ★**그 커밋은 «개선»이었다.**
+  ⇒ ★**「carry a cause **again**」·「restoring」은 성립하지 않는다 — 이 리니지에 원인이 실렸던 시기는 «없다».**
+  ★★**⑵「upstream 이 해야 한다」도 거짓**: `upstream/main` 기준 **5커밋 뒤** · 그중 이 파일들을 만지는 것 **0건** ·
+  upstream 의 `error.rs` 접촉은 **1건(생성)** 뿐(이 crate 에서 가장 안정된 파일) · ★**우리는 이미 이 crate 에서 크게 갈렸다**
+  (`constant_pool.rs` +211/−6 · `validation.rs` +137/−0 · `attribute.rs` +129/−3 · `opcode.rs` +83/−7).
+  ※`AGENTS.md` read-only 는 **upstream 으로 «보내는 것»** 금지이지 로컬 변경 금지가 아니다.
+  ★★**⑶범위도 틀렸다 — `target: classfile/src/error.rs` 는 1파일인데 평탄화는 «3층»이다**:
+  `InvalidFormat`(생산 9곳) → `ClassDefinitionError::InvalidClassFile`(**From 이 원인을 버린다**) →
+  ★**`"Invalid class file"` 하드코딩 2곳**(`src/runtime.rs:189` · `test-utils/src/lib.rs:334`).
+  ⇒ ★**`error.rs` 만 고치면 «관측 변화 0»** — 아무도 원인을 넣지 않고 아무도 읽지 않는, 이 저장소가 규탄하는 그 형태다.
+  ★★**진짜 비용은 `validate_class` 의 «8항 `||` 사슬»을 쪼개는 것**이다(원인이 갈리는 유일한 자리) —
+  ★그것은 이 티켓이 **명시적으로 금지한 리팩터**(계약 3)라 ★**여기서 구현하지 않았다.**
+  ★★**ⓑ 그런데 설계는 «한 enum 건너» 이미 증명돼 있다** — `ClassDefinitionError::UnsupportedFeature(&'static str)` 가
+  **5곳**에서 쓰이며 `"ldc of a method handle"` 같은 문장을 낸다 ⇒ ★**새 발명이 아니라 «일관성 회복»**이고 이것이 「할 값 있다」의 근거다.
+  ★**이득을 과장하지 않는다**: kind-only 단언 **8곳**이 원인을 이름 부를 수 있고 참조 JVM 격차가 준다.
+  ★**그러나 제안의 「픽스처보다 강한 자물쇠」는 «절반만» 참** — 원인은 «어느 검사가 울렸나», 픽스처는 «그 검사가 관측 가능한가»를 잠근다.
+  ★**증거**: 직전 `-fix` 가 찾은 구멍(신원 4축 중 3축 미관측)은 **링크 축**이라 ★**원인을 실었어도 안 잡혔다** ⇒ **대체가 아니라 «더하기»다.**
+  ★**지금 고친 것**: `tests/test_class_format.rs` 머리 주석 — ★**제안이 근거로 인용한 바로 그 문장**이 거짓이었다
+  (「cut 822504b」·「Restoring it needs upstream variants」) ⇒ 그 자리에서 정정했다.
+  ★**착지한 트리가 거짓을 나르면 다음 사람이 같은 전제로 같은 제안을 다시 만든다.**
+  ★두 번째 언급(「`ClassFileError` 가 평탄화한다」)은 **참**이라 **건드리지 않았다**(과잉 편집 0).
+  ★`cargo test --all` **572 / 0 failed / 1 ignored**(주석만 바꿔 **불변**) · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #56 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `53ca3409` **불이동**(착수 실측 2026-09-17T00:42:56Z · 핀에서 `ci-presence` **rc=0 CI_GREEN**).
+  ★**충돌은 원장 2파일뿐**(`REPORT.md`·`STATE.md`) — 형제 **#55** 착지분과 겹쳤고 **코드 파일 충돌 0**.
+  ★★**`tests/test_class_format.rs` 는 «자동 병합»됐고 그것을 믿지 않고 쟀다** — 양측 델타가 둘 다 살아 있다
+  (이쪽 **10/3** · main 측 **32/0** · 추가·삭제줄 다중집합 **전건 일치** · 스위트 14/14 green).
+  원장 해소는 전건 보존·합집합·**시간순**: 이 회차(`53ca3409` 04:31)가 main 쪽 최신 항목(`30a31bda` 04:04)보다 **뒤**라 위에 얹었다.
+  ★줄 소실 **0**(양방향) · 합집합 밖 신규줄 **0** · 계약 12 착지 diff numstat **해소 전후 동일**.
+  ★배포 **0**(이 저장소에 배포 워크플로 없음) · 자식 PR **0건** · 주기 자동 커밋 **0건**.
+  ★★**게이트③ 2회차 — 형제 #59(`66bc49e8`)·#58(`6e016a27`)이 그 사이 착지해 base 를 다시 당겼다.** 충돌은 또 **원장 2파일뿐**(코드 충돌 0).
+  ★**시간순이 이 회차를 «맨 아래»로 보낸다**(06:52 · 05:22 > 04:31) — 「내 것이 위」가 아니라 «잰 시각»이 규칙이다.
+  ★`tests/test_class_format.rs` 는 두 번 다 **자동 병합**됐고 두 번 다 양방향으로 쟀다(이쪽 **10/3 불변** · main 델타 **누락 0**).
 - [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
   게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
   ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은

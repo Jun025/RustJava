@@ -1,0 +1,38 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-cp-tag-passthrough-detectable-p1",
+  "summary": "Decided whether ClassFileError should carry a cause. Verdict: worth doing, but the proposal's history, blame and scope are all wrong, and doing it properly needs a refactor this ticket forbids. Recorded the corrected scope and fixed the false comment the proposal cited.",
+  "changes": [
+    "tests/test_class_format.rs: the header comment claimed the variants were cut upstream at 822504b and that restoring them needs upstream changes. Both are false; replaced with what is actually true and why.",
+    "docs/worklog/2026-09-17-classfile-error-cause-decision.{md,json}: the decision, its evidence, and the scope handed to a follow-up"
+  ],
+  "verification": [
+    "current state: classfile/src/error.rs still has two variants, and 8 assertions in tests/test_class_format.rs check only the ClassFormatError kind",
+    "822504b created classfile/src/error.rs as a new file with these same two variants; before it, ClassInfo::parse returned Option, so failure carried nothing at all — the commit was an improvement, not a cut",
+    "upstream is not the blocker: we are 5 commits behind upstream/main and none of them touch these files; upstream has touched classfile/src/error.rs exactly once (its creation); our fork already diverges by +211/-6 in constant_pool.rs, +137/-0 in validation.rs, +129/-3 in attribute.rs, +83/-7 in opcode.rs",
+    "the pattern already exists one enum over: ClassDefinitionError::UnsupportedFeature(&'static str) is used at 5 sites and produces messages like 'ldc of a method handle'",
+    "the flattening happens at three layers, not one: ClassFileError::InvalidFormat (9 production sites) -> ClassDefinitionError::InvalidClassFile (the From impl drops any cause) -> a hardcoded \"Invalid class file\" string at src/runtime.rs:189 and test-utils/src/lib.rs:334",
+    "validate_class evaluates an eight-term || chain and returns one InvalidFormat, so a per-check cause requires splitting that chain — a refactor this ticket forbids",
+    "cargo test --all: 572 passed / 0 failed / 1 ignored, unchanged (the only code change is a comment)",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The proposal's claim that a cause would be 'a stronger lock than a carefully shaped fixture' is half true: a cause locks which check fired, a fixture locks whether the check is observable at all. The hole the sibling -fix round found was in linking, not parse errors, so a cause would not have caught it.",
+    "Implementing only the proposal's stated target (classfile/src/error.rs) would produce no observable change, since nothing would set the cause and nothing would read it."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-cp-tag-passthrough-detectable#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Thread a cause through ClassFileError, and split validate_class so it can differ",
+      "plainSummary": "Give class file rejections a reason, all the way out to the exception message a user sees.",
+      "userBenefit": "A rejected class file says what is wrong with it — 'unknown constant pool tag', 'bootstrap argument names nothing' — instead of the same 'Invalid class file' for every cause, which is what a real JVM does.",
+      "why": "Decided in this round after measuring: the design already exists one enum over (ClassDefinitionError::UnsupportedFeature carries &'static str at 5 sites), upstream is not the blocker, and 8 assertions currently can only check the exception kind. The work is ClassFileError::InvalidFormat(&'static str), the same on ClassDefinitionError::InvalidClassFile so the From impl stops dropping it, the two hardcoded message sites (src/runtime.rs, test-utils/src/lib.rs), and splitting validate_class's eight-term || chain so each check can name itself.",
+      "tradeoff": "Doing only the error type changes nothing observable, and doing it without splitting the || chain just moves the flatness rather than removing it — so this is an all-or-nothing scope, and it includes a refactor of validate_class. It also does not replace the shaped-fixture discipline: a cause says which check fired, not whether each axis of a multi-axis check is observable.",
+      "effort": "M",
+      "target": "classfile/src/error.rs, classfile/src/validation.rs, jvm-bytecode/src/error.rs, src/runtime.rs, test-utils/src/lib.rs"
+    }
+  ]
+}
