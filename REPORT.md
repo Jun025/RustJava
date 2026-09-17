@@ -1,4 +1,19 @@
 # REPORT
+## [2026-09-17] 부트스트랩 정적 인자는 «적재 가능 상수»여야 한다 — 경계에서 «종류»로 (rustjava-adopt-bound-bootstrap-static-arguments-p0)
+- 무엇을: 채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`. ★**제품 동작이 바뀐다** — 인자가 적재 불가 상수를 가리키는 클래스 파일이 **`ClassFormatError`** 로 거부된다.
+- 왜: JVMS 4.7.23 이 요구하는 것은 «인덱스가 어딘가에 닿는다»가 아니라 ★**「적재 가능 상수」**다(Integer·Float·Long·Double·Class·String·MethodHandle·MethodType·Dynamic).
+  직전 회차는 «경계»까지만 하고 «종류»를 남겨 두었고, 그 사실을 **함수 주석이 스스로 적어 두었다**.
+- ★★**제안이 스스로 적은 위험을 «먼저» 쟀다** — 「틀리면 람다 클래스가 전부 corrupt 가 된다」.
+  그 위험의 실체는 `attribute.rs` 의 설계(인자를 **해석하지 않는다**)이고, ★**태그 검사는 «어느 변형인가»만 묻고 «안을 읽지» 않는다** ⇒ 그 설계를 어기지 않는다.
+  ★**말이 아니라 수로**: 커밋된 클래스 전건 파싱이 **전 144 / 실패 12 → 후 144 / 실패 12** 로 ★**동일**(새로 거부되는 파일 **0** · 람다 포함).
+- ★**OpenJDK 26.0.1 실측이 근거다**: 인자를 Utf8 로 돌리자 ★**`ClassFormatError: argument_index 4 has bad constant type`** ⇒ 그 파일은 «미지원»이 아니라 **«파손»**이다.
+- ★**안 하면 무엇이 나쁜가**: 파일이 통과한 뒤 **나중에·틀린 낱말로** 실패한다 — 링커가 `None` 을 받아 링크를 포기하고
+  검증기가 **`UnsupportedOperationException`**(= 「우리가 지원하지 않는다」)을 낸다. ★**이 저장소가 반복해 가른 그 두 낱말**이다.
+- ★**개악 2종 전건 red**: M1 «존재만»으로 되돌리기 · ★**M2 적재 가능 집합에 Utf8 한 칸 추가** — M2 가 요지다(단언이 «경계»에 걸려 있음을 보인다).
+- 검증: `cargo test --all` **575 passed / 0 failed / 1 ignored** · DoD 7명령 rc=0 · ★**새 픽스처 0**(기존 파일 바이트 패치 · 길이 필드 불변).
+- ★**여기서 더 갈 수 없는 자리도 적는다**: `Dynamic` 인자의 서술자가 필드 서술자인지, `MethodHandle` 인자가 실제 멤버로 해석되는지는 **payload 가 필요**해 이 술어의 밖이다(설계이지 누락이 아니다).
+- ★후속: `ClassFormatError` 에 **사유를 실어라**(M) — OpenJDK 는 인덱스와 이유를 말한다. ★p2-fix 회차가 낸 같은 제안과 **묶어서** 하는 편이 낫다.
+
 ## [2026-09-17] `StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다» (rustjava-adopt-link-stringconcatfactory-p0)
 - 무엇을: 레시피 없는 진입점 `makeConcat` 을 링크한다. ★**실행기 무접촉** — 콜사이트 인자 수로 **레시피를 합성**한다.
 - 왜: 채택 제안 `2026-09-16-link-stringconcatfactory#p0`.

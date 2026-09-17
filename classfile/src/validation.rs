@@ -110,18 +110,47 @@ fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
 /// question. It reads no entry, needs no payload, and cannot fail for a class whose arguments point
 /// somewhere real — which is every class any compiler emits.
 ///
-/// Presence is also all that is checked. JVMS additionally requires the entry to be a *loadable*
-/// constant; that is a kind check, it is a different sentence, and this round was scoped to the
-/// bound. A file whose argument names a Utf8 is still accepted here.
+/// The entry also has to be a **loadable constant** (JVMS 4.7.23, and the loadable column of the
+/// 4.4 table: Integer, Float, Long, Double, Class, String, MethodHandle, MethodType, Dynamic).
+/// A file whose argument names a Utf8 or a Methodref is rejected here.
+///
+/// ★ That is still not resolution, and the distinction is the whole reason this is safe. Reading a
+/// *tag* asks which variant the entry is; it never looks inside one. `attribute.rs` keeps the
+/// arguments unresolved because a lambda's are method handles and types this crate has no payload
+/// for — and this check is exactly what does not need that payload. Measured rather than argued:
+/// with the rule in place, every committed fixture still parses, lambdas included (144 parse / 12
+/// fail, unchanged before and after).
+///
+/// Why it is worth having: without it, a malformed file is not diagnosed here but *later*, where
+/// `ConstantPoolReference::from_constant_pool` returns `None` and the linker declines to link it —
+/// which this runtime reports as `UnsupportedOperationException`. That says "we do not support
+/// this file" about a file that is simply broken, and keeping those two apart is a line this
+/// repository has drawn repeatedly. OpenJDK 26 agrees it is the file:
+/// `ClassFormatError: argument_index 4 has bad constant type in class file StringConcat`.
 ///
 /// One consequence worth naming: a long or double occupies two pool slots and only the first is
 /// usable (JVMS 4.4.5), so the second has no entry in this map and an argument naming it is
 /// rejected. That is the intended reading of "valid index" rather than an accident of the map.
 fn bootstrap_method_static_arguments_are_in_the_pool(class: &ClassInfo) -> bool {
     class.attributes.iter().all(|attribute| match attribute {
-        AttributeInfo::BootstrapMethods(methods) => methods
-            .iter()
-            .all(|method| method.arguments.iter().all(|index| class.constant_pool.contains_key(index))),
+        AttributeInfo::BootstrapMethods(methods) => methods.iter().all(|method| {
+            method.arguments.iter().all(|index| {
+                class.constant_pool.get(index).is_some_and(|item| {
+                    matches!(
+                        item,
+                        ConstantPoolItem::Integer(_)
+                            | ConstantPoolItem::Float(_)
+                            | ConstantPoolItem::Long(_)
+                            | ConstantPoolItem::Double(_)
+                            | ConstantPoolItem::Class { .. }
+                            | ConstantPoolItem::String { .. }
+                            | ConstantPoolItem::MethodHandle { .. }
+                            | ConstantPoolItem::MethodType { .. }
+                            | ConstantPoolItem::Dynamic { .. }
+                    )
+                })
+            })
+        }),
         _ => true,
     })
 }

@@ -4,6 +4,12 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
+  채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
+  ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
+  ★**커밋된 클래스 파싱이 전/후 «144/12 동일»**(새로 거부 0). ★OpenJDK 26 은 같은 파일을 `ClassFormatError: argument_index 4 has bad constant type` 로 거부한다.
+  ★**안 하면**: 링커에서 `UnsupportedOperationException` — 「파손」을 「미지원」이라 말하게 된다.
+  ★개악 2종 red(존재만 되돌리기 · ★집합에 Utf8 한 칸 추가) · `--all` **575/0/1** · 새 픽스처 **0**(바이트 패치).
 - [rustjava-adopt-link-stringconcatfactory-p0] ★★**`StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다».**
   채택 제안 `2026-09-16-link-stringconcatfactory#p0`(worklog json `adoptedProposals` 기록).
   ★**제품 동작 변경**: `makeConcat` 콜사이트가 **거부 대신 실행**된다. ★**실행기(`concat_with_constants`)는 한 줄도 안 바뀌었다.**
