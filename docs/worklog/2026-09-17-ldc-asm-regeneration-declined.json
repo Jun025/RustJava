@@ -1,0 +1,42 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-ldc-tags-real-world-generator-survey-p0",
+ "summary": "Declined, with measurements rather than taste: regenerating the ldc tag 15/16/17 fixtures with ASM would move the hand-authorship rather than remove it, and would break the one standing check that currently makes these fixtures self-describing. The benefit the proposal wants — 'pinned to what a real generator emits' — is already held by a stronger oracle: OpenJDK 26.0.1 loads, verifies and runs all four positive fixtures cleanly, and the survey round had already proved dynamically that ASM emits all three tags. No product code changed.",
+ "changes": [
+  "docs/worklog/2026-09-17-ldc-asm-regeneration-declined.{json,md}: the disposition and its grounds",
+  "REPORT.md, STATE.md: the round record",
+  "no code: test-data/src/ldc/make_ldc_fixtures.py and test-data/ldc/ are untouched"
+ ],
+ "verification": [
+  "the proposal's first stated cost is still true and is now measured: no JDK is on PATH (`java -version` -> 'Unable to locate a Java Runtime'; /usr/libexec/java_home finds none). One exists off-PATH via homebrew (/opt/homebrew/opt/openjdk = OpenJDK 26.0.1), so this is 'not reachable by default', not 'absent'.",
+  "CI has no JDK at all: `grep -rn 'setup-java|java-version|temurin|zulu' .github/workflows/` -> 0 hits across all six workflows",
+  "asm.jar is not in the repository and cannot be (binary dependency): `git ls-tree -r origin/main` matching `\\.jar$|asm` -> only test-data/test.jar, which is unrelated",
+  "nothing regenerates fixtures in CI today either: `grep -rn 'make_ldc_fixtures|make_indy_fixtures|make_cp_fixtures|verify-javac' .github/workflows/` -> 0 hits. So the cost is not 'CI breaks'; it is that the zero-dependency, always-runnable local regeneration becomes a network + JDK + pinned-jar ritual.",
+  "STRONGER ORACLE, measured: OpenJDK 26.0.1 runs all four positive fixtures with rc=0 and no output — LdcMethodHandle, LdcMethodType, LdcDynamic, Ldc2WDynamic. A real JVM's class file verifier accepts the hand-assembled bytes. The negative controls are rejected (rc=1), as intended.",
+  "the 'is this shape real' question was already answered by the survey round itself: ASM 9.7.1 driven by a 15-line EmitLdc.java emitted {MethodHandle 1, MethodType 1, Dynamic 1} (docs/worklog/2026-09-16-ldc-tags-real-world-generator-survey.md, the dynamic row)",
+  "standing-check conflict: the single-defect audit requires `generator(**given) == committed` for every listed fixture *before* the no-defect skip, so ASM-produced bytes would report GENERATOR DRIFT (rc=2) for exactly these fixtures. Measured caveat: that audit is NOT landed yet (`git ls-tree -r origin/main` matching audit-fixture-single-defect -> 0; bin/landed -> UNLANDED) — it is in flight on PR #63.",
+  "version pin coupling (landed, PR #57): the table records 52.0 for LdcMethodHandle/LdcMethodType and 55.0 for LdcDynamic/Ldc2WDynamic. 55 is not incidental — JVMS 4.4 ties tag 17 to major >= 55 — and ASM writes whatever the driver sets, so the majors would still be chosen by hand.",
+  "tests/test_class_format.rs:309-330 lowers these fixtures' major to 50/54 to prove the version rule, so the fixtures' own majors are load-bearing for a second test as well"
+ ],
+ "issues": [
+  "Declining is not free. The generator's docstring keeps its 'These are **synthetic**' caveat for the positive fixtures, so a reader still has to take the survey worklog's word that the shape is one a real tool emits.",
+  "Residual risk named plainly: if the Python encoder had a systematic bias that both our parser and OpenJDK's verifier happen to tolerate, ASM output would expose it and we will not. OpenJDK's verifier is a strong filter, not a proof.",
+  "No standing guarantee either way: nothing flags a future edit to the generator that produces a valid-but-unrealistic shape. The version pin and the single-defect audit both check self-consistency, not realism."
+ ],
+ "adoptedProposals": [],
+ "declinedProposals": [
+  "2026-09-16-ldc-tags-real-world-generator-survey#p0"
+ ],
+ "proposals": [
+  {
+   "title": "Run the ldc positive fixtures under a real JVM as the realism check, instead of regenerating them",
+   "plainSummary": "Rather than rebuilding our test files with a bytecode library, run them on a real Java runtime and record that it accepted them. That is the check the rebuild was meant to buy.",
+   "userBenefit": "The claim 'these hand-made files are shaped like real ones' stops being a sentence in a worklog and becomes a command anyone can re-run.",
+   "why": "This round measured it by hand: OpenJDK 26.0.1 runs LdcMethodHandle, LdcMethodType, LdcDynamic and Ldc2WDynamic with rc=0. The repository already has the pattern and the caveat for exactly this — test-data/src/verify-javac-fixtures.sh rebuilds the javac fixtures and says outright that it needs a JDK and that CI has none, so it is the manual check you run after regenerating. Extending that script to load the ldc positives costs no new dependency, keeps the Python generator as the single mechanism, and does not disturb the single-defect audit's `generator == committed` equation.",
+   "tradeoff": "It stays manual, like its sibling — a check that CI never runs is a check that rots, and this one would rot the same way. It is also weaker than the rejected proposal in one specific direction: a JVM accepting our bytes proves they are legal, not that any generator would emit that exact encoding. And it needs the JDK path spelled out, since /opt/homebrew/opt/openjdk is not on PATH here.",
+   "effort": "S",
+   "target": "test-data/src/verify-javac-fixtures.sh, test-data/src/ldc/make_ldc_fixtures.py"
+  }
+ ]
+}
