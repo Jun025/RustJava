@@ -4,6 +4,17 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p2] ★★**`LambdaMetafactory.metafactory` 링크 — 람다·메서드 참조가 «돈다».**
+  채택 제안 `2026-09-16-link-stringconcatfactory#p2`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음**
+  (람다 포함 클래스: 적재 거부 → 실행). ★`jvm/` 무접촉 · `java.lang.invoke` **0줄**.
+  ★★**제안의 「java.lang.invoke 가 불가피 · L」은 틀렸다** — 콜사이트가 의미하는 것은 핸들 사슬이 아니라 **객체**이고,
+  그걸 만들 두 축이 **이미 있었다**(`MethodBody::Rust(JvmCallback)` · `Jvm::register_class`). ⇒ 팩토리가 스핀할 클래스를 직접 만든다.
+  ★**경계 = 어댑터**(박싱·언박싱·확대): 통과가 아니면 **링크하지 않는다** — 판정이 **lowering 시점**이라 「로드되거나 안 되거나」이고
+  호출 «도중» 실패 경로가 없다. `LambdaBoxing.class` 가 그 경계를 잠근다(OpenJDK 는 3을 찍는다).
+  ★★**관측 가능성 3종이 «처음엔 안 죽었다»** — ⑴void 버림(인터프리터 «밖» = `Thread.run()` 의 `()` 변환에서만 보인다)
+  ⑵REF_invokeSpecial(javac 11+ 는 안 낸다 ⇒ **--release 8** 픽스처 · 핀을 «픽스처별»로 바꿨다) ⑶정적 인자 개수·종류(손조립 2종).
+  ★**개악 14종 전건 red** · `cargo test --all` **573 → 576 / 0 failed / 1 ignored** · `LambdaKinds` 10줄이 OpenJDK 26.0.1 과 일치 ·
+  DoD 7명령 rc=0 · 픽스처 재생성 멱등.
 - [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
   게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
   ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은

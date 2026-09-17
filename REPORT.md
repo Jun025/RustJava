@@ -1,4 +1,33 @@
 # REPORT
+## [2026-09-17] `LambdaMetafactory.metafactory` 를 링크했다 — ★**람다와 메서드 참조가 «돈다»** (rustjava-adopt-link-stringconcatfactory-p2)
+- 무엇을: 채택 제안 `2026-09-16-link-stringconcatfactory#p2`. ★**제품 동작이 바뀐다** — 람다·메서드 참조를 담은 클래스가
+  **적재 거부**에서 **실행**으로 바뀐다. `jvm/` 은 **무접촉**, `java.lang.invoke` 는 **한 줄도 추가하지 않았다**.
+- ★★**제안의 비용 추정이 틀렸다 — 그것이 이 회차의 요지다.** 제안은 「string concat 의 지름길을 쓸 수 없다 ·
+  `java.lang.invoke` 가 **불가피**해진다 · 노력도 **L**」이라 했다. ★**호출 사이트가 «의미»하는 것은 핸들 사슬이 아니라 «객체»다.**
+  그리고 그 객체를 만들 두 축이 ★**이미 있었다**: `MethodBody::Rust(JvmCallback)`(본문이 러스트인 메서드) ·
+  `Jvm::register_class`(런타임에 만든 정의를 이름으로 등재). ⇒ 팩토리가 스핀할 클래스를 **직접** 만든다.
+- ★**설계에서 «떨어져 나온» 것 둘**(만든 게 아니다): ⒜**GC 가 이미 추적한다** — `find_all_fields` 가
+  `ClassDefinition::fields` 를 걷으므로 포획값을 «필드»로 두면 그대로 살아 있다(그래서 필드다)
+  ⒝**등재가 멱등** — `register_class_internal` 이 `.or_insert` 라 두 스레드가 같은 콜사이트에 닿아도 먼저 것이 이긴다(락 0).
+- ★★**경계 = «어댑터»**: 실 팩토리는 박싱·언박싱·확대를 끼워 넣는다. 여기엔 그 축이 없으므로 **통과**(동일 프리미티브 ·
+  양쪽 레퍼런스)가 아니면 ★**링크하지 않는다**. 판정이 서술자만으로 되므로 **lowering 시점**에 끝난다 ⇒ 클래스는
+  로드되거나 안 되거나이고 ★**호출 «도중»에 실패하는 경로가 없다.** 그 경계는 `LambdaBoxing.class` 가 **잠근다**
+  (OpenJDK 26.0.1 은 3을 찍고 우리는 거부한다).
+- ★★**관측 가능성이 어려웠던 자리 셋 — 전부 «처음엔 안 죽었다»**:
+  ⑴**void 버림**: 지워도 전 스위트 green 이었다 — 남은 값은 오퍼랜드 스택 «아래»에 쌓이고 정상 바이트코드가 다시 꺼내지 않는다.
+  ⇒ 인터프리터 «밖»에서만 보인다: `Thread.run()` 이 `Runnable.run()V` 를 러스트에서 부르고 `From<JavaValue> for ()` 로 변환한다
+  (Void 가 아니면 **panic**). 픽스처를 그 경로로 통과시키자 개악이 `Expected void, got Int(7)` 로 죽었다.
+  ⑵**REF_invokeSpecial**: javac 은 Java 11(nestmates)부터 그 종류를 «내지 않는다» — 같은 소스 실측으로
+  `--release 8` 은 kind 7 · `--release 21` 은 kind 5. ★그렇게 오래된 클래스 파일이 이 런타임의 «대상»이므로 가지를 남기고
+  픽스처를 **8로 컴파일**했다. `test_fixture_pins.rs` 를 **픽스처별 핀**으로 바꿨다 — «면제»로 뺐으면 그 픽스처의 요지가 무검증이 된다.
+  ⑶**정적 인자 «개수·종류»**: 신원 4축엔 근접실패가 있었는데 이 둘엔 **없었다** ⇒ 손조립 2종 추가.
+- ★★**개악 14종 전건 red**(정상 576 green): lowering 미호출 · 신원 4축 각각 · 정적인자 2축 · 통과검사 · 포획 저장 ·
+  수신자 처리 · void 버림 · REF_invokeSpecial · REF_newInvokeSpecial · 릴리스 8 핀.
+- 검증: `cargo test --all` **573 → 576 passed / 0 failed / 1 ignored**(기준선 `origin/main` 워크트리 실측) ·
+  `LambdaKinds` 출력 **10줄이 OpenJDK 26.0.1 과 글자대로 일치** · DoD 7명령 rc=0 · 픽스처 재생성 **멱등**.
+- ★후속: **박싱 어댑터**(M · `LambdaBoxing` 이 이미 그 자리를 잠그고 있다) · **람다 클래스의 리플렉션 가시성 결정**(S) —
+  `docs/worklog/2026-09-17-link-lambdametafactory.json`.
+
 ## [2026-09-17] 신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다 (rustjava-adopt-cp-tag-passthrough-detectable-p0-fix)
 - 무엇을: `string_concat.rs` 의 부트스트랩 신원 **4축**(kind·class·name·descriptor) 중 ★**3축이 «관측되지 않고» 있었다** —
   근접 실패 픽스처가 **class 축 하나**뿐이었기 때문이다. 나머지 3축의 픽스처를 만들었다. ★**제품 코드 무접촉.**
