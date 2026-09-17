@@ -1,0 +1,46 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-link-stringconcatfactory-p1",
+  "summary": "Decide what a linked recipe that contradicts its call site should do: keep it a BootstrapMethodError (what OpenJDK 26 throws, measured), raise it before anything is converted, and compare the counts for equality rather than shortfall — plus add the java.lang.BootstrapMethodError the runtime did not have, without which that branch panicked instead of throwing.",
+  "changes": [
+    "jvm-bytecode/src/interpreter.rs: one agreement check (arguments and constants) before any conversion, replacing the two mid-recipe shortfall guards",
+    "rustjava-runtime/src/classes/java/lang/bootstrap_method_error.rs: the class itself, a LinkageError child as in the JDK; registered in lang.rs and loader.rs",
+    "test-data/src/indy/make_indy_fixtures.py: recipe_arity_call_site — a call site that is the factory but whose recipe contradicts it",
+    "test-data/indy/RecipeWants{MoreArguments,FewerArguments,AConstant}.class: one fixture per direction of the disagreement",
+    "tests/test_class_format.rs: test_a_recipe_that_contradicts_its_call_site_is_a_bootstrap_method_error"
+  ],
+  "verification": [
+    "OpenJDK 26.0.1 on all three fixtures: BootstrapMethodError caused by StringConcatException, at linkage — not ClassFormatError",
+    "mutation: drop the agreement check -> red; weaken != to > -> red; drop the constants half -> red; unregister the class -> red (the original panic returns)",
+    "cargo test --all: 574 passed / 0 failed / 1 ignored (origin/main baseline 573 / 0 / 1, measured in a worktree)",
+    "DoD 7 commands all rc=0; indy fixture regeneration idempotent (the four pre-existing fixtures unchanged)"
+  ],
+  "issues": [
+    "The proposal's premise that 'the current runtime check is cheap and correct' was false twice: the branch could not throw at all (no java.lang.BootstrapMethodError in the runtime, so jvm.rs unwrapped a NoClassDefFoundError and panicked), and it only looked for a shortfall, so a recipe shorter than the call site silently dropped arguments and returned the wrong string.",
+    "Nothing had ever executed that branch — there was no fixture for a linked-but-contradictory recipe until this round added one, which is why a panicking error path stayed green."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-link-stringconcatfactory#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Lock 'every exception class the Rust code names is one the runtime can load'",
+      "plainSummary": "The runtime panicked instead of throwing because it raised an exception class it does not have; a script can check that never happens again.",
+      "userBenefit": "An error path that names a missing class fails as a panic, which is the one failure mode a JVM must not have — and it stays invisible until something walks that path.",
+      "why": "Measured this round: 72 java/javax class names appear in jvm.exception(...)-shaped call sites across the workspace, and before this round exactly one of them (BootstrapMethodError) had no proto in rustjava-runtime. The baseline is now 0, which is what makes a lock cheap: it is a grep for the names and a grep for the protos, in the shape of scripts/check-worklog-json.py.",
+      "tradeoff": "A name built at runtime (format!) would be invisible to the grep, so the check is a floor rather than a proof; and it adds an eighth DoD command, which the parity checker then also has to carry.",
+      "effort": "S",
+      "target": "scripts/, .github/workflows/rust.yml, CLAUDE.md"
+    },
+    {
+      "title": "Give the linkage errors their cause, once java.lang.invoke exists",
+      "plainSummary": "A real JVM reports the underlying StringConcatException as the cause of the BootstrapMethodError; here the message carries that text instead.",
+      "userBenefit": "Stack traces read as they would on a real JVM, and a test could assert the cause rather than a substring of the message.",
+      "why": "OpenJDK 26 throws BootstrapMethodError('bootstrap method initialization exception') caused by StringConcatException('Mismatched number of concat arguments: ...'). This round folded that detail into the message because there is no java.lang.invoke package here to name the cause.",
+      "tradeoff": "Only worth doing alongside the LambdaMetafactory work that brings java.lang.invoke in; on its own it would add a class that exists solely to be a cause.",
+      "effort": "S",
+      "target": "rustjava-runtime/src/classes/java/lang/invoke/, jvm-bytecode/src/interpreter.rs"
+    }
+  ]
+}

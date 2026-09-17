@@ -5,6 +5,7 @@ mod arithmetic_exception;
 mod array_index_out_of_bounds_exception;
 mod array_store_exception;
 mod boolean;
+mod bootstrap_method_error;
 mod byte;
 mod char_sequence;
 mod character;
@@ -74,10 +75,11 @@ mod virtual_machine_error;
 pub use self::{
     abstract_method_error::AbstractMethodError, abstract_string_builder::AbstractStringBuilder, appendable::Appendable,
     arithmetic_exception::ArithmeticException, array_index_out_of_bounds_exception::ArrayIndexOutOfBoundsException,
-    array_store_exception::ArrayStoreException, boolean::Boolean, byte::Byte, char_sequence::CharSequence, character::Character, class::Class,
-    class_cast_exception::ClassCastException, class_circularity_error::ClassCircularityError, class_format_error::ClassFormatError,
-    class_loader::ClassLoader, class_not_found_exception::ClassNotFoundException, clone_not_supported_exception::CloneNotSupportedException,
-    cloneable::Cloneable, comparable::Comparable, double::Double, r#enum::Enum, error::Error, exception::Exception,
+    array_store_exception::ArrayStoreException, boolean::Boolean, bootstrap_method_error::BootstrapMethodError, byte::Byte,
+    char_sequence::CharSequence, character::Character, class::Class, class_cast_exception::ClassCastException,
+    class_circularity_error::ClassCircularityError, class_format_error::ClassFormatError, class_loader::ClassLoader,
+    class_not_found_exception::ClassNotFoundException, clone_not_supported_exception::CloneNotSupportedException, cloneable::Cloneable,
+    comparable::Comparable, double::Double, r#enum::Enum, error::Error, exception::Exception,
     exception_in_initializer_error::ExceptionInInitializerError, float::Float, illegal_access_error::IllegalAccessError,
     illegal_access_exception::IllegalAccessException, illegal_argument_exception::IllegalArgumentException,
     illegal_monitor_state_exception::IllegalMonitorStateException, illegal_state_exception::IllegalStateException,
