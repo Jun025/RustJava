@@ -37,6 +37,10 @@ import importlib.util
 import pathlib
 import sys
 
+# 생성기를 import 로 불러오므로 그대로 두면 `test-data/src/*/__pycache__` 가 남는다. 이 트리는 여러
+# 세션이 공유하므로 «내가 만든 쓰레기»를 남기지 않는다 — 읽기만 하는 감사에 캐시는 필요도 없다.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
