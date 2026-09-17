@@ -12,7 +12,7 @@ classfile::ClassFileError::InvalidFormat(&'static str)
       → jvm.exception("java/lang/ClassFormatError", cause)                ← 두 자리 모두
 ```
 그리고 `validate_class` 의 **8항 `||` 사슬**을 **규칙마다 `if` 하나**로 쪼갰다 —
-클래스 8 · 필드 3 · 메서드 2 = ★**사유 13개**(필드의 `ConstantValue` 는 「몇 개냐」와 「타입이 맞냐」가
+클래스 8 · 필드 3 · 메서드 **3** = ★**사유 14개**(계수 = `grep -c 'ClassFileError::InvalidFormat(' classfile/src/validation.rs`)(필드의 `ConstantValue` 는 「몇 개냐」와 「타입이 맞냐」가
 **한 조건에 묶여** 있었고, 그 둘을 갈랐다).
 
 ★**왜 변형이 아니라 문자열인가**: 집합이 **열려 있고**(규칙이 늘 때마다 하나씩) **아무도 분기하지 않는다**.
@@ -40,7 +40,7 @@ classfile::ClassFileError::InvalidFormat(&'static str)
 |---|---|
 | **M1** `src/runtime.rs` 가 다시 `"Invalid class file"` 를 박는다 | ★**red** |
 | **M2** `From` 이 다시 사유를 **버린다**(제안이 지목한 바로 그 버그) | ★**red** |
-| **M3** 서로 다른 두 사유를 **한 문자열**로 접는다 | ★**red** — dedup 단언이 잡는다 |
+| **M3** 서로 다른 두 사유를 **한 문자열**로 접는다 | ★**red** — 줄마다의 `assert!(err.contains(cause))` 가 잡는다(`tests/test_class_format.rs:452`) |
 | 복원 | **green** 17/0 |
 
 ★**M3 이 없으면** 「전부 같은 문자열로 되돌려도 통과」가 가능하다 — 그래서 테스트가 **사유들이 서로 다름**까지 단언한다.
@@ -50,10 +50,10 @@ classfile::ClassFileError::InvalidFormat(&'static str)
 - ★★**마지막 홉이 «두 번» 쓰여 있고 한 쪽만 테스트가 본다**(실측): `src/runtime.rs` ↔ `test-utils/src/lib.rs`.
   ★**test-utils 사본만 개악하면 `cargo test --all` 이 `579 passed / 0 failed`** — **아무것도 울지 않는다**.
   ★**합치는 것은 리팩터라 하지 않았고**, 대신 **구멍을 보고한다**.
-- 사유가 **문자열**이라 두 규칙에 같은 문구를 주는 것을 막는 것이 없다. dedup 단언은 **그 테스트가 이름한 세 픽스처**만 덮는다.
+- 사유가 **문자열**이라 두 규칙에 같은 문구를 주는 것을 막는 것이 없다. ★**그리고 그것을 «막는다»고 적었던 dedup 단언은 공허했다** — `seen` 에 담기던 것이 제품의 출력이 아니라 **표의 기대 리터럴**이라 상수끼리 비교했고, 제품이 무엇을 내든 결과가 같았다. ⇒ **걷어냈다.** 남는 보장은 `contains` 가 덮는 **그 세 픽스처**뿐이다.
 - ★**픽스처 규율을 대체하지 않는다**(제안이 이미 적었다) — 사유는 「어느 검사가 울었나」이지
   「다축 검사의 각 축이 관측되나」가 아니다.
 - ★**PR #66 과 같은 함수를 만진다** — 뒤에 착지하는 쪽이 base 를 당겨 그 항을 다시 쪼갠다. 충돌은 실재하지만 **기계적**이다.
 
 ## 검증
-`cargo test --all` **578 → 579 / 0 failed / 1 ignored** · `classfile` **15+13/0** · `test_class_format` **17/0** · DoD 7명령 rc=0.
+`cargo test --all` **578 → 579 / 0 failed / 1 ignored** · `classfile` **15+13/0** · `test_class_format` **17/0** · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**(rc=0).

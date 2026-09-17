@@ -7,12 +7,12 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
-- [rustjava-adopt-classfile-error-cause-decision-p0] ★★**거부 사유를 세 층에 꿴다 — 「Invalid class file」 하나가 13개 문장이 된다.** 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음**(사용자가 보는 `ClassFormatError` 메시지).
+- [rustjava-adopt-classfile-error-cause-decision-p0] ★★**거부 사유를 세 층에 꿴다 — 「Invalid class file」 하나가 **14개** 문장이 된다(클래스 8 · 필드 3 · 메서드 3).** 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음**(사용자가 보는 `ClassFormatError` 메시지).
   ★제안이 **all-or-nothing** 이라 못박은 넷을 다 했다: `InvalidFormat(&'static str)` · `InvalidClassFile(&'static str)`(★`From` 이 **버리던** 자리) · 경계 2자리 · ★**`validate_class` 8항 `||` → 규칙마다 `if`**.
   ★★**사유를 꿰자 «평평한 오류가 가리던 것 둘»이 나왔다**: ⑴테스트가 **어느 층이 거부하는지를 틀리게 믿었다**(검증 아닌 **파서**) ⇒ ★단언을 실측에 맞췄다 ⑵술어 **이름이 낡아 있었다**(「in_the_pool」인데 **적재 가능성까지** 본다) ⇒ 사유는 규칙대로, ★**이름은 안 바꿨다**(리팩터 금지).
-  ★**양방향 — 세 층 전부 개악**: M1 경계 · M2 `From` 이 사유 버림 · M3 두 사유를 한 문자열로 접음(★dedup 단언이 잡는다) · 복원 17/0.
+  ★**양방향 — 세 층 전부 개악**: M1 경계 · M2 `From` 이 사유 버림 · M3 두 사유를 한 문자열로 접음(★잡는 것은 `contains` `:452` — 초판이 귀속한 dedup 단언은 **상수 대 상수라 공허**했고 **걷어냈다**) · 복원 17/0.
   ★★**대가**: ★**마지막 홉이 두 번 쓰여 있고 `test-utils` 사본은 «무검증»**(개악해도 579/0 · **합치지 않고 보고**) · 사유가 문자열이라 같은 문구 중복을 막는 것이 없다 · ★**PR #66 과 같은 함수**(충돌은 기계적).
-  ★`--all` **578 → 579/0/1** · DoD 7명령 rc=0.
+  ★`--all` **578 → 579/0/1** · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**(rc=0).
 - [rustjava-adopt-ldc-tags-real-world-generator-survey-p0] ★★**「ldc 픽스처를 ASM 으로 재생성」 제안 — 기각.** ★**제품 코드 0줄**(`declinedProposals` 기록).
   ★**사유 ⑴ 더 센 오라클이 이미 있다** — ★**OpenJDK 26.0.1 이 양성 4건을 실행한다(전건 rc=0)** · 위법 5건은 전건 rc=1 · 「ASM 이 낸다」는 선행 회차가 이미 동적 실증.
   ★**⑵ 손의 흔적은 «옮겨갈» 뿐이다**(ASM 도 드라이버 15줄이 모양을 고른다) ★**⑶ 생성기가 «두 기구»가 된다**(음성 픽스처는 ASM 불가) ·

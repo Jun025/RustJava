@@ -6,8 +6,8 @@ These exist for one reason: to make the tag switch's pass-through branch observa
 `tests/test_class_format.rs` already had a test for "we still reject unknown constant pool tags",
 built by overwriting the tag byte of `test-data/Hello.class`'s first pool entry. That entry is a
 Methodref the code invokes, so overwriting it breaks the class along several independent paths at
-once — the operand of `invokespecial` stops being a method reference, and so on. `ClassFileError`
-collapses every parse failure into a flat "Invalid class file", so the assertion cannot tell
+once — the operand of `invokespecial` stops being a method reference, and so on. At the time,
+`ClassFileError` collapsed every parse failure into a flat "Invalid class file", so the assertion could not tell
 "rejected because the tag is unknown" from "rejected because the class fell apart". Measured: with
 the pass-through branch mutated from reject to accept, that test still passed.
 

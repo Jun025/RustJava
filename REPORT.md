@@ -2,14 +2,14 @@
 ## [2026-09-18] 거부된 클래스 파일이 «왜»를 말한다 — 세 층을 관통하는 사유 (rustjava-adopt-classfile-error-cause-decision-p0)
 - 무엇을: 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음** — `ClassFormatError` 메시지가 **모든 거부에 같던 「Invalid class file」** 에서 **사유별 문장**으로 바뀐다.
 - ★**제안이 스스로 all-or-nothing 이라 못박았다** — 타입만 고치면 **관측되는 것이 없고**, `||` 사슬을 안 쪼개면 **평평함이 사라지는 게 아니라 옮겨갈 뿐**이다. 넷 다 했다:
-  `ClassFileError::InvalidFormat(&'static str)` → `ClassDefinitionError::InvalidClassFile(&'static str)`(★`From` 이 **버리던** 자리) → 두 경계 자리 모두 사유를 그대로 던진다 · `validate_class` 의 **8항 `||` 사슬 → 규칙마다 `if` 하나**(사유 **13개** · 필드 `ConstantValue` 는 「몇 개냐」와 「타입이 맞냐」가 **한 조건에 묶여** 있어 갈랐다).
+  `ClassFileError::InvalidFormat(&'static str)` → `ClassDefinitionError::InvalidClassFile(&'static str)`(★`From` 이 **버리던** 자리) → 두 경계 자리 모두 사유를 그대로 던진다 · `validate_class` 의 **8항 `||` 사슬 → 규칙마다 `if` 하나**(사유 **14개**(클래스 8 · 필드 3 · 메서드 3 — `grep -c 'ClassFileError::InvalidFormat('` 로 센 값) · 필드 `ConstantValue` 는 「몇 개냐」와 「타입이 맞냐」가 **한 조건에 묶여** 있어 갈랐다).
 - ★**왜 «변형»이 아니라 «문자열»인가**: 집합이 **열려 있고**(규칙마다 하나) **아무도 분기하지 않는다**. 선례도 있다 — `ClassDefinitionError::UnsupportedFeature(&'static str)`.
 - ★★**사유를 꿰자마자 «평평한 오류가 가리고 있던 것 둘»이 나왔다**:
   ⑴**테스트가 «어느 층이 거부하는지»를 틀리게 믿고 있었다** — 「인덱스가 엉뚱한 종류를 가리킨다」는 **검증**이 아니라 ★**파서**가 거부한다(`truncated or unparsable class file`). ★**코드를 추측에 맞추지 않고 단언을 실측에 맞췄다**(주석에 「measured, not assumed」).
   ⑵**술어 이름이 낡아 있었다** — `bootstrap_method_static_arguments_are_in_the_pool` 은 이름과 달리 **「적재 가능 상수인가」까지** 요구한다(직전 회차가 넓혔고 자기 docstring 이 그렇게 적는다). 사유는 **규칙 그대로** 적고 ★**함수 이름은 바꾸지 않았다**(리팩터 = 범위 밖).
-- ★★**양방향 — 세 층 «전부»에 개악**: **M1** `src/runtime.rs` 가 다시 문자열을 박는다 → red · **M2** `From` 이 다시 사유를 버린다(제안이 지목한 그 버그) → red · **M3** 두 사유를 한 문자열로 접는다 → ★**dedup 단언이 잡는다**(이게 없으면 「전부 같은 문자열로 되돌려도 통과」가 된다) · 복원 **17/0**.
+- ★★**양방향 — 세 층 «전부»에 개악**: **M1** `src/runtime.rs` 가 다시 문자열을 박는다 → red · **M2** `From` 이 다시 사유를 버린다(제안이 지목한 그 버그) → red · **M3** 두 사유를 한 문자열로 접는다 → red · 복원 **17/0**. ★★**M3 을 잡는 것은 줄마다의 `assert!(err.contains(cause))` 다**(`tests/test_class_format.rs:452` — 실행이 루프 끝에 **도달조차 하지 않는다**). ★**초판은 이것을 시험 말미의 dedup 단언에 귀속시켰는데 틀렸다** — 그 벡터에 담기던 것은 제품의 출력이 아니라 **표의 기대 리터럴**이라 **상수끼리 비교**했고 제품이 무엇을 내든 결과가 같았다. ⇒ ★**주석만 고치지 않고 그 블록을 걷어냈다**(잃는 것은 아래 대가에 적는다).
 - ★★**대가 — 실측한 구멍 하나를 포함해 적는다**: ⒜★**마지막 홉이 «두 번» 쓰여 있고 한 쪽만 테스트가 본다** — `test-utils/src/lib.rs` 사본만 개악하면 `cargo test --all` 이 **579 passed / 0 failed**(아무것도 안 운다). ★**합치는 것은 리팩터라 하지 않았고 구멍을 보고한다.** ⒝사유가 문자열이라 **두 규칙에 같은 문구**를 주는 것을 막는 것이 없다(dedup 단언은 세 픽스처만 덮는다) ⒞★**픽스처 규율을 대체하지 않는다**(제안이 이미 적었다) ⒟★**PR #66 과 같은 함수를 만진다** — 뒤에 착지하는 쪽이 base 를 당겨 그 항을 다시 쪼갠다(충돌은 실재하나 **기계적**).
-- 검증: `cargo test --all` **578 → 579 / 0 failed / 1 ignored** · `classfile` **15+13/0** · DoD 7명령 rc=0.
+- 검증: `cargo test --all` **578 → 579 / 0 failed / 1 ignored** · `classfile` **15+13/0** · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**(rc=0 · ★수를 직접 세지 않는다 — `CLAUDE.md` §DoD 규율).
 
 ## [2026-09-17] ldc 픽스처를 ASM 으로 재생성하자 — ★**기각**(rustjava-adopt-ldc-tags-real-world-generator-survey-p0)
 - 무엇을: 운영자가 tower 에서 채택한 제안 `2026-09-16-ldc-tags-real-world-generator-survey#p0` 의 처분. ★**제품 코드 0줄** — 산출물은 «판정과 그 근거»다.
