@@ -14,6 +14,10 @@
   ★★**⑷ 단일결함 감사의 첫 등식(`generator==committed`)과 충돌** ⇒ `GENERATOR DRIFT rc=2`. ★단 그 감사기는 **미착지**(PR #63)라 「착지하면 충돌하는 축」으로 적었다.
   ★★**잃는 것**: `synthetic` 단서가 남고, ★우리 인코더의 체계적 편향을 파서«와» JVM 이 둘 다 관대하게 넘기는 경우는 못 잡는다(검증기는 센 필터이지 증명이 아니다).
   ★후속 카드 1건 — 재생성 대신 **양성 픽스처를 진짜 JVM 에 올리는** 현실성 검사(선례 `verify-javac-fixtures.sh`).
+  ★★**게이트③ 착지 — PR #64 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**).
+  게이트② **approve** · 핀 **`c0413f81`** ↔ 착수 시 PR head **동일**(불이동) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★★**착지시킨 것은 «기각 기록»이다** — 제품 코드 **0줄**이 정상이고, 착지 diff 는 원장 4파일뿐이다.
 - [rustjava-adopt-link-stringconcatfactory-p1-fix2] ★★**base 당김 — 그런데 막고 있던 코드 충돌은 «이미 없었다»(PR #60).**
   ★**전제 반증**: 「`make_indy_fixtures.py` 4구역 충돌」은 `-p1-fix` 가 **14:10 `0f06b93f`** 로 합집합 해소했고 게이트②가 **15:43 그 head 를 approve** 했다.
   발권 근거(12:12 blocked 회신)가 그 사이 낡은 것이다. ★**재발 불가**도 확인 — 뒤진 9커밋 중 그 파일을 만진 것 **0건**.
