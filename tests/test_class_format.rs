@@ -28,16 +28,17 @@ fn hello_class() -> Vec<u8> {
     fs::read("test-data/Hello.class").unwrap()
 }
 
-// Only the exception *kind* is asserted, not the message: `ClassFileError::InvalidFormat` carries
-// no cause, and the two places that turn it into a Java exception hardcode the string "Invalid
-// class file", so there is no per-cause wording to assert.
+// This note used to say only the exception *kind* could be asserted, because `InvalidFormat` carried
+// no cause and both places that turn it into a Java exception hardcoded "Invalid class file". That is
+// done: `InvalidFormat(&'static str)` threads the cause to the boundary, and `validate_class` is one
+// `if` per rule so the cause can differ. `test_a_rejected_class_says_why` below is what makes that
+// visible; the kind-only assertions elsewhere in this file are left as they are, because the kind is
+// what those tests are about.
 //
-// This note used to say the variants were "cut" upstream at 822504b and that restoring them "needs
-// upstream variants". Both halves were wrong, measured: that commit *created* classfile/src/error.rs
-// — before it, `ClassInfo::parse` returned `Option`, so failure carried nothing at all — and this
-// fork already diverges by hundreds of lines in this crate, so nothing about the change is upstream's
-// to make. What it does need is a cause threaded through three layers and `validate_class`'s eight-term
-// `||` chain split so the cause can differ per check. See docs/worklog/2026-09-17-classfile-error-cause-decision.md.
+// (The note before *that* one said the variants were "cut" upstream at 822504b and that restoring them
+// "needs upstream variants". Both halves were wrong, measured: that commit *created*
+// classfile/src/error.rs — before it, `ClassInfo::parse` returned `Option`, so failure carried nothing
+// at all — and this fork already diverges by hundreds of lines in this crate.)
 #[tokio::test]
 async fn test_truncated_class_raises_class_format_error() {
     let (dir, path) = fixture("TruncatedHello.class", &hello_class()[..60]);
@@ -413,4 +414,48 @@ async fn test_lambda_class_reports_unsupported_feature_not_malformed() {
         !err.contains("ClassFormatError"),
         "a class javac emits for `x -> x + 1` is not malformed, got: {err}"
     );
+}
+
+// The point of threading a cause: two broken files get two different sentences, and each one names
+// the rule that fired. Before this, every one of them read "Invalid class file".
+//
+// Asserted at the boundary a user actually sees — the `ClassFormatError` message — rather than on
+// `ClassFileError`, because the value of the change is that the string survives three layers
+// (classfile -> jvm-bytecode -> runtime) instead of being dropped by the `From` impl.
+#[tokio::test]
+async fn test_a_rejected_class_says_why() {
+    let mut seen = Vec::new();
+
+    for (fixture, directory, cause) in [
+        (
+            "test-data/ldc/LdcDynamicDuplicateBSM.class",
+            "./test-data/ldc/",
+            "multiple BootstrapMethods attributes",
+        ),
+        (
+            "test-data/ldc/LdcDynamicOldMajor.class",
+            "./test-data/ldc/",
+            "class file version does not support a constant tag it carries",
+        ),
+        (
+            "test-data/ldc/LdcDynamicBSMArgPastEnd.class",
+            "./test-data/ldc/",
+            "a bootstrap method argument names nothing or is not a loadable constant",
+        ),
+    ] {
+        let err = run_class(Path::new(fixture), &[Path::new(directory)], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.ClassFormatError"),
+            "{fixture}: expected ClassFormatError, got: {err}"
+        );
+        assert!(err.contains(cause), "{fixture}: expected the message to say {cause:?}, got: {err}");
+        seen.push(cause);
+    }
+
+    // Without this the test would still pass if every cause collapsed back to one string.
+    seen.sort_unstable();
+    let distinct = seen.len();
+    seen.dedup();
+    assert_eq!(seen.len(), distinct, "the causes must differ from each other, not just from nothing");
 }

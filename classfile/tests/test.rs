@@ -149,17 +149,26 @@ fn test_invokeinterface() {
 fn test_malformed_class_files_return_structured_errors() {
     let hello = include_bytes!("../../test-data/Hello.class");
 
-    assert_eq!(ClassInfo::parse(&[]).err(), Some(ClassFileError::InvalidFormat));
+    assert_eq!(
+        ClassInfo::parse(&[]).err(),
+        Some(ClassFileError::InvalidFormat("truncated or unparsable class file"))
+    );
 
     let mut invalid_magic = hello.to_vec();
     invalid_magic[0] = 0;
-    assert_eq!(ClassInfo::parse(&invalid_magic).err(), Some(ClassFileError::InvalidFormat));
+    assert_eq!(
+        ClassInfo::parse(&invalid_magic).err(),
+        Some(ClassFileError::InvalidFormat("truncated or unparsable class file"))
+    );
 
     let mut unsupported_version = hello.to_vec();
     unsupported_version[6..8].copy_from_slice(&71u16.to_be_bytes());
     assert_eq!(ClassInfo::parse(&unsupported_version).err(), Some(ClassFileError::UnsupportedVersion(71)));
 
-    assert_eq!(ClassInfo::parse(&hello[..hello.len() / 2]).err(), Some(ClassFileError::InvalidFormat));
+    assert_eq!(
+        ClassInfo::parse(&hello[..hello.len() / 2]).err(),
+        Some(ClassFileError::InvalidFormat("truncated or unparsable class file"))
+    );
 
     let minimal_class = vec![
         0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x2d, 0x00, 0x05, 0x01, 0x00, 0x04, b'T', b'e', b's', b't', 0x07, 0x00, 0x01, 0x01, 0x00, 0x10,
@@ -170,11 +179,19 @@ fn test_malformed_class_files_return_structured_errors() {
 
     let mut invalid_constant_pool_index = minimal_class.clone();
     invalid_constant_pool_index[44..46].copy_from_slice(&99u16.to_be_bytes());
-    assert_eq!(ClassInfo::parse(&invalid_constant_pool_index).err(), Some(ClassFileError::InvalidFormat));
+    assert_eq!(
+        ClassInfo::parse(&invalid_constant_pool_index).err(),
+        Some(ClassFileError::InvalidFormat("truncated or unparsable class file")),
+        "an index past the end of the pool stops the parse, before validation sees it"
+    );
 
     let mut invalid_constant_pool_type = minimal_class;
     invalid_constant_pool_type[44..46].copy_from_slice(&1u16.to_be_bytes());
-    assert_eq!(ClassInfo::parse(&invalid_constant_pool_type).err(), Some(ClassFileError::InvalidFormat));
+    assert_eq!(
+        ClassInfo::parse(&invalid_constant_pool_type).err(),
+        Some(ClassFileError::InvalidFormat("truncated or unparsable class file")),
+        "measured, not assumed: this one is refused by the parser, not by validation"
+    );
 }
 
 #[test]
@@ -183,15 +200,24 @@ fn test_class_info_validation_rejects_invalid_names_descriptors_and_code_layout(
 
     let mut invalid_name = ClassInfo::parse(hello).unwrap();
     invalid_name.this_class = "[I".to_string().into();
-    assert_eq!(invalid_name.validate(), Err(ClassFileError::InvalidFormat));
+    assert_eq!(
+        invalid_name.validate(),
+        Err(ClassFileError::InvalidFormat("this_class does not name a class"))
+    );
 
     let mut invalid_descriptor = ClassInfo::parse(hello).unwrap();
     invalid_descriptor.methods[0].descriptor = "(V)V".to_string().into();
-    assert_eq!(invalid_descriptor.validate(), Err(ClassFileError::InvalidFormat));
+    assert_eq!(
+        invalid_descriptor.validate(),
+        Err(ClassFileError::InvalidFormat("a method descriptor is malformed"))
+    );
 
     let mut missing_code = ClassInfo::parse(hello).unwrap();
     missing_code.methods[0].attributes.clear();
-    assert_eq!(missing_code.validate(), Err(ClassFileError::InvalidFormat));
+    assert_eq!(
+        missing_code.validate(),
+        Err(ClassFileError::InvalidFormat("a method does not have exactly one Code attribute"))
+    );
 }
 
 #[test]
@@ -285,7 +311,7 @@ fn test_bootstrap_method_reference_kinds_outside_the_set_and_mispaired_kinds_are
     for reference_kind in [0u8, 10, 255] {
         assert_eq!(
             parse_with_kind(reference_kind),
-            Some(ClassFileError::InvalidFormat),
+            Some(ClassFileError::InvalidFormat("truncated or unparsable class file")),
             "reference kind {reference_kind} must not parse"
         );
     }
@@ -294,8 +320,9 @@ fn test_bootstrap_method_reference_kinds_outside_the_set_and_mispaired_kinds_are
     for reference_kind in [1u8, 4, 9] {
         assert_eq!(
             parse_with_kind(reference_kind),
-            Some(ClassFileError::InvalidFormat),
-            "reference kind {reference_kind} does not pair with a Methodref"
+            Some(ClassFileError::InvalidFormat("a constant pool entry names a missing or wrong-kind entry")),
+            "reference kind {reference_kind} does not pair with a Methodref — and the cause says it was validation, \
+             not the parser, that refused it (the loop above is the parser's)"
         );
     }
 
@@ -340,7 +367,9 @@ fn test_a_bootstrap_argument_that_is_not_a_loadable_constant_is_rejected() {
 
     assert_eq!(
         ClassInfo::parse(&mutated).err(),
-        Some(ClassFileError::InvalidFormat),
+        Some(ClassFileError::InvalidFormat(
+            "a bootstrap method argument names nothing or is not a loadable constant"
+        )),
         "a bootstrap argument naming a Utf8 is not a loadable constant"
     );
 }
