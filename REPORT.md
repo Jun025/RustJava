@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-18] 루트 픽스처 다섯이 재빌드되지 않는 이유 — ★**`-g` 다. 제안이 댄 두 설명은 «둘 다» 틀렸다** (rustjava-adopt-javac-fixture-provenance-verified-p0)
+- 무엇을: 채택 제안 `2026-09-17-javac-fixture-provenance-verified#p0`(worklog json `adoptedProposals` 기록). ★**제품 Rust 0줄 · 커밋된 `.class` 바이트 «0 변경»** — 고친 것은 검증 스크립트 한 자리다.
+- ★**답**: 커밋본은 **디버그 정보를 달고**(`-g`) 컴파일됐고 스크립트는 **그것 없이** 재빌드했다. javac 기본은 `-g:lines,source` 라 `LocalVariableTable` 이 안 나온다. 단서는 `javap -v -p` 대조(커밋본 902B 에만 `LocalVariableTable` 과 `this`·`args`·`oe`…).
+- ★★**제안의 두 설명을 측정으로 반증했다**: ⒜**다른 컴파일러 아니다** — 같은 다섯이 **26.0.1 과 26.0.2.1 에서 똑같이** 다르고 둘 다 `-g` 면 **똑같이 동일**하다(두 판본 각각 직접 실행 · 26.0.1 keg 잔존) ⒝**소스 발산 아니다** — `-g` 만 주면 **지금 소스가 커밋 바이트를 정확히 낸다**.
+  ⇒ ★★**제안이 가장 걱정한 대가가 사라진다** — `tradeoff` 의 「재컴파일이 동작 변경이 될 수 있다」는 ★**재컴파일 자체가 불요**라 성립하지 않는다.
+- ★**고친 한 자리**: 스크립트가 이미 `--release` 를 픽스처에서 읽으므로 **`-g` 도 같은 자리에서** 읽게 했다(상수풀의 `LocalVariableTable` 유무). ★**배선 전에 판별력을 쟀다** — 보유 **5** · 미보유 **107** · ★**5/5 · 오탐 0**.
+- ★**양방향**: 정상 **109 rebuilt / 109 reproduced / 0 differed** ↔ ★개악(`-g` 파생 한 줄 no-op) **104 / 5 differed**(✗ 목록이 원래 다섯과 동일) · 복원 0.
+- ★**잃는 것**: ⒜스크립트는 **여전히 `rc=1`** — 재빌드 불가 **3건**(형제 참조 소스 · `-sourcepath` 미사용)은 제안이 미해결로 적은 **별 축**이라 넓히지 않았다 ⒝판정이 **한 속성의 유무**에 걸린다(`-g:none` 재생성은 조용히 드리프트로 읽힌다).
+- 검증: `cargo test --all` **579 passed / 0 failed / 1 ignored**(불변 — Rust 무접촉) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천: 재빌드 불가 3건의 컴파일 방법 결정(M) — 상세 = `docs/worklog/2026-09-18-five-fixtures-were-built-with-g.md`.
+
 ## [2026-09-17] 「전건 single-defect」는 «측정»이 아니었다 — 판정식을 `given` 에서 파생시킨다 (rustjava-adopt-class-format-mutation-audit-p0-fix)
 - 무엇을: 게이트② **request-changes** 승계(PR #63 · 핀 `377d58b1`). ★**검수자 지적이 옳았다** — 고친 것은 감사 스크립트 **1파일**이고 제품 Rust 는 **0줄**이다.
 - ★★**급소는 한 줄이다**: `repaired` 를 **정본 인자로 다시 짓고** 있었다 ⇒ 픽스처에 둘째 결함이 무엇이 들어오든 `repaired` 와 `canonical` 이 **똑같이 버려서** 항상 같았다.
