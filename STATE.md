@@ -14,6 +14,11 @@
   ★**양방향 개악** — ours 산출물만 치우면 ours 만 red · theirs 만 치우면 theirs 2건만 red ⇒ 「선택」이 아니다.
   ★**실제로 남아 있던 것은 부채**다: 당기면 #57 의 표가 들어와 이 PR 픽스처 3개가 미등재 ⇒ 생성기로 **3행**(★삭제 0) 등재.
   ★원장 2파일 합집합·시간순 · `--all` **578/0/1** · DoD 7명령 rc=0.
+  ★★**게이트③ 착지 — PR #60 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**).
+  게이트② **approve**(리니지 최신 회신 `…-p1-fix2.review.md`) · 핀 **`632c6b06`** ↔ 착수 시 PR head **동일**(불이동) ·
+  ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**(앞 회차가 이미 당겼다).
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(이 저장소에 배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★**동봉은 이 기록 한 줄뿐** — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현·승계 회차가 이미 실었다.
 - [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
   채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
   ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
