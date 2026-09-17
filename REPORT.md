@@ -1,4 +1,46 @@
 # REPORT
+## [2026-09-17] `StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다» (rustjava-adopt-link-stringconcatfactory-p0)
+- 무엇을: 레시피 없는 진입점 `makeConcat` 을 링크한다. ★**실행기 무접촉** — 콜사이트 인자 수로 **레시피를 합성**한다.
+- 왜: 채택 제안 `2026-09-16-link-stringconcatfactory#p0`.
+- 사용자 영향: ★`makeConcat` 에 묶인 콜사이트가 **거부 대신 실행**된다.
+- ★★**제안의 전제는 «틀렸다»**(실측 javac 26.0.1 · 같은 소스 `a + b`): `--release` **9·11·17·21·26 전부
+  `makeConcatWithConstants`** 를 낸다 — ★**상수 텍스트가 «없어도»** 그렇다(레시피가 자리표시자 둘일 뿐).
+  `makeConcat` 은 **비기본 내부 플래그 `-XDstringConcat=indy`** 에서만 나온다.
+  ⇒ ★**「javac 이 상수 텍스트 없이 연결할 때 쓴다」·「javac 산출물이 더 많이 돈다」는 둘 다 거짓**이다(기본 산출물은 **이미 전부 링크된다**).
+- ★**그래도 한 이유를 «바꿔서» 적는다**: ⑴**만들 수 있는 형상**이고(그 플래그로 직접 만들었다 — 이 리니지가 `ldc` 지원을
+  정당화한 「ASM 이 실제로 낸다」와 **같은 기준**) ⑵**문서화된 공개 진입점**이며 ⑶★**실행기에 새 경로가 필요 없다**
+  (`makeConcat(n)` ≡ 레시피 `\u{1}`×n 인 `makeConcatWithConstants`).
+- ★**설계**: 상수 튜플 **둘**뿐이고 **레지스트리로 만들지 않았다**(제안 tradeoff 준수) ·
+  ★**이름과 서술자를 «쌍»으로** 맞춰 ★**#55 의 name 축 근접 실패 픽스처가 «살아 있다»**(그 파일은 이름만 `makeConcat`) ·
+  레시피 합성은 **콜사이트마다**(한 부트스트랩을 서술자가 다른 콜사이트들이 공유할 수 있다).
+- ★★**개악 4종 중 «둘»이 처음엔 살아남았다** — M3(쌍 검사를 이름만으로) · M4(정적 인자 가드 제거).
+  ★**직전 회차가 세운 「죽었다 ≠ 그 가지가 전부 덮였다」가 내 새 코드에 그대로 적용됐다** ⇒ 축마다 근접 실패를 더해
+  **4종 전건 KILLED** 로 만들었다(`MakeConcatWrongDescriptor` · `MakeConcatWithArgument`).
+- ★**픽스처가 «출력»한다**(`ab`) — ★레시피를 틀린 길이로 합성해도 **링크되고 실행된다**. 값을 버리면 그 오류가 안 보인다(M2 가 그 증거).
+- 검증: `cargo test --all` **573 → 574 / 0 failed** · 픽스처 재생성 **멱등**(기존 4개 바이트 동일) · DoD 7명령 rc=0.
+## [2026-09-17] 「어느 javac 이 만들었나」를 «기록»이 아니라 «검증»으로 바꿨다 (rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1)
+- 무엇을: 기록된 도구로 **다시 빌드해 바이트를 비교**하는 검사를 만들었다. ★**제품 코드 무접촉**(Rust 변경은 doc 주석 1곳).
+- 왜: 채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1`.
+- 사용자 영향: 없다(시험 위생). ★바뀐 것은 ★**「javac 26.0.1 로 만들었다」가 «주장»에서 «검증된 사실»이 된 것**이다.
+- ★★**제안의 결론 «둘»이 실측으로 반증됐다**:
+  ⑴「**Nothing offline can verify** a recorded compiler version … buys **provenance, not enforcement**」 →
+  ★**거짓**. javac 은 같은 소스·플래그·컴파일러에 **결정적**이라 ★**`test-data/indy` 6개가 바이트 단위로 재현된다**.
+  ⑵「강제 가능한 축은 `constant_pool.rs` 의 상수 개수뿐이고 **한 픽스처만** 덮는다」 → ★**거짓**.
+  ★**javac 산출 indy 픽스처 3/3 이 형상 단언을 갖는다** — `ConstantKinds`(태그별 정확한 개수) ·
+  `StringConcat`(신원 4축 + 인자가 «가리키는 값» + ★**바이트 창** `[15,6,0,35]`) · `Lambda`(`args[0]==args[2]!=args[1]`).
+  ★제안이 든 위험(「현대 javac 이 enum switch 를 condy 로 낸다」)은 ★**`ConstantKinds` 의 Dynamic 개수 3 이 이미 잠근다.**
+- ★**만든 것**: `test-data/src/verify-javac-fixtures.sh` — ★`--release` 를 **픽스처 자신의 major − 44** 로 읽어
+  **외부 표에 의존하지 않고**, ★명시한 `JAVAC` 가 안 되면 **조용히 대체하지 않고 rc=2** 로 멈추며,
+  ★**「못 만들었다」와 「만들었는데 다르다」를 «가른다»**(합치면 발견을 과장한다).
+  ★**CI 에 배선하지 «않았다»** — 워크플로에도 PATH 에도 JDK 가 없어 **어디서나 실패하거나 어디서나 건너뛴다**.
+- ★**실패담 둘(밟은 대로 적는다)**: ⑴`command -v javac` 이 macOS **스텁**을 고른다 ⇒ **실행해서** 판별 ⑵★`-sourcepath` 를 넣었다가
+  **더 나빠졌다** — `test-data/src/Exception.java` 가 `java.lang.Exception` 을 가려 멀쩡하던 재현이 타입 오류로 무너졌다 ⇒ **되돌리고 그 대가를 따로 보고**.
+- ★**개악 대조**: 커밋본 **1바이트 반전** → ★**✗ 감지** · 복원 → 6/6 재현 · 명시 `JAVAC` 부재 → ★**rc=2(통과 아님)**.
+- ★**일반화 — 값만 적고 고치지 않았다**: 루트에 돌리니 **109 rebuilt · 104 재현 · 5 상이 · 3 재빌드 불가**.
+  상이 5건(`MonitorSemantics`×3 · `NativeMethod` @8 · `OddEven` @21)의 ★**원인은 단정하지 않는다**(다른 컴파일러 ↔ 빌드 후 소스 수정이 둘 다 맞는다).
+  ★그래도 적는 이유: ★**제안이 걱정한 드리프트가 «실재»한다는 첫 직접 증거**다.
+- 검증: `cargo test --all` **572 / 0 failed / 1 ignored**(doc 주석만 바꿔 **불변**) · DoD 7명령 rc=0.
+- 후속 추천: 루트 5건이 **왜** 재현되지 않는지 규명(M) — 상세 = `docs/worklog/2026-09-17-javac-fixture-provenance-verified.md`.
 ## [2026-09-17] `ClassFileError` 가 «원인»을 실어야 하는가 — ★**판정: 할 값 있다. 단 제안의 이름·이유·범위가 셋 다 틀렸다** (rustjava-adopt-cp-tag-passthrough-detectable-p1)
 - 무엇을: 낱말이 **`Decide`** 인 제안을 **판정**했다. ★**코드 변경은 «틀린 주석 한 곳» 정정뿐** — 구현은 후속으로 넘겼다.
 - 왜: 채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p1`.
