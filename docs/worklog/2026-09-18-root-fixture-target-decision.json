@@ -1,0 +1,25 @@
+{
+ "date": "2026-09-18",
+ "taskId": "rustjava-adopt-test-data-version-freeze-uniform-target-p0",
+ "summary": "Decision round, zero code. The root fixtures keep their five class file versions. Measured both directions: the major-52 cohort is the only place two lowering paths a JVM still has to support are exercised (StringBuilder concatenation, pre-nestmate access$ bridges), while for 16 of 20 examined fixtures the target is arbitrary and recompiling produces an identical instruction sequence. Unifying would delete real coverage to buy predictability the measurement shows is already there.",
+ "changes": [
+  "docs/test-data-target-policy.md: the decision, the measurements behind it, and the conditions to reopen it",
+  "no fixture recompiled, no .class byte changed, no Rust touched"
+ ],
+ "verification": [
+  "version distribution read from the fixtures themselves (od on bytes 6-7), not from the freeze file: 114 root fixtures, major 52 x40, 65 x62, 66 x8, 68 x1, 70 x3 — matches what test-data/class-file-versions.txt's header claims",
+  "VERSION IS THE SUBJECT, axis 1: the three major-52 fixtures carrying StringBuilder (FormatterIntegration, its inner class, NullSpecGuards) gain BootstrapMethods and lose StringBuilder when recompiled at --release 21. StringConcat.class (major 65) is the only root fixture with invokedynamic at all, so the tree holds exactly one fixture per lowering strategy",
+  "VERSION IS THE SUBJECT, axis 2: ThreadInterruption has 10 access$ bridges and no nest attributes at 52; at 21 the bridges are gone and NestMembers appears. MonitorSemantics the same with 4. That is JEP 181 nestmates, and this repo added NestHost/NestMembers handling recently",
+  "VERSION IS IRRELEVANT: of the 20 major-52 fixtures with a rebuildable source and neither StringBuilder nor BootstrapMethods, 16 recompile at --release 21 to an identical full opcode sequence; 3 differ (the two nestmate cases plus NativeMethod) and 1 cannot be rebuilt alone",
+  "NO REDUNDANT COVERAGE: across the 64 generator-built fixtures in test-data/{cp,indy,ldc,attr}, the count of StringBuilder is 0 and of access$ bridges is 0 — so the root 52 cohort is the only place those paths are exercised",
+  "cargo test --all: 583 passed / 0 failed / 1 ignored, unchanged — this round adds no code. Measured on this branch's base 8c7b473f; earlier rounds the same day reported 579 against a base that predates PR #61's landing, so the two numbers are both correct for their own base and should not be compared directly."
+ ],
+ "issues": [
+  "NativeMethod's opcode counts also change at 21 (invokespecial 3->2, invokevirtual 1->2) with no nest attributes and no StringBuilder on either side. The cause was not isolated; it is recorded as a real difference rather than attributed to one of the two axes. If it turns out to be a third version axis it widens the 'version is the subject' set.",
+  "The 'no redundant coverage' claim is a measurement with a date, not a standing property. A later round that adds StringBuilder or access$ fixtures under test-data/ subdirectories would make the root cohort redundant and this decision should be re-run.",
+  "The 20 examined are the major-52 fixtures that can be rebuilt alone. The other 20 at major 52 either have no source under test-data/src or carry an inner-class marker, so the 16/20 ratio is not a claim about all 40."
+ ],
+ "adoptedProposals": [
+  "2026-09-17-test-data-version-freeze#p0"
+ ]
+}
