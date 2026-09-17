@@ -129,6 +129,13 @@
 65.0 WideLocals.class
 65.0 ZipCorrupt.class
 52.0 ZipGuards.class
+52.0 attr/DuplicateInnerClasses.class
+55.0 attr/DuplicateNestHost.class
+52.0 attr/DuplicateNestHostOldMajor.class
+55.0 attr/DuplicateNestMembers.class
+52.0 attr/DuplicateSourceDebugExtension.class
+52.0 attr/DuplicateSourceFile.class
+52.0 attr/DuplicateSynthetic.class
 52.0 cp/UnreferencedTag13.class
 52.0 cp/UnreferencedTag14.class
 52.0 cp/UnreferencedTag19.class
@@ -179,6 +186,9 @@
 52.0 indy/NotMetafactoryArgumentKinds.class
 52.0 indy/NotMetafactoryDescriptor.class
 52.0 indy/NotStringConcatFactory.class
+52.0 indy/RecipeWantsAConstant.class
+52.0 indy/RecipeWantsFewerArguments.class
+52.0 indy/RecipeWantsMoreArguments.class
 65.0 indy/StringConcat.class
 55.0 ldc/Ldc2WDynamic.class
 52.0 ldc/Ldc2WMethodType.class

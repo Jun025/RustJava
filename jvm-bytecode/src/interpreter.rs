@@ -1023,37 +1023,57 @@ impl Interpreter {
     ///
     /// Recipe grammar (JVMS-adjacent, `StringConcatFactory` javadoc): `\u{1}` consumes the next
     /// argument, `\u{2}` consumes the next constant, anything else is literal text.
+    ///
+    /// ## Why the counts are compared before anything is concatenated
+    ///
+    /// The recipe, the call site descriptor and the bootstrap's static arguments are three accounts
+    /// of the same concatenation, written by the same compiler. Disagreement means the file is
+    /// wrong — but wrong in a way the *class file format* has nothing to say about, so this stays a
+    /// `BootstrapMethodError` rather than moving to `classfile`'s validation as a `ClassFormatError`.
+    /// Measured rather than argued: OpenJDK 26 refuses all three shapes under
+    /// `test-data/indy/RecipeWants*.class` with `BootstrapMethodError`, caused by
+    /// `StringConcatException`, and refuses them at *linkage* — before the call site body runs.
+    ///
+    /// There is no `CallSite` to link here, so linkage collapses into the first execution; the
+    /// closest this can come to that ordering is to check before converting anything, which is what
+    /// it does. Converting first would run user `toString()` through `String.valueOf` and could
+    /// raise that call's exception instead of this diagnosis.
+    ///
+    /// It is an equality, not a shortfall. A recipe *shorter* than the call site would otherwise
+    /// drop the surplus arguments and return a quietly wrong string, which a guard that only fires
+    /// when the recipe runs out of arguments cannot see at all.
     async fn concat_with_constants(jvm: &Jvm, call_site: &StringConcatCallSite, params: Vec<JavaValue>) -> Result<Box<dyn ClassInstance>> {
+        let wanted_params = call_site.recipe.chars().filter(|&x| x == '\u{1}').count();
+        let wanted_constants = call_site.recipe.chars().filter(|&x| x == '\u{2}').count();
+        if wanted_params != params.len() || wanted_constants != call_site.constants.len() {
+            return Err(jvm
+                .exception(
+                    "java/lang/BootstrapMethodError",
+                    &format!(
+                        "string concat recipe wants {wanted_params} arguments and {wanted_constants} constants, but the call site provides {} and the bootstrap {}",
+                        params.len(),
+                        call_site.constants.len()
+                    ),
+                )
+                .await);
+        }
+
         let mut result = String::new();
         let mut params = params.into_iter();
         let mut constants = call_site.constants.iter();
 
         for character in call_site.recipe.chars() {
+            // Both `next()` calls yield `Some`: the counts above were taken from this same recipe.
             match character {
                 '\u{1}' => {
-                    // `params` is exactly as long as the descriptor says, and the recipe is the
-                    // factory's own account of that descriptor, so a missing argument means the
-                    // two disagree — a class file we mis-read rather than a runtime condition.
-                    let Some(param) = params.next() else {
-                        return Err(jvm
-                            .exception(
-                                "java/lang/BootstrapMethodError",
-                                "string concat recipe wants more arguments than the call site has",
-                            )
-                            .await);
-                    };
-                    result += &Self::value_to_string(jvm, param).await?;
+                    if let Some(param) = params.next() {
+                        result += &Self::value_to_string(jvm, param).await?;
+                    }
                 }
                 '\u{2}' => {
-                    let Some(constant) = constants.next() else {
-                        return Err(jvm
-                            .exception(
-                                "java/lang/BootstrapMethodError",
-                                "string concat recipe wants more constants than the bootstrap has",
-                            )
-                            .await);
-                    };
-                    result += constant;
+                    if let Some(constant) = constants.next() {
+                        result += constant;
+                    }
                 }
                 _ => result.push(character),
             }

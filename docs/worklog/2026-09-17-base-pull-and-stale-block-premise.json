@@ -1,0 +1,39 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-link-stringconcatfactory-p1-fix2",
+ "summary": "This round was issued to union-resolve a four-region code conflict in test-data/src/indy/make_indy_fixtures.py that blocked PR #60's gate-3 merge. The conflict no longer exists: the -p1-fix round resolved it at 14:10 in 0f06b93f and gate 2 approved that head at 15:43, two hours after the blocked report the ticket was written from. What was actually left was a different thing wearing the same clothes — pulling base brings in PR #57's class-file-version table, and this PR's three fixtures are not in it, so the merged tree is red. Pulled base, backfilled the three rows, and re-verified that the existing union really is a union.",
+ "changes": [
+  "merge origin/main (9 behind): only REPORT.md and STATE.md conflicted; both are ledger files, resolved as a chronological union",
+  "test-data/class-file-versions.txt: +3 rows for RecipeWantsMoreArguments/FewerArguments/AConstant, written by the recorder"
+ ],
+ "verification": [
+  "premise re-measured rather than trusted: `git merge origin/main` on the current head conflicts in REPORT.md and STATE.md only — make_indy_fixtures.py auto-merges",
+  "and it cannot come back from this base: of the 9 commits behind, zero touch test-data/src/indy/make_indy_fixtures.py",
+  "timeline established from commit times rather than from the ticket: blocked report 12:12 at head 38efee33 -> -p1-fix pushed 0f06b93f at 14:10 ('merge origin/main — resolved one code conflict as a union') -> gate 2 approved pin 0f06b93f at 15:43; 38efee33 is an ancestor of 0f06b93f",
+  "union is really a union, not a selection — both sides' entry points are present in one file: recipe_arity_call_site (ours, #60) at :108 and MAKECONCAT_DESCRIPTOR/make_concat_call_site (theirs, #59) at :156,:159, with both fixture families in the same table",
+  "generator re-run writes all 10 fixtures byte-identical (git reports no change), so one generator produces both sides' outputs unchanged",
+  "bidirectional mutation M1: move only ours' three RecipeWants*.class away -> test_a_recipe_that_contradicts_its_call_site_is_a_bootstrap_method_error red, both of theirs' tests green",
+  "bidirectional mutation M2: move only theirs' three MakeConcat*.class away -> test_the_recipe_free_factory_concatenates_every_argument and test_each_axis_of_the_factory_identity_is_observable red, ours green; restore leaves bytes unchanged",
+  "table backfill: git diff --numstat -> `3\t0` (zero deletions = no fixture was regenerated), and the three added paths are set-identical to the three .class files this PR adds",
+  "ledger conflict preservation proved line-wise both ways; the one line reported missing from the main side is STATE.md's 진행중 paragraph, which the 3-way merge correctly took from ours (base == theirs for that line)",
+  "cargo test --test test_class_format: 16 passed / 0 failed; test_fixture_pins: 3 passed / 0 failed; cargo test --all: 578 passed / 0 failed / 1 ignored",
+  "DoD all 7 commands rc=0"
+ ],
+ "issues": [
+  "The ticket's stated head (38efee33) was two commits stale at dispatch. Nothing in the pipeline notices that a blocked report's premise was superseded by a later push to the same PR.",
+  "This round moves the head off the gate-2 pin 0f06b93f, so PR #60 needs re-review — unavoidable, since the base pull is what the merge round could not do itself (the version table is not a ledger file, so merge-template 2-c(a) does not authorise touching it)."
+ ],
+ "adoptedProposals": [],
+ "proposals": [
+  {
+   "title": "Let a blocked report say which head it measured, and check that before re-issuing from it",
+   "plainSummary": "A round can be told to fix a problem that someone else already fixed two hours earlier, because the ticket is written from a report that has since gone stale.",
+   "userBenefit": "None directly. It stops a worker slot being spent re-deriving that there is nothing to do.",
+   "why": "The blocked report for PR #60 did record its head (38efee33) — correctly and prominently. The gap is that nothing compares that recorded head against the PR's current head at issuing time, so the ticket repeated a four-region conflict table that had already been resolved and approved. The comparison is one API call and the report already carries the input for it.",
+   "tradeoff": "It only catches the case where the head moved. A premise can also go stale because main moved underneath it — as happened here in the other direction, where pulling base created a new blocker that had nothing to do with the recorded conflict. So this would have caught this instance and would not catch the general problem, which risks reading as a fix when it is a narrowing.",
+   "effort": "S",
+   "target": "~/orchestrator (ticket issuing), not this repo"
+  }
+ ]
+}

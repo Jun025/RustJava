@@ -1,0 +1,38 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-reject-duplicate-bootstrap-methods-p0",
+ "summary": "The proposal asked whether the other at-most-one ClassFile attributes deserve the rule BootstrapMethods got, and guessed the answer might be no for the ones nothing reads. Measured against OpenJDK 26.0.1 one attribute at a time, the answer is yes for five of them — and the proposal's stated cost, 'rejecting more files that load today', is false: a real JVM already refuses every one of those files. The interesting part is the two it does not refuse, which is why this is a version-gated table rather than a rule over every single-valued attribute.",
+ "changes": [
+  "classfile/src/validation.rs: at_most_one_bootstrap_methods_attribute -> at_most_one_of_each_single_class_attribute, a version-gated table over SourceFile, InnerClasses, SourceDebugExtension, BootstrapMethods, NestHost, NestMembers",
+  "classfile/src/attribute.rs: one parse arm for SourceDebugExtension, which makes an existing but unreachable enum variant live. Without it a duplicate lands in Unknown, where it is indistinguishable from two attributes we do not recognise.",
+  "test-data/src/attr/make_attr_fixtures.py: new generator for duplicate-attribute fixtures, carrying the measurement in its docstring",
+  "test-data/attr/: 7 fixtures — 5 that must be rejected, 2 controls that must keep loading",
+  "tests/test_class_format.rs: test_a_class_declaring_a_single_valued_attribute_twice_is_malformed, a table with a `loads` column",
+  "test-data/class-file-versions.txt: +7 rows for the new fixtures (AGENTS.md requires the table move with the fixture)"
+ ],
+ "verification": [
+  "ORACLE, measured one attribute at a time with OpenJDK 26.0.1 via Class.forName rather than the launcher (whose 'no main method' message hides the real cause): duplicated SourceFile / InnerClasses / SourceDebugExtension / BootstrapMethods at major 52 -> ClassFormatError: Multiple <name> attributes; duplicated NestHost / NestMembers at major 55 -> same",
+  "CONTROL 1 — duplicated NestHost at major 52 LOADS. The attribute is not defined before 55, so it is ignored (JVMS 4.7.1) and there is nothing to duplicate. A rule without a version gate would reject a file every JVM accepts.",
+  "CONTROL 2 — duplicated Synthetic at major 52 LOADS, though JVMS 4.7.8 marks it at-most-one. The spec and HotSpot disagree; we follow the JVM. Nothing here reads the attribute either, so there is no arbitrary choice to make observable.",
+  "so the proposal's tradeoff premise is measurably false for the five: those files do not 'load today' on a real JVM — our accepting them was the deviation",
+  "criterion re-derived from the existing check's own comment (a duplicate makes an arbitrary choice observable downstream) and then measured: the only class-level attribute read with a first-wins selector is BootstrapMethods (validation.rs find_map and jvm-bytecode/src/string_concat.rs resolve_bootstrap_methods find_map). Consumers outside attribute.rs for SourceFile / InnerClasses / SourceDebugExtension / NestHost / NestMembers / Synthetic: zero. So the downstream-observability argument alone would have stopped at 'no' — the JVM oracle is what moved it.",
+  "MUTATION M1, delete the version gate: control DuplicateNestHostOldMajor turns red (we would reject what the JVM loads)",
+  "MUTATION M2, add Synthetic to the table: control DuplicateSynthetic turns red",
+  "MUTATION M3, remove the SourceFile row: that fixture alone stops being rejected, red",
+  "MUTATION M4, revert the call site to the BootstrapMethods-only form: the five turn red",
+  "restore: test_class_format 17 passed / 0 failed",
+  "generator is idempotent: a second run leaves the fixture bytes unchanged",
+  "cargo test --all and the DoD commands: see the round's REPORT.md entry"
+ ],
+ "issues": [
+  "Product behaviour changes: a class carrying two of those five attributes now fails to load where it used to run. That is the point, and every such file is one OpenJDK also refuses — but it is a behaviour change, not a no-op.",
+  "The table is a written-down list, not derived. An attribute added to AttributeInfo tomorrow is not covered until someone adds a row, and nothing flags that.",
+  "Synthetic is excluded on one JVM's behaviour. If HotSpot tightened, or another JVM already rejects it, our control fixture would be pinning the wrong answer.",
+  "attribute.rs was touched even though the proposal's target is validation.rs. One arm, and it was the minimum to cover an attribute the JVM rejects — but it is outside the named file and is reported as such."
+ ],
+ "adoptedProposals": [
+  "2026-09-16-reject-duplicate-bootstrap-methods#p0"
+ ],
+ "proposals": []
+}

@@ -172,6 +172,42 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
     }
 }
 
+// A bootstrap that *is* the factory, but whose recipe contradicts the call site it was linked to.
+// javac cannot produce this — the recipe and the descriptor are two accounts of the same
+// concatenation, written by the same compiler — so the fixtures are hand-assembled
+// (test-data/src/indy/make_indy_fixtures.py).
+//
+// What the diagnosis should be was measured rather than chosen: OpenJDK 26 refuses all three with
+// `BootstrapMethodError` caused by `StringConcatException`, at linkage. So it is neither a
+// `ClassFormatError` (the class file format has nothing to say about bootstrap argument semantics,
+// and the file parses) nor `UnsupportedOperationException` (the bootstrap *is* linked; the file is
+// what is wrong).
+//
+// `RecipeWantsFewerArguments` is the direction a guard that fires when the recipe runs out of
+// arguments cannot see: before this check, it concatenated the arguments the recipe did ask for
+// and printed a quietly wrong "a" instead of refusing.
+#[tokio::test]
+async fn test_a_recipe_that_contradicts_its_call_site_is_a_bootstrap_method_error() {
+    for (name, disagreement) in [
+        ("RecipeWantsMoreArguments", "recipe wants two arguments, the call site provides one"),
+        ("RecipeWantsFewerArguments", "recipe wants one argument, the call site provides two"),
+        ("RecipeWantsAConstant", "recipe wants a constant the bootstrap did not carry"),
+    ] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.BootstrapMethodError"),
+            "{name} ({disagreement}): expected the linkage diagnosis, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError") && !err.contains("UnsupportedOperationException"),
+            "{name}: the file parses and the bootstrap is one we link, got: {err}"
+        );
+    }
+}
+
 // The identity is four comparisons; the static arguments are two more checks, and they are not the
 // same question. `metafactory` is defined as taking exactly three arguments of exactly three kinds,
 // so a bootstrap that names it correctly and then carries four of them — or three where one is a
@@ -426,6 +462,56 @@ async fn test_a_class_declaring_bootstrap_methods_twice_is_malformed() {
         !err.contains("UnsupportedOperationException"),
         "two bootstrap tables is a broken file, not an unsupported feature, got: {err}"
     );
+}
+
+// JVMS 4.7 marks several ClassFile attributes as at-most-one, and the round that rejected a second
+// `BootstrapMethods` left "do the others need the same rule?" as an open question. They do — but not
+// all of them, and not at every version.
+//
+// The list `validation.rs` enforces is what OpenJDK 26.0.1 rejects, measured one attribute at a time
+// rather than read off the spec, because the two disagree. The two controls below are that
+// disagreement, and they are the reason this test is a table with a `loads` column instead of a loop
+// over every single-valued attribute:
+//
+//   * `DuplicateNestHostOldMajor` — two `NestHost` attributes at major 52, before the attribute
+//     exists. JVMS 4.7.1 says an attribute that is not defined is ignored, so it is not a duplicate
+//     of anything. Counting without the version gate would reject a file every JVM accepts.
+//   * `DuplicateSynthetic` — JVMS 4.7.8 says at most one; HotSpot takes two. We follow the JVM.
+//
+// Fixtures: test-data/src/attr/make_attr_fixtures.py, which records the same measurement.
+#[tokio::test]
+async fn test_a_class_declaring_a_single_valued_attribute_twice_is_malformed() {
+    for (fixture, rejected) in [
+        ("DuplicateSourceFile", true),
+        ("DuplicateInnerClasses", true),
+        ("DuplicateSourceDebugExtension", true),
+        ("DuplicateNestHost", true),
+        ("DuplicateNestMembers", true),
+        // controls — these must keep loading, see above
+        ("DuplicateNestHostOldMajor", false),
+        ("DuplicateSynthetic", false),
+    ] {
+        let path = PathBuf::from(format!("test-data/attr/{fixture}.class"));
+        let result = run_class(&path, &[Path::new("./test-data/attr/")], &[]).await;
+
+        if rejected {
+            let err = result.map(|_| ()).err().map(|e| e.to_string()).unwrap_or_default();
+            assert!(
+                err.contains("java.lang.ClassFormatError"),
+                "{fixture}: expected ClassFormatError, got: {err:?}"
+            );
+            assert!(
+                !err.contains("UnsupportedOperationException"),
+                "{fixture}: two of a single-valued attribute is a broken file, not an unsupported feature, got: {err}"
+            );
+        } else {
+            assert!(
+                result.is_ok(),
+                "{fixture}: OpenJDK 26.0.1 loads this one, so we must too — got: {:?}",
+                result.err().map(|e| e.to_string())
+            );
+        }
+    }
 }
 
 // `Lambda.class` is one lambda with nothing captured and a static implementation — the simplest
