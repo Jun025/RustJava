@@ -1,0 +1,39 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1",
+  "summary": "Turned the recorded compiler from an assertion into a check: rebuilding test-data/indy with the recorded javac reproduces all six class files byte for byte. Both of the proposal's blocking claims — that nothing offline can verify a compiler record, and that shape assertions cover only one fixture — are false, measured.",
+  "changes": [
+    "test-data/src/verify-javac-fixtures.sh: new. Rebuilds javac-compiled fixtures and compares bytes, reading the --release from each fixture's own major version so nothing has to be kept in sync",
+    "tests/test_fixture_pins.rs: the pin's doc comment now records that the compiler was verified by rebuilding, with the command and the date, instead of only naming it"
+  ],
+  "verification": [
+    "test-data/indy: 6 rebuilt, 6 reproduced byte-for-byte, 0 differed, under javac 26.0.1 --release 21 — the toolchain the comment records",
+    "the proposal's claim that shape assertions cover one fixture is false: ConstantKinds has exact tag counts in classfile/src/constant_pool.rs, StringConcat has the four identity axes plus what its static argument points at plus a byte-window check in classfile/tests/test.rs, and Lambda has its bootstrap identity plus the args[0] == args[2] != args[1] relation",
+    "controlled mutation: flipping the last byte of the committed StringConcat.class is detected as differed; restoring returns 6 reproduced",
+    "an explicitly set JAVAC that does not work exits 2 with 'nothing was verified' rather than silently falling back to another compiler",
+    "generalization probe over test-data root: 109 rebuilt, 104 reproduced, 5 differed (MonitorSemantics and two inner classes, NativeMethod at --release 8, OddEven at --release 21), 3 could not be rebuilt alone",
+    "-sourcepath was tried and reverted: test-data/src contains Exception.java, so putting it on the source path makes javac resolve Exception to the fixture instead of java.lang.Exception and turns clean rebuilds into type errors",
+    "cargo test --all: 572 passed / 0 failed / 1 ignored, unchanged — the only Rust change is a doc comment",
+    "DoD 7 commands all rc=0"
+  ],
+  "issues": [
+    "The check cannot run in CI: there is no JDK in the workflow and none on PATH here. It is a manual check, so it is only as good as the habit of running it after regenerating a fixture.",
+    "Five root fixtures do not reproduce. Whether that is a different compiler or a source edited after the fixture was built was not determined — both fit the observation, and chasing it is outside this ticket's target of test-data/src/indy.",
+    "Three root fixtures cannot be rebuilt in isolation because their sources reference sibling classes, and -sourcepath is not usable here for the reason above."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Find out why five root fixtures do not rebuild to their committed bytes",
+      "plainSummary": "Rebuilding the main test-data fixtures reproduces 104 of them exactly. Five come out different, and we do not know why.",
+      "userBenefit": "Either the fixtures get back in step with their sources, or we learn that a test has been asserting against bytecode nobody can regenerate — both are better than not knowing.",
+      "why": "Measured by the script this round added: MonitorSemantics and its two inner classes and NativeMethod differ at --release 8, OddEven differs at --release 21. A different compiler and a source edited after the fixture was built both explain it, and the difference matters: the first is harmless provenance drift, the second means the fixture and its source have diverged.",
+      "tradeoff": "The likely fix for the second case is recompiling, which changes bytes — and several tests compare fixture output against committed .txt files, so a recompile can turn into a behaviour change. Also three more fixtures cannot be rebuilt alone at all, so the survey cannot be completed without deciding how to compile sources that reference siblings, in a directory where Exception.java shadows java.lang.Exception.",
+      "effort": "M",
+      "target": "test-data/, test-data/src/"
+    }
+  ]
+}
