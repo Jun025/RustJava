@@ -414,3 +414,53 @@ async fn test_lambda_class_reports_unsupported_feature_not_malformed() {
         "a class javac emits for `x -> x + 1` is not malformed, got: {err}"
     );
 }
+
+// JVMS 4.7 marks several ClassFile attributes as at-most-one, and the round that rejected a second
+// `BootstrapMethods` left "do the others need the same rule?" as an open question. They do — but not
+// all of them, and not at every version.
+//
+// The list `validation.rs` enforces is what OpenJDK 26.0.1 rejects, measured one attribute at a time
+// rather than read off the spec, because the two disagree. The two controls below are that
+// disagreement, and they are the reason this test is a table with a `loads` column instead of a loop
+// over every single-valued attribute:
+//
+//   * `DuplicateNestHostOldMajor` — two `NestHost` attributes at major 52, before the attribute
+//     exists. JVMS 4.7.1 says an attribute that is not defined is ignored, so it is not a duplicate
+//     of anything. Counting without the version gate would reject a file every JVM accepts.
+//   * `DuplicateSynthetic` — JVMS 4.7.8 says at most one; HotSpot takes two. We follow the JVM.
+//
+// Fixtures: test-data/src/attr/make_attr_fixtures.py, which records the same measurement.
+#[tokio::test]
+async fn test_a_class_declaring_a_single_valued_attribute_twice_is_malformed() {
+    for (fixture, rejected) in [
+        ("DuplicateSourceFile", true),
+        ("DuplicateInnerClasses", true),
+        ("DuplicateSourceDebugExtension", true),
+        ("DuplicateNestHost", true),
+        ("DuplicateNestMembers", true),
+        // controls — these must keep loading, see above
+        ("DuplicateNestHostOldMajor", false),
+        ("DuplicateSynthetic", false),
+    ] {
+        let path = PathBuf::from(format!("test-data/attr/{fixture}.class"));
+        let result = run_class(&path, &[Path::new("./test-data/attr/")], &[]).await;
+
+        if rejected {
+            let err = result.map(|_| ()).err().map(|e| e.to_string()).unwrap_or_default();
+            assert!(
+                err.contains("java.lang.ClassFormatError"),
+                "{fixture}: expected ClassFormatError, got: {err:?}"
+            );
+            assert!(
+                !err.contains("UnsupportedOperationException"),
+                "{fixture}: two of a single-valued attribute is a broken file, not an unsupported feature, got: {err}"
+            );
+        } else {
+            assert!(
+                result.is_ok(),
+                "{fixture}: OpenJDK 26.0.1 loads this one, so we must too — got: {:?}",
+                result.err().map(|e| e.to_string())
+            );
+        }
+    }
+}

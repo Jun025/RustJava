@@ -285,6 +285,10 @@ impl AttributeInfo {
                         AttributeInfo::LineNumberTable(length_count(be_u16, AttributeInfoLineNumberTableEntry::parse).parse(info)?.1)
                     }
                     "SourceFile" => AttributeInfo::SourceFile(Self::parse_source_file(info, constant_pool)?.1),
+                    // The body is an unstructured UTF-8 blob nothing here reads; the variant exists so the
+                    // at-most-one rule in `validation.rs` can see it. Without this arm it lands in `Unknown`,
+                    // where a duplicate is indistinguishable from two attributes we do not recognise.
+                    "SourceDebugExtension" => AttributeInfo::SourceDebugExtension,
                     "LocalVariableTable" => AttributeInfo::LocalVariableTable(Self::parse_local_variable_table(info, constant_pool)?.1),
                     "StackMap" => AttributeInfo::StackMap(info.to_vec()),
                     "StackMapTable" => AttributeInfo::StackMapTable(info.to_vec()),

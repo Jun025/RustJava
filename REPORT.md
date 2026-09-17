@@ -45,6 +45,20 @@
 - 검증: `cargo test --all` **576 passed / 0 failed / 1 ignored**(★Rust 무접촉이라 불변) · worklog 46/0 · parity 대칭차 0.
 - ★후속: 이 감사를 ★**상시 검사로 올릴지 «결정»하라**(S) — 안 돌리는 감사는 썩는다 ↔ DoD 8번째 명령 + parity 갱신이 대가다.
 
+## [2026-09-17] 다른 클래스 수준 속성에도 개수 규칙이 필요한가 — ★**다섯에 «예». 그리고 제안의 값 전제가 거짓이었다** (rustjava-adopt-reject-duplicate-bootstrap-methods-p0)
+- 무엇을: 채택 제안 `2026-09-16-reject-duplicate-bootstrap-methods#p0`(제목이 **「Decide whether …」** = 이 회차가 지는 것은 **판정**). ★**제품 동작 변경 있음** — 아래.
+- ★**제안의 기준만으로는 «아니오»가 나온다**: 기존 검사 주석이 적은 기준은 「중복이 **하류에서 임의의 선택을 관측 가능하게 만드는가**」이고, 소비자 전수 실측 결과 그런 속성은 ★**`BootstrapMethods` 하나뿐**이다(`validation.rs` + `string_concat.rs:110 resolve_bootstrap_methods` 의 `find_map`). 나머지 6종은 `attribute.rs` 밖 소비자 **0**.
+- ★★**판정을 바꾼 것은 «진짜 JVM»이다** — OpenJDK **26.0.1** 에 한 속성씩 물었다(★런처 메시지는 원인을 가리므로 `Class.forName` 으로 진단문을 받았다):
+  `SourceFile`·`InnerClasses`·`SourceDebugExtension`·`BootstrapMethods`(52) · `NestHost`·`NestMembers`(55) → ★**전건 `ClassFormatError: Multiple … attributes`**.
+  ⇒ ★**제안의 `tradeoff` 「Rejecting more files that load today」는 그 다섯에 대해 «거짓»이다** — 그 파일들은 **오늘도 진짜 JVM 에서 로드되지 않는다.** 받아들이던 쪽이 **우리**였다.
+- ★★**그래서 «표»이고 «버전 게이트»다 — 두 통제군이 그 이유다**:
+  ⒜★`NestHost` **major 52** 에서는 ★**로드된다**(그 버전엔 정의되지 않아 무시 · JVMS 4.7.1) ⇒ 게이트 없이 세면 **모든 JVM 이 받는 파일을 거부**한다.
+  ⒝★`Synthetic` 은 JVMS 4.7.8 이 at-most-one 이라는데 ★**HotSpot 은 둘을 받는다** ⇒ ★**빠뜨린 것이 아니라 «근거로 뺐다»**(넣으면 맞추려는 JVM 보다 엄격해진다).
+- ★**반대 방향도 의도적이다** — 필드·메서드·Code 소속 속성은 클래스 속성표에 나타나도 **세지 않는다**(정의되지 않은 자리의 속성 = 무시).
+- ★★**양방향 개악 4종 전건 red**: **M1** 버전 게이트 제거 → 통제군 `DuplicateNestHostOldMajor` red · **M2** `Synthetic` 추가 → 통제군 red · **M3** `SourceFile` 한 칸 제거 → 그 픽스처만 red · **M4** 호출부를 종전으로 되돌림 → 다섯 red · 복원 **17/0 green**. ★**M1·M2 가 요지다** — 통제군이 없으면 「전부 세면 된다」가 통과한다.
+- ★**대가**: ⒜**제품 동작 변경** — 그 다섯을 둘씩 가진 클래스가 **로드되지 않는다**(전부 OpenJDK 도 거부하지만 변경은 변경이다) ⒝**표는 «적어 둔 목록»** 이라 속성이 늘어도 행을 더하기 전엔 안 덮이고 **울어 주는 것이 없다** ⒞`Synthetic` 배제는 **JVM 하나의 행동**에 걸려 있다 ⒟★**`attribute.rs` 를 만졌다**(제안 `target` 은 `validation.rs` 뿐) — `SourceDebugExtension` 파싱 팔 **한 줄**로 기존 **dead variant** 를 살린 것이고, 없으면 중복이 `Unknown` 에 섞여 **구별 불가**다. 최소였지만 **명시 파일 밖**이라 신고한다.
+- 검증: `cargo test --all` **578 → 579 / 0 failed / 1 ignored** · `test_fixture_pins` **3/0** · 픽스처 재생성 **멱등** · 버전 표 **+7행**(AGENTS.md 의무) · DoD 7명령 rc=0.
+
 ## [2026-09-17] ldc 픽스처를 ASM 으로 재생성하자 — ★**기각**(rustjava-adopt-ldc-tags-real-world-generator-survey-p0)
 - 무엇을: 운영자가 tower 에서 채택한 제안 `2026-09-16-ldc-tags-real-world-generator-survey#p0` 의 처분. ★**제품 코드 0줄** — 산출물은 «판정과 그 근거»다.
 - ★**기각 사유 ⑴ 제안이 사려는 것이 이미 있다 — 그것도 더 센 오라클로**: ★**OpenJDK 26.0.1 이 양성 픽스처 4건을 «실행»한다**(`LdcMethodHandle`·`LdcMethodType`·`LdcDynamic`·`Ldc2WDynamic` **전건 rc=0**) ⇒ 진짜 JVM 의 **검증기**가 우리 손조립 바이트를 받아들인다. 대조군(위법 5건)은 **전건 rc=1**. 그리고 「ASM 이 이 태그를 내는가」는 **선행 조사 회차가 이미 동적으로 실증**했다.
