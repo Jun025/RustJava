@@ -1,0 +1,32 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-ldc-tags-real-world-generator-survey-p1",
+ "summary": "Adopted: drove kotlinc and scalac over targeted source shapes instead of only their stdlib output, closing the gap the survey named about itself. Result is the same zero the proposal expected — but it is now a zero about features rather than about one corpus, and the constant pool counts prove the invokedynamic paths were actually exercised. Tag 17 (Dynamic) is absent from the pool entirely in both compilers, which is the stronger finding: neither emits condy at all.",
+ "changes": [
+  "scripts/ldc-tag-survey-targets/Targets.kt: Kotlin shapes — lambda, unbound and bound callable references, SAM conversion to a Kotlin fun interface and to a Java interface, enum `when`, string templates, lazy delegate, reified type parameter",
+  "scripts/ldc-tag-survey-targets/Targets.scala: Scala 3 shapes — lambda, eta-expansion, SAM conversion to a Scala trait and to a Java interface, enum match, string interpolation, lazy val, inline def, structural type",
+  "scripts/survey-ldc-constant-tags.py: docstring records the commands, the compiler versions, the numbers, the positive control and what the measurement does not cover"
+ ],
+ "verification": [
+  "kotlinc-jvm 2.4.20 (JRE 26): 7 classes / 23 ldc sites / tags 15,16,17 as an ldc operand: 0; same tags in the pool: MethodHandle 7, MethodType 6",
+  "Scala 3.9.0: 7 classes / 18 ldc sites / tags 15,16,17 as an ldc operand: 0; same tags in the pool: MethodHandle 11, MethodType 6",
+  "the pool counts are the non-vacuity check: they are non-zero, so the invokedynamic machinery really ran and the handles/types really were built — they simply never reach an ldc operand",
+  "tag 17 (Dynamic) is 0 in the pool as well as at ldc sites for both compilers, so neither emits condy at all",
+  "POSITIVE CONTROL, same scanner, same session: `python3 scripts/survey-ldc-constant-tags.py test-data/ldc` -> {MethodHandle 1, MethodType 2, Dynamic 7}. So the 0 above is not 'the scanner cannot see these tags'.",
+  "scanner error bar on both targeted runs: impossible operands 0 (0.00%)",
+  "flags chosen to route *more* through invokedynamic (-Xlambdas=indy, -Xsam-conversions=indy, -Xstring-concat=indy-with-constants; scalac -release 21). Measuring without them would test a compiler configured away from the question.",
+  "cargo test --all: 578 passed / 0 failed / 1 ignored — unchanged, this round adds no Rust",
+  "the proposal's cost premise was re-measured and is partly false: it says the machine is 'deliberately kept free of JVM toolchains', but openjdk 26 has been installed via homebrew since 2026-03-11 (INSTALL_RECEIPT epoch 1784711495), months before the survey. The marginal install was therefore one formula each: brew deps are kotlin->openjdk, scala->openjdk+scala-cli."
+ ],
+ "issues": [
+  "MACHINE STATE CHANGED: kotlin 2.4.20 and scala 3.9.0 (plus scala-cli) are now installed via homebrew on a machine shared by ~28 agent lanes. Additive and reversible — `brew uninstall kotlin scala` — and left in place deliberately so the measurement can be re-run, but it is a change nobody else asked for.",
+  "One program per compiler. This bounds the listed features, not the languages — the survey's own framing of the corpus axis applies here in the other direction.",
+  "Not runnable in CI: no setup-java step exists, and now two more compilers would be needed. Like test-data/src/verify-javac-fixtures.sh this is a check a person runs.",
+  "The answer is the same zero the proposal predicted. What was bought is the error bar, exactly as its tradeoff said — and that is the honest accounting of the round's value."
+ ],
+ "adoptedProposals": [
+  "2026-09-16-ldc-tags-real-world-generator-survey#p1"
+ ],
+ "proposals": []
+}

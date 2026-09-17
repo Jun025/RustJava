@@ -1,4 +1,16 @@
 # REPORT
+## [2026-09-17] kotlinc·scalac 를 «타깃 형상»으로 몰았다 — ★**0. 그러나 «다른 0»** (rustjava-adopt-ldc-tags-real-world-generator-survey-p1)
+- 무엇을: 채택 제안 `2026-09-16-ldc-tags-real-world-generator-survey#p1`. 조사 회차가 자기 표에 **「못 쟀다」**로 적어 둔 칸을 채웠다. ★**제품 Rust 0줄**(조사 입력 2 + 스캐너 docstring).
+- 왜: 종전 축은 **컴파일러의 stdlib**(= 그 컴파일러 산출물)이었다. ★**stdlib 은 호환성을 위해 컴파일되지 백엔드를 훑으려고 컴파일되지 않는다** — 그래서 「이 코퍼스에서 0」과 「이 기능들에서 0」이 다르다.
+- ★**결과**: kotlinc **2.4.20** → 7클래스·23 ldc 자리 · ★**피연산자 15/16/17 = 0** / scalac **3.9.0** → 7·18 · ★**0**.
+  ★★**풀 수치가 이 0 을 읽을 값으로 만든다** — Kotlin `MethodHandle 7 · MethodType 6` · Scala `11 · 6` **(0 이 아니다)** ⇒ ★**indy 경로가 실제로 돌았고 상수도 만들어졌는데 `ldc` 자리에 «닿지 않는다»**. 「안 썼다」가 아니라 「썼는데 안 온다」다.
+  ★**태그 17(Dynamic)은 풀에도 0** ⇒ ★**두 컴파일러 모두 condy 를 아예 내지 않는다**(둘 중 더 센 진술).
+- ★**타깃 형상**: 람다 · 언바운드/바운드 메서드 참조 · SAM 변환(네이티브+Java 둘 다) · enum 주어 · 문자열 연결 · lazy · (Kotlin) reified · (Scala) eta 확장·inline def·구조적 타입. ★**플래그도 «더 많이» indy 로 보내는 쪽으로 골랐다**(`-Xlambdas=indy`·`-Xsam-conversions=indy`·`-Xstring-concat=indy-with-constants` · `scalac -release 21`).
+- ★**양방향**: 같은 스캐너·같은 세션에서 **양성 대조군** `test-data/ldc` → `{MethodHandle 1, MethodType 2, Dynamic 7}` ⇒ ★**이 0 은 「스캐너가 못 본다」가 아니다.** 오차 막대(불가능 피연산자) 두 실행 **0.00%**.
+- ★**제안의 값 전제를 다시 재서 «부분적으로 거짓»임을 찾았다**: 「JVM 툴체인이 의도적으로 없는 맥」이라 했으나 ★**openjdk 26 은 2026-03-11 부터 설치돼 있었다**(조사 회차보다 반년 앞선다) ⇒ 한계 설치는 **formula 하나씩**이었다.
+- ★★**대가**: **머신 상태가 바뀌었다** — `kotlin 2.4.20`·`scala 3.9.0`(+`scala-cli`) 설치. 레인 약 28개가 공유하는 맥이고, **가산적·가역**(`brew uninstall kotlin scala`)이라 **재측정 가능성을 위해 일부러 남겼다**. ★컴파일러당 프로그램 «하나»라 **기능**을 한정할 뿐 **언어**를 한정하지 않는다. ★**CI 에서 못 돈다**(`setup-java` 0건) — 사람이 돌리는 검사다.
+- ★**답은 제안이 예상한 그 0 이다** — 산 것은 **오차 막대**뿐이고, 그것이 이 회차 값의 정직한 회계다.
+
 ## [2026-09-17] base 를 당겼다 — ★**막고 있던 코드 충돌은 «이미 없었다»**(rustjava-adopt-link-stringconcatfactory-p1-fix2)
 - 무엇을: `origin/main` 당김(뒤처짐 **9**) + 그 당김이 만든 `test-data/class-file-versions.txt` **3행**. ★제품 코드 **0줄** · 픽스처 바이트 **불변**.
 - ★★**전제가 반증됐다**: 이 회차는 「`make_indy_fixtures.py` 4구역 코드 충돌」을 풀라고 발권됐는데, 지금 당기면 그 파일은 **충돌하지 않는다**. `-p1-fix` 회차가 **14:10 에 `0f06b93f` 로 이미 합집합 해소**했고 게이트②가 **15:43 에 그 head 를 approve** 했다 — 발권 근거였던 12:12 blocked 회신이 그 사이 **낡았다**.
