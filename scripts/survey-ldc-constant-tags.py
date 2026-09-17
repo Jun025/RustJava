@@ -37,8 +37,9 @@ Measured with kotlinc-jvm 2.4.20 and Scala 3.9.0 (both on JRE 26):
 
 The pool counts are what make that 0 worth reading: they are non-zero, so the invokedynamic paths
 really were exercised and the constants really were built — they just never reach an `ldc`
-operand. Tag 17 (Dynamic) is absent from the pool in both, so neither compiler emits condy at all,
-which is the stronger statement of the two.
+operand. Tag 17 (Dynamic) is absent from the pool in both, so in these shapes neither compiler emits
+condy at all — the stronger statement of the two, and bounded exactly like every other number here:
+one program per compiler (see "Not covered", below).
 
 The flags are deliberately the ones that route *more* through invokedynamic. A run without them
 measures a compiler configured away from the shapes in question, which is the mistake the corpus
