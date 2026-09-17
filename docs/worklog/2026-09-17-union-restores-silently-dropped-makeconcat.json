@@ -1,0 +1,31 @@
+{
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-link-stringconcatfactory-p2-fix3",
+ "summary": "Resolved the four-file conflict on PR #61 as a union. The round's finding is that the two code files needed opposite treatment: the 54 'deletions' in test-data/src/indy/make_indy_fixtures.py were not ours' intent at all — two earlier merge commits on this branch dropped the makeconcat family that was present in their second parent — while the 16 in tests/test_class_format.rs were genuinely ours (linking LambdaMetafactory makes the two 'it is not linked' assertions false). Restored the first, kept the second removed.",
+ "changes": [
+  "test-data/src/indy/make_indy_fixtures.py: union of ours' METAFACTORY_* / lambda_near_miss with theirs' recipe_arity_call_site, plus restoration of Pool.fieldref, MAKECONCAT_DESCRIPTOR, make_concat_call_site, the LINKED table and its write loop",
+  "tests/test_class_format.rs: 21 test functions = base 15 - ours' 2 intentional removals + ours' 6 + theirs' 2, rebuilt in order so the diff stays reviewable",
+  "REPORT.md / STATE.md: top-insert union, contribution invariant in both directions"
+ ],
+ "verification": [
+  "cargo test --all: 583 passed / 0 failed / 1 ignored; test_fixture_pins 3/0; DoD seven commands all rc=0",
+  "deletion accounting: .py resolved-vs-main 156/0 (no deletion carried), .rs resolved-vs-ours 86/0 (ours lossless), .rs resolved-vs-main 182/29 where the 29 are exactly ours' two removed functions",
+  "the restored family is live code, proven by execution: deleting MakeConcat.class, MakeConcatWrongDescriptor.class and MakeConcatWithArgument.class and re-running the generator restores all three byte-for-byte; the pre-restore generator contains zero occurrences of LINKED or make_concat_call_site and could not produce them",
+  "bidirectional mutation: removing only ours' fixtures reds exactly 4 ours tests with theirs green; removing only theirs' fixtures reds exactly 1 theirs test with ours green"
+ ],
+ "issues": [
+  "The loss was invisible to every gate in the pipeline. base had the symbols, ours had deleted them, theirs had them unchanged — so git's three-way merge reproduces ours' deletion as a clean auto-merge with no conflict marker, mergeable stays CLEAN, and the test suite stays green because the .class fixtures are committed and static. Only counting symbols across base/ours/theirs revealed it.",
+  "Had this landed, main would have lost the generator for three committed fixtures — the exact 'generator does not explain the committed bytes' condition that test-data/src/audit-fixture-single-defect.py was added to catch, except that auditor's CANON table does not cover the MakeConcat family."
+ ],
+ "proposals": [
+  {
+   "title": "Count symbols dropped from the second parent when resolving a merge",
+   "plainSummary": "After resolving a merge, check whether any top-level name that existed in the branch you merged from has disappeared from the result, and fail if so unless it is listed as an intentional removal.",
+   "userBenefit": "Stops a whole feature quietly disappearing from main during a routine conflict resolution — the kind of loss that leaves every test green and every gate satisfied.",
+   "why": "This round found three such losses already on the PR branch, put there by two earlier conflict resolutions in this same lineage. Nothing caught them: there was no conflict marker, mergeable read CLEAN, and the suite passed because the fixtures are committed bytes rather than generated ones. The only signal was a hand-run symbol count across base, ours and theirs.",
+   "tradeoff": "Intentional removals are common and legitimate — this round has two of them — so the check needs an explicit allowlist or it becomes noise that people learn to wave through. Deciding where that list lives is most of the work.",
+   "effort": "S",
+   "target": "a script under scripts/ plus a step in .github/workflows/rust.yml, or a merge-time check"
+  }
+ ]
+}

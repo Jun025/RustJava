@@ -1,0 +1,37 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-link-stringconcatfactory-p2-fix2",
+ "summary": "PR #61 was blocked at gate 3 by something that is neither CI nor a conflict: at its reviewed pin CI was green and `git merge origin/main` produced zero code conflicts, but the merged result violated a rule that landed while the PR was open. PR #57 landed the class-file-version table plus its deliberate 'a fixture with no row fails the pin' direction at 06:37; the 25 fixtures in #61 predate that, so from that instant the PR owed the table 25 rows. This round ran the recorder and committed those rows.",
+ "changes": [
+  "test-data/class-file-versions.txt: +25 rows, written by test-data/src/record-class-file-versions.py (no hand edit) — 156 existing rows untouched",
+  "merge origin/main: resolved the two ledger conflicts (REPORT.md, STATE.md top-of-file inserts) as a union; zero code conflicts"
+ ],
+ "verification": [
+  "reproduced the block first rather than trusting the previous round's number: cargo test --test test_fixture_pins named exactly 25 unrecorded fixtures, all under test-data/indy",
+  "git diff --numstat test-data/class-file-versions.txt: `25\t0` — zero deletions is the safety line here, since a deletion would mean an existing fixture was regenerated, which is a different event and a stop",
+  "the 25 added rows are set-identical to the 25 .class files this PR adds (git diff --diff-filter=A 06fa865c 85cf0fba -- test-data), so no sibling's fixture was swept in",
+  "bidirectional: removing `65.0 indy/LambdaKinds.class` from the table turns committed_fixtures_keep_their_recorded_class_file_version red and names that file; restoring it returns 3 passed / 0 failed — the table is enforcing, not decorative",
+  "cargo test --test test_fixture_pins after the merge: 3 passed / 0 failed",
+  "cargo test --all: 581 passed / 0 failed / 1 ignored (578 on the branch alone; +3 from PR #62 landing)",
+  "DoD all 7 commands rc=0, including `cargo +beta clippy` and the wasm32 target, which the shorthand form of the block used to omit",
+  "semantic-merge check on the file both PRs touch: classfile/src/validation.rs auto-merged, and diffing the result against 06fa865c shows only this PR's addition — #62's loadable-constant set and this PR's descriptor arms are both present",
+  "ledger conflict resolution proved line-wise in both directions: zero lines unique to either side missing from the result, zero lines in the result that came from neither side"
+ ],
+ "issues": [
+  "The table is a freeze of what is on disk, so running the recorder would launder a corrupted fixture into the 'correct' value. That is why the zero-deletions check is the gate rather than an afterthought.",
+  "This is a debt payment, not a fix: nothing prevents the next in-flight PR from acquiring the same debt the next time a pin-style rule lands."
+ ],
+ "adoptedProposals": [],
+ "proposals": [
+  {
+   "title": "Say which open PRs a newly landed repo-wide rule has just put in debt",
+   "plainSummary": "A rule landed on main can silently make other people's open pull requests fail, and nobody finds out until someone tries to merge one.",
+   "userBenefit": "None directly. It turns a surprise discovered at merge time into a note made at landing time, so the round that created the debt is the one that sees it.",
+   "why": "PR #57 deliberately made unlisted fixtures fail the pin — correct, and it said so. But #61 had already built 25 fixtures, so at 06:37 it became red without anyone touching it, and the redness was invisible: #61's own CI was green at its pin, and the merge had no conflicts. It surfaced only when a gate-3 round pulled base, which cost that round its slot and this whole follow-up round. The generalisation is cheap to state and not cheap to notice: any rule of the form 'everything of kind X must also appear in Y' indebts every open PR that adds an X.",
+   "tradeoff": "Doing this properly means checking out each open PR merged with main and running the new check, which is a full CI matrix per PR for a signal that is often empty. A cheap approximation — 'this PR adds files matching the new rule's glob' — has false positives and would need a person to read it anyway. There is also a real chance the honest answer is that the merge-ticket template already covers it, since pulling base is where this surfaced and that step is already mandatory.",
+   "effort": "M",
+   "target": "tests/test_fixture_pins.rs, .github/workflows/rust.yml"
+  }
+ ]
+}

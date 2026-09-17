@@ -1,4 +1,27 @@
 # REPORT
+## [2026-09-17] 코드 2파일 합집합 — ★**그런데 ours 의 «삭제»는 의도가 아니라 선행 머지의 «조용한 롤백»이었다** (rustjava-adopt-link-stringconcatfactory-p2-fix3)
+- 무엇을: 게이트③이 `code-conflict-out-of-scope` 로 세운 PR #61 의 충돌 4파일(원장 2 + 코드 2)을 합집합으로 해소. ★제품 Rust **0줄**(테스트·픽스처 생성기만).
+- ★★**브리프의 전제 하나가 반증됐다** — 「ours 가 «의도적으로» 지운 54·16줄을 되살리지 마라」였는데, 두 파일의 성격이 **정반대**였다:
+  ⒜`make_indy_fixtures.py` 의 54줄은 ★**전건이 makeconcat 가족**(`fieldref`·`MAKECONCAT_DESCRIPTOR`·`make_concat_call_site`·`LINKED` 표·쓰기 루프)이고,
+  ★**ours 가 지운 적이 없다** — 선행 회차의 머지 «둘»(`e53b2142` `-p2-fix` · `514d5b08` `-p2-fix2`)이 **부모2에 있던 것을 결과에서 떨어뜨렸다**(양쪽 다 부모2=1 → 결과=0).
+  ⒝`tests/test_class_format.rs` 의 16줄은 ★**진짜 ours 의도** — metafactory 를 링크하게 만들었으니 「LambdaMetafactory 는 링크되지 않는다」 단언 2개가 **거짓이 됐다**.
+- ★**그래서 처분을 갈랐다**: ⒜는 **되살리고** ⒝는 **되살리지 않았다**. 회계로 보인다 — `.py` 해소본↔main **156/0**(삭제 0) · `.rs` 해소본↔HEAD **86/0**(ours 무손실) · `.rs` 해소본↔main **182/29**(그 29줄 = ours 가 지운 2함수 전문).
+- ★★**되살린 쪽이 «죽은 코드»가 아님을 실행으로 보였다**: `MakeConcat{,WrongDescriptor,WithArgument}.class` **3장을 지우고 생성기를 재실행**하니 **바이트 동일하게 복구**됐다. ★대조 — 복원 «전» 생성기에는 `LINKED`·`make_concat_call_site` 가 **0건**이라 그 3장을 낼 수 없었다. ⇒ 방치했으면 **생성기가 설명하지 못하는 커밋 픽스처 3장**이 그대로 착지했다.
+- ★**양방향 개악**: ours 픽스처만 치우면 **ours 4건만 red**(theirs ok) · theirs 픽스처만 치우면 **theirs 1건만 red**(ours ok) ⇒ 두 축이 **독립**이다.
+- 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored** · 픽스처 핀 **3/0** · 기존 픽스처 **바이트 불변** · DoD 7명령 rc=0.
+- ★후속 추천: 「머지 결과에서 «부모2에만 있던 심볼»이 사라졌는지」를 세는 검사(S) — 이번 손실은 **충돌 표시가 전혀 없는 깨끗한 자동 병합**이라 사람도 `mergeable` 도 못 본다. 상세 = `docs/worklog/2026-09-17-union-restores-silently-dropped-makeconcat.md`.
+
+## [2026-09-17] #57 의 버전 표에 이 PR 의 픽스처 25행을 등재한다 — ★**착지 «순서»가 만든 부채** (rustjava-adopt-link-stringconcatfactory-p2-fix2)
+- 무엇을: `test-data/class-file-versions.txt` 에 **25행 추가**(생성기 실행 · 손편집 0) + base 당김. ★제품 Rust **0줄** · 픽스처 재생성 **0** · 테스트 코드 **무접촉**.
+- 왜: PR **#57** 이 「미등재 픽스처는 핀을 실패시킨다」를 **의도적으로** 세우고 06:37 에 착지했다. #61 의 25개 픽스처는 그보다 **먼저** 만들어졌으므로, 착지한 그 순간부터 표에 25행을 빚졌다. ★**CI 도 충돌도 아니다** — 핀에서 rc=0 CI_GREEN · `git merge origin/main` 코드 충돌 0인데 **합친 결과**가 규율을 어긴다.
+- 사용자 영향: **없다**(테스트 데이터 표). 있는 것은 게이트③ 해금.
+- ★**안전선 = 삭제행 0**: `git diff --numstat` → **`25  0`**. 기존 156행 무변경 = 픽스처가 재생성되지 않았다는 뜻이다(삭제행이 있었으면 «다른 사건»이라 멈췄을 자리).
+- ★**추가 25행 = 이 PR 이 만든 25개 `.class` 와 집합이 «정확히» 같다**(파일명 대조 · 남의 픽스처 혼입 0).
+- ★**양방향으로 쟀다**: 표에서 `65.0 indy/LambdaKinds.class` 한 행을 지우면 **red**(그 파일명을 정확히 지목) · 되돌리면 **green** ⇒ 표가 실제로 규율을 집행한다(빈 표로 통과하지 않는다).
+- ★**base 당김의 원장 충돌 2건은 «합집합»으로 풀었다** — `REPORT.md`·`STATE.md` 최상단 삽입 충돌. 한쪽 통째 채택 0 · 줄 단위 양방향 보존 증명(양측 고유줄 결손 **0** · 결과에만 있는 줄 **0**). ★코드 충돌은 **0**이었고, 같은 파일(`classfile/src/validation.rs`)을 다투던 #62 의 기여는 자동 병합 뒤에도 **전건 잔존**(loadable 집합 · 서술자 팔 «둘 다» 살아 있다).
+- 검증: `cargo test --test test_fixture_pins` **3 passed / 0 failed** · `cargo test --all` **581 / 0 / 1**(#62 착지분 +3) · DoD **7명령 전건 rc=0**.
+- ★후속: 「착지한 규율이 진행 중 PR 을 소급으로 빚지게 하는데 아무도 말해 주지 않는다」 — `docs/worklog/2026-09-17-fixture-version-table-backfill.json`.
+
 ## [2026-09-17] 「전건 single-defect」는 «측정»이 아니었다 — 판정식을 `given` 에서 파생시킨다 (rustjava-adopt-class-format-mutation-audit-p0-fix)
 - 무엇을: 게이트② **request-changes** 승계(PR #63 · 핀 `377d58b1`). ★**검수자 지적이 옳았다** — 고친 것은 감사 스크립트 **1파일**이고 제품 Rust 는 **0줄**이다.
 - ★★**급소는 한 줄이다**: `repaired` 를 **정본 인자로 다시 짓고** 있었다 ⇒ 픽스처에 둘째 결함이 무엇이 들어오든 `repaired` 와 `canonical` 이 **똑같이 버려서** 항상 같았다.
@@ -95,6 +118,55 @@
 - 검증: `cargo test --all` **575 passed / 0 failed / 1 ignored** · DoD 7명령 rc=0 · ★**새 픽스처 0**(기존 파일 바이트 패치 · 길이 필드 불변).
 - ★**여기서 더 갈 수 없는 자리도 적는다**: `Dynamic` 인자의 서술자가 필드 서술자인지, `MethodHandle` 인자가 실제 멤버로 해석되는지는 **payload 가 필요**해 이 술어의 밖이다(설계이지 누락이 아니다).
 - ★후속: `ClassFormatError` 에 **사유를 실어라**(M) — OpenJDK 는 인덱스와 이유를 말한다. ★p2-fix 회차가 낸 같은 제안과 **묶어서** 하는 편이 낫다.
+## [2026-09-17] 포획 «순서»를 값으로 잠그고, 클래스 파일이 «프로세스를 죽이는» 자리를 닫는다 (rustjava-adopt-link-stringconcatfactory-p2-fix)
+- 무엇을: 게이트② **request-changes** 승계(PR #61 · 핀 `87ef6a70`). ★검수자 지적 **F1·F2 둘 다 옳았고 둘 다 받았다.**
+- ★**F1 — 포획 «순서»가 전 스위트에 무관측이었다**: `LambdaBody::call` 의 읽기 순서를 뒤집어도(검수자 RM4) **576 green**.
+  거부가 아니라 ★**조용히 틀린 답**이다. 근인은 단언 방식이 아니라 **픽스처**다 — 전건이 포획 **1개 이하**라 «순서»라는 축이 존재하지 않았다.
+  ⇒ 포획 2개 람다 **둘**을 넣었다: `(String,int)` → `a:7`(순서가 **글자**에 보인다) · `(int,int)` → `120`(★**값에만** 보인다 — 어떤 타입 검사로도 못 잡는 축).
+  ★**RM4 가 이제 죽는다**: `a:7→7:a` · `120→2001`. ★`(a, b) -> a + b` 는 javac 이 내는 «가장 평범한» 람다다.
+- ★★**F2 — 적법한 클래스 파일이 «호스트 프로세스»를 죽였다**(`jvm/src/type.rs:74` panic · 게스트 예외가 아니다).
+  ★**고친 자리를 «골랐고 왜인지 적는다»**: 검수자 제안(`lambda.rs` 2줄)만 쓰면 진단이 `UnsupportedOperationException` 이 되는데,
+  ★**OpenJDK 26 은 같은 파일을 `ClassFormatError` 로 거부한다**(`Method "run" … has illegal signature "I"`) — 그 파일은 «미지원»이 아니라 **«파손»**이다.
+  JVMS 4.4.6 상 `NameAndType` 은 필드·메서드 서술자 **둘 다** 적법해야 하고(Fieldref·Methodref 가 같은 항목을 공유한다),
+  ★**어느 쪽인지는 «참조하는 태그»가 정한다(4.4.10)** ⇒ 일반 `NameAndType` 팔은 **그대로 두고**
+  `InvokeDynamic`=메서드 서술자 · `Dynamic`=필드 서술자를 **그 팔에서** 요구하게 했다(`Methodref` 는 이미 그렇게 한다).
+- ★**조이기 «비용»을 먼저 쟀다**(티켓 요구): 커밋된 클래스 **175개** · indy/condy 참조 **44건** 중 새로 위법이 되는 것은 ★**이 회차가 만든 픽스처 1건**뿐.
+- ★**`lower()` 의 `try_parse` 는 «둘째 층»이고, 독립 관측이 «안 된다»는 것을 숨기지 않는다** — 검증을 통과하면서 `try_parse` 가 실패하는 입력을 만들지 못했다.
+  남긴 이유는 측정이 아니라 **비용의 비대칭**이다: 바깥 층이 틀리면 게스트 예외, 안쪽이 없으면 **프로세스 사망**.
+- ★**덤**: 같은 panic 이 `origin/main` 의 string concat 경로(`extract_invoke_params`)에도 있었는데 **같은 규칙에 함께 막힌다**(검수자가 「별 티켓」이라 한 자리).
+  넓힌 것이 아니라 **규칙을 옳은 자리에 둔 결과**다.
+- 검증: 개악 **2종 전건 red**(RM4 · F2 규칙 되돌리기) · `cargo test --all` **578 passed / 0 failed / 1 ignored** ·
+  픽스처 재생성 **멱등**(★형제 #59 의 생성기와 **한 파일로 합친 뒤**에도 기존 픽스처 바이트 불변).
+- ★후속: `ClassFormatError` 에 **사유를 싣자**(M) — 이 회차가 세운 「미지원 ↔ 파손」 구분이 정작 파손 쪽에서 「Invalid class file」 한 줄로 뭉개진다.
+
+## [2026-09-17] `LambdaMetafactory.metafactory` 를 링크했다 — ★**람다와 메서드 참조가 «돈다»** (rustjava-adopt-link-stringconcatfactory-p2)
+- 무엇을: 채택 제안 `2026-09-16-link-stringconcatfactory#p2`. ★**제품 동작이 바뀐다** — 람다·메서드 참조를 담은 클래스가
+  **적재 거부**에서 **실행**으로 바뀐다. `jvm/` 은 **무접촉**, `java.lang.invoke` 는 **한 줄도 추가하지 않았다**.
+- ★★**제안의 비용 추정이 틀렸다 — 그것이 이 회차의 요지다.** 제안은 「string concat 의 지름길을 쓸 수 없다 ·
+  `java.lang.invoke` 가 **불가피**해진다 · 노력도 **L**」이라 했다. ★**호출 사이트가 «의미»하는 것은 핸들 사슬이 아니라 «객체»다.**
+  그리고 그 객체를 만들 두 축이 ★**이미 있었다**: `MethodBody::Rust(JvmCallback)`(본문이 러스트인 메서드) ·
+  `Jvm::register_class`(런타임에 만든 정의를 이름으로 등재). ⇒ 팩토리가 스핀할 클래스를 **직접** 만든다.
+- ★**설계에서 «떨어져 나온» 것 둘**(만든 게 아니다): ⒜**GC 가 이미 추적한다** — `find_all_fields` 가
+  `ClassDefinition::fields` 를 걷으므로 포획값을 «필드»로 두면 그대로 살아 있다(그래서 필드다)
+  ⒝**등재가 멱등** — `register_class_internal` 이 `.or_insert` 라 두 스레드가 같은 콜사이트에 닿아도 먼저 것이 이긴다(락 0).
+- ★★**경계 = «어댑터»**: 실 팩토리는 박싱·언박싱·확대를 끼워 넣는다. 여기엔 그 축이 없으므로 **통과**(동일 프리미티브 ·
+  양쪽 레퍼런스)가 아니면 ★**링크하지 않는다**. 판정이 서술자만으로 되므로 **lowering 시점**에 끝난다 ⇒ 클래스는
+  로드되거나 안 되거나이고 ★**호출 «도중»에 실패하는 경로가 없다.** 그 경계는 `LambdaBoxing.class` 가 **잠근다**
+  (OpenJDK 26.0.1 은 3을 찍고 우리는 거부한다).
+- ★★**관측 가능성이 어려웠던 자리 셋 — 전부 «처음엔 안 죽었다»**:
+  ⑴**void 버림**: 지워도 전 스위트 green 이었다 — 남은 값은 오퍼랜드 스택 «아래»에 쌓이고 정상 바이트코드가 다시 꺼내지 않는다.
+  ⇒ 인터프리터 «밖»에서만 보인다: `Thread.run()` 이 `Runnable.run()V` 를 러스트에서 부르고 `From<JavaValue> for ()` 로 변환한다
+  (Void 가 아니면 **panic**). 픽스처를 그 경로로 통과시키자 개악이 `Expected void, got Int(7)` 로 죽었다.
+  ⑵**REF_invokeSpecial**: javac 은 Java 11(nestmates)부터 그 종류를 «내지 않는다» — 같은 소스 실측으로
+  `--release 8` 은 kind 7 · `--release 21` 은 kind 5. ★그렇게 오래된 클래스 파일이 이 런타임의 «대상»이므로 가지를 남기고
+  픽스처를 **8로 컴파일**했다. `test_fixture_pins.rs` 를 **픽스처별 핀**으로 바꿨다 — «면제»로 뺐으면 그 픽스처의 요지가 무검증이 된다.
+  ⑶**정적 인자 «개수·종류»**: 신원 4축엔 근접실패가 있었는데 이 둘엔 **없었다** ⇒ 손조립 2종 추가.
+- ★★**개악 14종 전건 red**(정상 576 green): lowering 미호출 · 신원 4축 각각 · 정적인자 2축 · 통과검사 · 포획 저장 ·
+  수신자 처리 · void 버림 · REF_invokeSpecial · REF_newInvokeSpecial · 릴리스 8 핀.
+- 검증: `cargo test --all` **573 → 576 passed / 0 failed / 1 ignored**(기준선 `origin/main` 워크트리 실측) ·
+  `LambdaKinds` 출력 **10줄이 OpenJDK 26.0.1 과 글자대로 일치** · DoD 7명령 rc=0 · 픽스처 재생성 **멱등**.
+- ★후속: **박싱 어댑터**(M · `LambdaBoxing` 이 이미 그 자리를 잠그고 있다) · **람다 클래스의 리플렉션 가시성 결정**(S) —
+  `docs/worklog/2026-09-17-link-lambdametafactory.json`.
 ## [2026-09-17] 레시피가 콜사이트와 어긋날 때 — ★**「싸고 옳다」는 두 겹으로 거짓이었다** (rustjava-adopt-link-stringconcatfactory-p1)
 - 무엇을: 채택 제안 `2026-09-16-link-stringconcatfactory#p1`(「진단의 자리를 정하라」). ★**제품 동작이 바뀐다** —
   레시피와 콜사이트의 «합의»를 **변환 전에 한 번** 재고, 없던 `java/lang/BootstrapMethodError` 를 런타임에 추가했다.

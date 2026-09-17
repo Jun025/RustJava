@@ -306,9 +306,29 @@ fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bo
         // The bootstrap method index is bounded by `bootstrap_method_indices_resolve`, not here:
         // it needs the class attributes, and this function only gets the pool. What is left for
         // this arm is the half that the pool alone can answer.
-        ConstantPoolItem::Dynamic { name_and_type_index, .. } | ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => {
-            constant_pool.get(name_and_type_index).and_then(ConstantPoolItem::name_and_type).is_some()
-        }
+        //
+        // JVMS 4.4.10 makes the *kind* of descriptor part of that half, and it differs by tag: a
+        // `CONSTANT_InvokeDynamic` names a method, a `CONSTANT_Dynamic` names a field type. The
+        // `NameAndType` arm above cannot say this — one entry is shared by Fieldref and Methodref,
+        // so "a field *or* method descriptor" is the strongest rule available *there*. The usage
+        // site is where the choice is decided, which is why the check lives here and why the arm
+        // above stays as it is.
+        //
+        // Measured before tightening: of 175 committed class files and 44 invokedynamic/dynamic
+        // references, exactly one is rejected by this — `MetafactoryFieldDescriptorCallSite`, the
+        // fixture written for it. OpenJDK 26 refuses that same file
+        // (`ClassFormatError: Method "run" ... has illegal signature "I"`), so this moves us onto
+        // the real JVM's answer rather than away from it.
+        ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => constant_pool
+            .get(name_and_type_index)
+            .and_then(ConstantPoolItem::name_and_type)
+            .and_then(|(_, descriptor_index)| constant_pool.get(&descriptor_index).and_then(ConstantPoolItem::utf8))
+            .is_some_and(|descriptor| is_method_descriptor(&descriptor)),
+        ConstantPoolItem::Dynamic { name_and_type_index, .. } => constant_pool
+            .get(name_and_type_index)
+            .and_then(ConstantPoolItem::name_and_type)
+            .and_then(|(_, descriptor_index)| constant_pool.get(&descriptor_index).and_then(ConstantPoolItem::utf8))
+            .is_some_and(|descriptor| is_field_descriptor(&descriptor)),
         _ => true,
     })
 }
