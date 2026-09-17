@@ -45,6 +45,64 @@
 - 검증: `cargo test --all` **576 passed / 0 failed / 1 ignored**(★Rust 무접촉이라 불변) · worklog 46/0 · parity 대칭차 0.
 - ★후속: 이 감사를 ★**상시 검사로 올릴지 «결정»하라**(S) — 안 돌리는 감사는 썩는다 ↔ DoD 8번째 명령 + parity 갱신이 대가다.
 
+## [2026-09-17] ldc 픽스처를 ASM 으로 재생성하자 — ★**기각**(rustjava-adopt-ldc-tags-real-world-generator-survey-p0)
+- 무엇을: 운영자가 tower 에서 채택한 제안 `2026-09-16-ldc-tags-real-world-generator-survey#p0` 의 처분. ★**제품 코드 0줄** — 산출물은 «판정과 그 근거»다.
+- ★**기각 사유 ⑴ 제안이 사려는 것이 이미 있다 — 그것도 더 센 오라클로**: ★**OpenJDK 26.0.1 이 양성 픽스처 4건을 «실행»한다**(`LdcMethodHandle`·`LdcMethodType`·`LdcDynamic`·`Ldc2WDynamic` **전건 rc=0**) ⇒ 진짜 JVM 의 **검증기**가 우리 손조립 바이트를 받아들인다. 대조군(위법 5건)은 **전건 rc=1**. 그리고 「ASM 이 이 태그를 내는가」는 **선행 조사 회차가 이미 동적으로 실증**했다.
+- ★**⑵ 손의 흔적은 사라지지 않고 «옮겨간다»**(제안이 적지 않은 축): ASM 경로는 `visitLdcInsn(new Handle(…))` 을 부르는 **드라이버 15줄**이 있어야 성립한다 ⇒ **모양은 여전히 우리가 고르고**, 바뀌는 것은 «인코딩의 출처» 하나다.
+- ★**⑶ 값은 제안 자신이 셋을 적었고 지금도 참이다**: JDK 가 PATH 에 없다(★정정 — **설치는 돼 있다**: `/opt/homebrew/opt/openjdk` 26.0.1 · 「부재」가 아니라 「기본 경로로 안 닿는다」) · asm.jar 를 네트워크로 들여와야 한다(repo 에 **0건**) · 음성 픽스처는 ASM 이 못 만들어 ★**생성기가 «두 기구»가 된다**.
+  ★**과장하지 않는다** — CI 는 오늘 픽스처를 **재생성하지 않는다**(`make_*_fixtures|verify-javac` 참조 **0건** · `setup-java` 도 **0건**). 진짜 비용은 ★**「어디서나 한 줄로 되는 재생성」이 「네트워크+JDK+핀된 jar」 의식이 되는 것**이다.
+- ★★**⑷ 상시 검사와 정면 충돌한다**: `audit-fixture-single-defect.py` 의 **첫 등식** `generator(**given)==committed` 는 `no defect` 스킵 «전»에 돌므로, ASM 바이트면 그 셋이 **`GENERATOR DRIFT` rc=2** 가 된다. ★**단서**: 그 감사기는 **아직 미착지**(PR #63 진행 중 · `bin/landed` **UNLANDED**)라 「오늘의 사실」이 아니라 **「착지하면 즉시 충돌하는 축」**이다.
+- ★**⑸ 버전도 손으로 고를 수밖에 없다**: 표의 `55.0 LdcDynamic` 은 우연이 아니라 JVMS 4.4(태그 17 ⇒ major ≥ 55)이고, ASM 은 **드라이버가 정한 값**을 쓴다. `tests/test_class_format.rs` 가 그 major 를 50/54 로 낮춰 버전 규칙을 증명하므로 하중이 **둘**이다.
+- ★★**잃는 것 — 기각은 공짜가 아니다**: 생성기 머리의 `These are **synthetic**` 단서가 양성 픽스처에도 남고, ★**우리 인코더의 체계적 편향을 우리 파서«와» OpenJDK 가 «둘 다» 관대하게 넘기는 경우**는 ASM 이라면 드러났을 것이다(JVM 검증기는 **센 필터이지 증명이 아니다**). 어느 쪽이든 «현실성»의 상시 보장은 없다.
+- ★후속: 더 싼 대안을 카드로 남겼다 — **재생성 대신 양성 픽스처를 진짜 JVM 에 올려 현실성 검사로 삼는다**(선례 `verify-javac-fixtures.sh`) · `docs/worklog/2026-09-17-ldc-asm-regeneration-declined.json`.
+
+## [2026-09-17] base 를 당겼다 — ★**막고 있던 코드 충돌은 «이미 없었다»**(rustjava-adopt-link-stringconcatfactory-p1-fix2)
+- 무엇을: `origin/main` 당김(뒤처짐 **9**) + 그 당김이 만든 `test-data/class-file-versions.txt` **3행**. ★제품 코드 **0줄** · 픽스처 바이트 **불변**.
+- ★★**전제가 반증됐다**: 이 회차는 「`make_indy_fixtures.py` 4구역 코드 충돌」을 풀라고 발권됐는데, 지금 당기면 그 파일은 **충돌하지 않는다**. `-p1-fix` 회차가 **14:10 에 `0f06b93f` 로 이미 합집합 해소**했고 게이트②가 **15:43 에 그 head 를 approve** 했다 — 발권 근거였던 12:12 blocked 회신이 그 사이 **낡았다**.
+- ★**재발도 불가능하다**(그냥 「지금은 없다」가 아니다): 뒤진 9커밋 중 `make_indy_fixtures.py` 를 만진 것이 **0건**이다.
+- ★**그래도 합집합이 «진짜»인지 다시 쟀다** — 합집합의 전형적 실패는 「한쪽 의도가 조용히 빠지는 것」이라서다.
+  ⒜생성기를 **실제로 돌려** 10개 픽스처가 전부 **바이트 불변**(양쪽 가족 — theirs `MakeConcat*` 3 · ours `RecipeWants*` 3 — 을 **한 생성기**가 낸다).
+  ⒝★**양방향 개악**: ours 산출물 3개만 치우면 **ours 만 red**(theirs 2건 green) · theirs 3개만 치우면 **theirs 2건 red**(ours green). ⇒ 「선택」이 아니라 합집합이다.
+- ★**남은 것은 충돌이 아니라 «부채»였다**: base 를 당기면 #57 의 버전 표가 들어오고 이 PR 의 픽스처 3개가 미등재라 `test_fixture_pins` 가 red 가 된다(게이트② 검수가 「`-merge` 회차가 표 3행을 함께 진다」고 이미 지목한 그것). 생성기로 채웠다 — ★**`3  0`(삭제 0)**.
+- 원장 충돌 2건(`REPORT.md`·`STATE.md`)은 **합집합·시간순**. ★`STATE.md` 「진행중」 한 줄은 3-way 에서 **ours 가 이겼다**(base == theirs ⇒ 정상) — 결손이 아니다.
+- 검증: `test_class_format` **16/0** · `test_fixture_pins` **3/0** · `cargo test --all` **578 / 0 / 1** · DoD **7명령 전건 rc=0**.
+
+## [2026-09-17] 부트스트랩 정적 인자는 «적재 가능 상수»여야 한다 — 경계에서 «종류»로 (rustjava-adopt-bound-bootstrap-static-arguments-p0)
+- 무엇을: 채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`. ★**제품 동작이 바뀐다** — 인자가 적재 불가 상수를 가리키는 클래스 파일이 **`ClassFormatError`** 로 거부된다.
+- 왜: JVMS 4.7.23 이 요구하는 것은 «인덱스가 어딘가에 닿는다»가 아니라 ★**「적재 가능 상수」**다(Integer·Float·Long·Double·Class·String·MethodHandle·MethodType·Dynamic).
+  직전 회차는 «경계»까지만 하고 «종류»를 남겨 두었고, 그 사실을 **함수 주석이 스스로 적어 두었다**.
+- ★★**제안이 스스로 적은 위험을 «먼저» 쟀다** — 「틀리면 람다 클래스가 전부 corrupt 가 된다」.
+  그 위험의 실체는 `attribute.rs` 의 설계(인자를 **해석하지 않는다**)이고, ★**태그 검사는 «어느 변형인가»만 묻고 «안을 읽지» 않는다** ⇒ 그 설계를 어기지 않는다.
+  ★**말이 아니라 수로**: 커밋된 클래스 전건 파싱이 **전 144 / 실패 12 → 후 144 / 실패 12** 로 ★**동일**(새로 거부되는 파일 **0** · 람다 포함).
+- ★**OpenJDK 26.0.1 실측이 근거다**: 인자를 Utf8 로 돌리자 ★**`ClassFormatError: argument_index 4 has bad constant type`** ⇒ 그 파일은 «미지원»이 아니라 **«파손»**이다.
+- ★**안 하면 무엇이 나쁜가**: 파일이 통과한 뒤 **나중에·틀린 낱말로** 실패한다 — 링커가 `None` 을 받아 링크를 포기하고
+  검증기가 **`UnsupportedOperationException`**(= 「우리가 지원하지 않는다」)을 낸다. ★**이 저장소가 반복해 가른 그 두 낱말**이다.
+- ★**개악 2종 전건 red**: M1 «존재만»으로 되돌리기 · ★**M2 적재 가능 집합에 Utf8 한 칸 추가** — M2 가 요지다(단언이 «경계»에 걸려 있음을 보인다).
+- 검증: `cargo test --all` **575 passed / 0 failed / 1 ignored** · DoD 7명령 rc=0 · ★**새 픽스처 0**(기존 파일 바이트 패치 · 길이 필드 불변).
+- ★**여기서 더 갈 수 없는 자리도 적는다**: `Dynamic` 인자의 서술자가 필드 서술자인지, `MethodHandle` 인자가 실제 멤버로 해석되는지는 **payload 가 필요**해 이 술어의 밖이다(설계이지 누락이 아니다).
+- ★후속: `ClassFormatError` 에 **사유를 실어라**(M) — OpenJDK 는 인덱스와 이유를 말한다. ★p2-fix 회차가 낸 같은 제안과 **묶어서** 하는 편이 낫다.
+## [2026-09-17] 레시피가 콜사이트와 어긋날 때 — ★**「싸고 옳다」는 두 겹으로 거짓이었다** (rustjava-adopt-link-stringconcatfactory-p1)
+- 무엇을: 채택 제안 `2026-09-16-link-stringconcatfactory#p1`(「진단의 자리를 정하라」). ★**제품 동작이 바뀐다** —
+  레시피와 콜사이트의 «합의»를 **변환 전에 한 번** 재고, 없던 `java/lang/BootstrapMethodError` 를 런타임에 추가했다.
+- 왜: 제안은 「현 런타임 검사는 싸고 옳다, 문제는 «자리»뿐」이라 했다. ★**둘 다 틀렸다.**
+  ⑴★**그 가지는 애초에 던지지 못했다** — `java/lang/BootstrapMethodError` 가 이 런타임에 **없어서**
+  `jvm.rs:948` 의 unwrap 에서 **NoClassDefFoundError 로 패닉**했다. 이 형상의 픽스처가 **하나도 없어** 아무도 밟은 적이 없다.
+  ⑵★**검사가 «부족분»만 봤다** — 레시피가 콜사이트보다 **짧으면** 남는 인자를 조용히 버리고 **틀린 문자열**(`a`)을 돌려주고 rc=0 이었다.
+  ⇒ 부등호를 **상등**으로 바꾸고 인자·상수 두 축을 함께 잰다.
+- 사용자 영향: 손상·수제 클래스 파일이 **패닉이나 조용한 오답 대신** `BootstrapMethodError` 를 받는다. 정상 javac 산출물은 **무영향**.
+- ★★**제안의 처방(`classfile/validation.rs` 로 옮겨 `ClassFormatError`)은 기각한다 — 추측이 아니라 실측이다.**
+  OpenJDK 26.0.1 에 세 픽스처를 **직접 돌렸다**: 전건 `BootstrapMethodError`(원인 `StringConcatException`) · 프레임은 `linkCallSite` =
+  ★**링크 시점**이고 ★**`ClassFormatError` 가 아니다**. 파일은 파싱되고, 부트스트랩 정적 인자의 «의미»는 클래스파일 형식의 소관이 아니다.
+  ⇒ 제안이 스스로 적은 비용(「검증 단계에서 부트스트랩 인자를 걷는 것 = `attribute.rs` 가 일부러 피한 해결」)도 함께 면했다.
+- ★**왜 «변환 전»인가**: 여기엔 `CallSite` 가 없어 링크가 첫 실행에 접힌다 ⇒ 그 순서에 가장 가까운 것이 「무엇도 변환하기 전에 잰다」이다.
+  먼저 변환하면 `String.valueOf` 를 통해 **사용자 `toString()` 이 돌고**, 그 예외가 이 진단을 덮는다.
+- ★★**개악 4종 전건 red**(정상 574 green): M1 합의 검사 제거 · M2 `!=`→`>`(부족분만) · M3 상수 축 제거 ·
+  ★**M4 `loader.rs` 에서 클래스 등록 제거 → `jvm.rs:948` 패닉이 «되살아난다»**(= 새 클래스가 하중을 진다).
+- 검증: `cargo test --all` **573 → 574 passed / 0 failed / 1 ignored**(기준선은 `origin/main` 워크트리에서 실측) ·
+  DoD 7명령 rc=0 · 픽스처 재생성 **멱등**(기존 4개 바이트 불변).
+- ★후속: **72개** `java/…Error|Exception` 이름이 이 워크스페이스의 오류 경로에 있고, 이번 회차 전까지 그중 **1개**(이 건)가 proto 없이 있었다.
+  ★**지금 baseline 이 0** 이라 잠그기 가장 싼 시점이다 — `docs/worklog/2026-09-17-string-concat-recipe-arity.json`.
+
 ## [2026-09-17] `StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다» (rustjava-adopt-link-stringconcatfactory-p0)
 - 무엇을: 레시피 없는 진입점 `makeConcat` 을 링크한다. ★**실행기 무접촉** — 콜사이트 인자 수로 **레시피를 합성**한다.
 - 왜: 채택 제안 `2026-09-16-link-stringconcatfactory#p0`.

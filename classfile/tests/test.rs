@@ -302,3 +302,45 @@ fn test_bootstrap_method_reference_kinds_outside_the_set_and_mispaired_kinds_are
     // and a kind that does pair with a Methodref still parses, so the above is not vacuous
     assert_eq!(parse_with_kind(5), None);
 }
+
+// JVMS 4.7.23 requires each `bootstrap_arguments` entry to be a **loadable** constant, not merely
+// an index that lands somewhere. The bound was checked before; the kind was not, so a file whose
+// argument named a Utf8 parsed fine and only fell over later — at the linker, which reports
+// "unsupported" about a file that is actually broken.
+//
+// OpenJDK 26.0.1 on this exact mutation: `ClassFormatError: argument_index 4 has bad constant type
+// in class file StringConcat`. So the rule is real and it is a *format* error.
+//
+// The mutation repoints the single bootstrap argument at pool entry #4, a Utf8. That keeps every
+// other byte — including the length fields — exactly as it was, so the argument's kind is the only
+// thing wrong with the file, which is what makes this test able to fail for the right reason.
+#[test]
+fn test_a_bootstrap_argument_that_is_not_a_loadable_constant_is_rejected() {
+    let string_concat = include_bytes!("../../test-data/indy/StringConcat.class");
+    // unmutated: parses, and the argument really is the String this repoints away from
+    let class = ClassInfo::parse(string_concat).unwrap();
+    assert!(matches!(
+        ConstantPoolReference::from_constant_pool(&class.constant_pool, bootstrap_methods(&class)[0].arguments[0]),
+        Some(ConstantPoolReference::String(_))
+    ));
+
+    // `num_bootstrap_methods=1, bootstrap_method_ref=#34, num_arguments=1, argument=#32`
+    let window = [0u8, 1, 0, 34, 0, 1, 0, 32];
+    let at = string_concat
+        .windows(window.len())
+        .position(|candidate| candidate == window)
+        .expect("test-data/indy/StringConcat.class layout changed; the BootstrapMethods entry moved");
+
+    let mut mutated = string_concat.to_vec();
+    mutated[at + 6..at + 8].copy_from_slice(&[0, 4]); // entry #4 is a Utf8 ("java/lang/Object")
+    assert!(
+        matches!(class.constant_pool.get(&4), Some(_)),
+        "the replacement index must be in the pool"
+    );
+
+    assert_eq!(
+        ClassInfo::parse(&mutated).err(),
+        Some(ClassFileError::InvalidFormat),
+        "a bootstrap argument naming a Utf8 is not a loadable constant"
+    );
+}

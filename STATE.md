@@ -1,7 +1,10 @@
 # STATE
 
 ## 진행중
-(없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
+(없음 — 2026-09-17 실측: 착수 시 열린 PR **4건**(#56·#57·#58·#59). ★**내 경로와 겹치는 것은 둘**이다 —
+ #59 가 `test-data/src/indy/make_indy_fixtures.py`·`tests/test_class_format.rs` · #56 이 `tests/test_class_format.rs`.
+ ★`jvm-bytecode/src/interpreter.rs`·`rustjava-runtime/` 은 **겹침 0**. ⇒ 착지 순서는 **#56·#59 먼저, 이 PR 나중**이 맞다
+ (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
 - [rustjava-adopt-class-format-mutation-audit-p0-fix] ★★**판정식을 `given` 에서 파생시킨다 — 게이트② 반려 승계(PR #63).**
@@ -22,6 +25,53 @@
   «다시 지어» 둘째 결함을 버렸다(구조적으로 MULTI-DEFECT 불가). ★**실측된 것은 4/18**. 정정은 `-fix` 항목이 진다.
   ★**덮지 않는 것을 스크립트에 적었다**(javac 산출물 · 적법-미구현 · 테스트 안 바이트 패치분).
   ★개악 2종 red(둘째 결함 심기 **rc=1** · 커밋본 1바이트 반전 **rc=2**) · `--all` **576/0/1**(Rust 무접촉이라 불변).
+- [rustjava-adopt-ldc-tags-real-world-generator-survey-p0] ★★**「ldc 픽스처를 ASM 으로 재생성」 제안 — 기각.** ★**제품 코드 0줄**(`declinedProposals` 기록).
+  ★**사유 ⑴ 더 센 오라클이 이미 있다** — ★**OpenJDK 26.0.1 이 양성 4건을 실행한다(전건 rc=0)** · 위법 5건은 전건 rc=1 · 「ASM 이 낸다」는 선행 회차가 이미 동적 실증.
+  ★**⑵ 손의 흔적은 «옮겨갈» 뿐이다**(ASM 도 드라이버 15줄이 모양을 고른다) ★**⑶ 생성기가 «두 기구»가 된다**(음성 픽스처는 ASM 불가) ·
+  값의 실체는 「CI 가 깨진다」가 **아니라**(CI 는 픽스처를 재생성하지 않는다 — 참조 0건) ★**「어디서나 한 줄」이 「네트워크+JDK+핀 jar」가 되는 것**.
+  ★★**⑷ 단일결함 감사의 첫 등식(`generator==committed`)과 충돌** ⇒ `GENERATOR DRIFT rc=2`. ★단 그 감사기는 **미착지**(PR #63)라 「착지하면 충돌하는 축」으로 적었다.
+  ★★**잃는 것**: `synthetic` 단서가 남고, ★우리 인코더의 체계적 편향을 파서«와» JVM 이 둘 다 관대하게 넘기는 경우는 못 잡는다(검증기는 센 필터이지 증명이 아니다).
+  ★후속 카드 1건 — 재생성 대신 **양성 픽스처를 진짜 JVM 에 올리는** 현실성 검사(선례 `verify-javac-fixtures.sh`).
+  ★★**게이트③ 착지 — PR #64 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**).
+  게이트② **approve** · 핀 **`c0413f81`** ↔ 착수 시 PR head **동일**(불이동) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★★**착지시킨 것은 «기각 기록»이다** — 제품 코드 **0줄**이 정상이고, 착지 diff 는 원장 4파일뿐이다.
+- [rustjava-adopt-link-stringconcatfactory-p1-fix2] ★★**base 당김 — 그런데 막고 있던 코드 충돌은 «이미 없었다»(PR #60).**
+  ★**전제 반증**: 「`make_indy_fixtures.py` 4구역 충돌」은 `-p1-fix` 가 **14:10 `0f06b93f`** 로 합집합 해소했고 게이트②가 **15:43 그 head 를 approve** 했다.
+  발권 근거(12:12 blocked 회신)가 그 사이 낡은 것이다. ★**재발 불가**도 확인 — 뒤진 9커밋 중 그 파일을 만진 것 **0건**.
+  ★**합집합이 진짜인지 다시 쟀다**: 생성기 재실행이 10픽스처 **바이트 불변**(양쪽 가족을 한 생성기가 낸다) ·
+  ★**양방향 개악** — ours 산출물만 치우면 ours 만 red · theirs 만 치우면 theirs 2건만 red ⇒ 「선택」이 아니다.
+  ★**실제로 남아 있던 것은 부채**다: 당기면 #57 의 표가 들어와 이 PR 픽스처 3개가 미등재 ⇒ 생성기로 **3행**(★삭제 0) 등재.
+  ★원장 2파일 합집합·시간순 · `--all` **578/0/1** · DoD 7명령 rc=0.
+  ★★**게이트③ 착지 — PR #60 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**).
+  게이트② **approve**(리니지 최신 회신 `…-p1-fix2.review.md`) · 핀 **`632c6b06`** ↔ 착수 시 PR head **동일**(불이동) ·
+  ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**(앞 회차가 이미 당겼다).
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(이 저장소에 배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
+  ★**동봉은 이 기록 한 줄뿐** — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현·승계 회차가 이미 실었다.
+- [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
+  채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
+  ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
+  ★**커밋된 클래스 파싱이 전/후 «144/12 동일»**(새로 거부 0). ★OpenJDK 26 은 같은 파일을 `ClassFormatError: argument_index 4 has bad constant type` 로 거부한다.
+  ★**안 하면**: 링커에서 `UnsupportedOperationException` — 「파손」을 「미지원」이라 말하게 된다.
+  ★개악 2종 red(존재만 되돌리기 · ★집합에 Utf8 한 칸 추가) · `--all` **575/0/1** · 새 픽스처 **0**(바이트 패치).
+- [rustjava-adopt-link-stringconcatfactory-p1] ★★**레시피가 콜사이트와 어긋날 때 — 제안의 「싸고 옳다」가 두 겹으로 거짓이었다.**
+  채택 제안 `2026-09-16-link-stringconcatfactory#p1`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
+  ★**제안의 처방은 기각**(`classfile/validation.rs`/`ClassFormatError`) — ★**OpenJDK 26.0.1 에 픽스처 3종을 직접 돌린 실측**이 근거다:
+  전건 `BootstrapMethodError`(원인 `StringConcatException`) · 프레임 `linkCallSite` = **링크 시점** · **`ClassFormatError` 아님**.
+  ★★**실제로 깨져 있던 둘**: ⑴`java/lang/BootstrapMethodError` 가 **런타임에 없어서** 그 가지가 던지는 대신
+  `jvm.rs:948` unwrap 에서 **패닉**했다(픽스처 0 이라 아무도 밟은 적이 없다) ⑵검사가 **부족분**만 봐서
+  레시피가 **짧으면** 남는 인자를 버리고 **틀린 문자열을 반환**했다(rc=0). ⇒ **상등 검사 · 변환 전 1회 · 인자/상수 두 축**.
+  ★**변환 전인 이유**: `String.valueOf` 가 **사용자 `toString()`** 을 돌리므로, 먼저 변환하면 그 예외가 진단을 덮는다.
+  ★**개악 4종 전건 red**(M1 검사 제거 · M2 `!=`→`>` · M3 상수 축 제거 · ★**M4 클래스 등록 제거 → 패닉 재현**) ·
+  `cargo test --all` **573 → 574 / 0 failed / 1 ignored**(기준선 워크트리 실측) · DoD 7명령 rc=0 · 픽스처 재생성 멱등.
+  ★★**게이트③ 착지 — PR #60 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `532d98d7` **불이동**(착수 실측 2026-09-17T01:18:24Z) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(이 저장소에 배포 워크플로 없음) · 주기 자동 커밋 **0건**.
+  ★**동봉은 이 기록 한 줄뿐** — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
+  ★★**착지 순서 고지 — 이 회차가 «새 `.class` 3개»를 들여온다**(`RecipeWants{MoreArguments,FewerArguments,AConstant}`).
+  열린 PR **#57**(ci-pending)이 「`.class` 는 `test-data/class-file-versions.txt` 에 등재돼야 하고 ★**미등재는 핀이 실패시킨다**」를 세운다
+  ⇒ ★**이 PR 이 먼저 착지하면 #57 의 표에 이 셋이 «없어»** 그 회차가 red 가 된다(해소 = `python3 test-data/src/record-class-file-versions.py` 재생성).
+  ★**텍스트 충돌이 0 이라 `mergeable` 로는 보이지 않는 종류다.**
 - [rustjava-adopt-link-stringconcatfactory-p0] ★★**`StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다».**
   채택 제안 `2026-09-16-link-stringconcatfactory#p0`(worklog json `adoptedProposals` 기록).
   ★**제품 동작 변경**: `makeConcat` 콜사이트가 **거부 대신 실행**된다. ★**실행기(`concat_with_constants`)는 한 줄도 안 바뀌었다.**

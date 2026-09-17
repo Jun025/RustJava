@@ -154,6 +154,9 @@
 52.0 indy/NotInvokeStaticFactory.class
 52.0 indy/NotMakeConcatWithConstants.class
 52.0 indy/NotStringConcatFactory.class
+52.0 indy/RecipeWantsAConstant.class
+52.0 indy/RecipeWantsFewerArguments.class
+52.0 indy/RecipeWantsMoreArguments.class
 65.0 indy/StringConcat.class
 55.0 ldc/Ldc2WDynamic.class
 52.0 ldc/Ldc2WMethodType.class
