@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-17] ldc 픽스처를 ASM 으로 재생성하자 — ★**기각**(rustjava-adopt-ldc-tags-real-world-generator-survey-p0)
+- 무엇을: 운영자가 tower 에서 채택한 제안 `2026-09-16-ldc-tags-real-world-generator-survey#p0` 의 처분. ★**제품 코드 0줄** — 산출물은 «판정과 그 근거»다.
+- ★**기각 사유 ⑴ 제안이 사려는 것이 이미 있다 — 그것도 더 센 오라클로**: ★**OpenJDK 26.0.1 이 양성 픽스처 4건을 «실행»한다**(`LdcMethodHandle`·`LdcMethodType`·`LdcDynamic`·`Ldc2WDynamic` **전건 rc=0**) ⇒ 진짜 JVM 의 **검증기**가 우리 손조립 바이트를 받아들인다. 대조군(위법 5건)은 **전건 rc=1**. 그리고 「ASM 이 이 태그를 내는가」는 **선행 조사 회차가 이미 동적으로 실증**했다.
+- ★**⑵ 손의 흔적은 사라지지 않고 «옮겨간다»**(제안이 적지 않은 축): ASM 경로는 `visitLdcInsn(new Handle(…))` 을 부르는 **드라이버 15줄**이 있어야 성립한다 ⇒ **모양은 여전히 우리가 고르고**, 바뀌는 것은 «인코딩의 출처» 하나다.
+- ★**⑶ 값은 제안 자신이 셋을 적었고 지금도 참이다**: JDK 가 PATH 에 없다(★정정 — **설치는 돼 있다**: `/opt/homebrew/opt/openjdk` 26.0.1 · 「부재」가 아니라 「기본 경로로 안 닿는다」) · asm.jar 를 네트워크로 들여와야 한다(repo 에 **0건**) · 음성 픽스처는 ASM 이 못 만들어 ★**생성기가 «두 기구»가 된다**.
+  ★**과장하지 않는다** — CI 는 오늘 픽스처를 **재생성하지 않는다**(`make_*_fixtures|verify-javac` 참조 **0건** · `setup-java` 도 **0건**). 진짜 비용은 ★**「어디서나 한 줄로 되는 재생성」이 「네트워크+JDK+핀된 jar」 의식이 되는 것**이다.
+- ★★**⑷ 상시 검사와 정면 충돌한다**: `audit-fixture-single-defect.py` 의 **첫 등식** `generator(**given)==committed` 는 `no defect` 스킵 «전»에 돌므로, ASM 바이트면 그 셋이 **`GENERATOR DRIFT` rc=2** 가 된다. ★**단서**: 그 감사기는 **아직 미착지**(PR #63 진행 중 · `bin/landed` **UNLANDED**)라 「오늘의 사실」이 아니라 **「착지하면 즉시 충돌하는 축」**이다.
+- ★**⑸ 버전도 손으로 고를 수밖에 없다**: 표의 `55.0 LdcDynamic` 은 우연이 아니라 JVMS 4.4(태그 17 ⇒ major ≥ 55)이고, ASM 은 **드라이버가 정한 값**을 쓴다. `tests/test_class_format.rs` 가 그 major 를 50/54 로 낮춰 버전 규칙을 증명하므로 하중이 **둘**이다.
+- ★★**잃는 것 — 기각은 공짜가 아니다**: 생성기 머리의 `These are **synthetic**` 단서가 양성 픽스처에도 남고, ★**우리 인코더의 체계적 편향을 우리 파서«와» OpenJDK 가 «둘 다» 관대하게 넘기는 경우**는 ASM 이라면 드러났을 것이다(JVM 검증기는 **센 필터이지 증명이 아니다**). 어느 쪽이든 «현실성»의 상시 보장은 없다.
+- ★후속: 더 싼 대안을 카드로 남겼다 — **재생성 대신 양성 픽스처를 진짜 JVM 에 올려 현실성 검사로 삼는다**(선례 `verify-javac-fixtures.sh`) · `docs/worklog/2026-09-17-ldc-asm-regeneration-declined.json`.
+
 ## [2026-09-17] base 를 당겼다 — ★**막고 있던 코드 충돌은 «이미 없었다»**(rustjava-adopt-link-stringconcatfactory-p1-fix2)
 - 무엇을: `origin/main` 당김(뒤처짐 **9**) + 그 당김이 만든 `test-data/class-file-versions.txt` **3행**. ★제품 코드 **0줄** · 픽스처 바이트 **불변**.
 - ★★**전제가 반증됐다**: 이 회차는 「`make_indy_fixtures.py` 4구역 코드 충돌」을 풀라고 발권됐는데, 지금 당기면 그 파일은 **충돌하지 않는다**. `-p1-fix` 회차가 **14:10 에 `0f06b93f` 로 이미 합집합 해소**했고 게이트②가 **15:43 에 그 head 를 approve** 했다 — 발권 근거였던 12:12 blocked 회신이 그 사이 **낡았다**.
