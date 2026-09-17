@@ -4,6 +4,12 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
+  채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
+  ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
+  ★**커밋된 클래스 파싱이 전/후 «144/12 동일»**(새로 거부 0). ★OpenJDK 26 은 같은 파일을 `ClassFormatError: argument_index 4 has bad constant type` 로 거부한다.
+  ★**안 하면**: 링커에서 `UnsupportedOperationException` — 「파손」을 「미지원」이라 말하게 된다.
+  ★개악 2종 red(존재만 되돌리기 · ★집합에 Utf8 한 칸 추가) · `--all` **575/0/1** · 새 픽스처 **0**(바이트 패치).
 - [rustjava-adopt-link-stringconcatfactory-p2-fix] ★★**포획 «순서»를 값으로 잠그고 «호스트 abort»를 없앤다 — 게이트② 반려 승계(PR #61).**
   ★**검수자 F1·F2 둘 다 옳았다.** F1: 픽스처 전건이 포획 1개 이하라 **순서 축이 무관측**이었고 RM4(읽기 순서 역전)가 **576 green** 이었다
   ⇒ 포획 2개 람다 둘 추가(`(String,int)`=`a:7` 글자로 · `(int,int)`=`120` ★값으로만) ⇒ **RM4 red**(`7:a`·`2001`).
@@ -61,6 +67,66 @@
   열린 PR **#57**(ci-pending)이 「`.class` 미등재는 핀이 **실패**시킨다」(`test-data/class-file-versions.txt`)를 세우므로,
   ★**이 PR 이 먼저 착지하면 #57 의 표에 이 셋이 «없어»** 그 회차가 red 가 된다(해소 = `record-class-file-versions.py` 재생성).
   ★**텍스트 충돌 0 이라 `mergeable` 로는 보이지 않는다** — 같은 고지가 #60 회신에도 있다(그쪽은 다른 3개).
+- [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0-fix] ★★**표 키의 경로 구분자를 «두 곳»에서 정규화 — 윈도우 CI red 를 고쳤다.**
+  게이트② **request-changes** 승계(PR #57 · 핀 `3061edb7` · ★`ci-presence` → **`CI_RED` rc=1**). ★**제품 코드 무접촉 · 설계 무변경**
+  (검수자가 「설계는 옳고 세 방향 전부 실제로 문다」로 확인했다 — ★**그 축은 다시 열지 않았다**).
+  ★★**결함의 모양**: `to_string_lossy()` 가 윈도우에서 `indy\StringConcat.class` 를 만드는데 표는 `indy/…` 를 담는다 ⇒
+  ★**하위 36개가 «미기록»과 «유령 기록»에 «동시에» 걸린다.** ★**루트 114개는 통과**하므로 ★**mac/linux 로는 «절대» 안 보인다**
+  — 모수 실측 **150 = 루트 114 + 하위 36**(검수자 수와 일치).
+  ★★**「두 곳」이 급소다**: ★**같은 결함이 기록기(`record-class-file-versions.py`)에도 있었다** — Rust 만 고치면
+  ★**윈도우에서 기록한 표가 이번엔 mac/linux 를 red** 로 만들고, ★**CI 가 기록기를 안 돌려 그 축은 «영영 조용하다».**
+  ⇒ 둘을 함께 고쳤다(Rust 구분자 정규화 · Python `as_posix()`). ★표 자체는 **이미 슬래시**였다(역슬래시 행 **0** 실측).
+  ★★**②는 «코드»가 아니라 «순서»였고 — 그 사이 `#55` 가 먼저 착지해 «해소된 형태»로 나타났다**:
+  base 를 당기니 픽스처 3개가 ★**정확히 red 로 잡혔고**(`NotFactoryDescriptor`·`NotInvokeStaticFactory`·`NotMakeConcatWithConstants`),
+  ★**고친 기록기로 재기록하니 150 → 153 · diff 가 정확히 3줄**(그 외 무변).
+  ⇒ ★**기계가 설계대로 «잡고», 처방이 «한 명령»이었다는 실증이다.**
+  ★**남은 형제 실측**: `#56` 은 test-data 접촉 **0** · `#58` 은 `test-data/src/verify-javac-fixtures.sh` **스크립트뿐** ⇒
+  ★**둘 다 표와 상호작용하지 않는다** — 착지 순서 제약 **없음**.
+  ★**③ 오기 정정**: `STATE.md` 에 착지해 있던 「**#55 는 원장 3파일만 만진다**」가 **거짓**이었고
+  ★**그 한 줄 때문에 ②가 보이지 않았다** ⇒ 그 자리에 반증을 붙였다. ★**교훈: 「어느 파일을 만지나」는 «PR 파일 목록»으로 확인하라.**
+  ★★**이 설계의 «본래 대가»를 이제 적어 뒀다** — 「기록에 없는 픽스처 = red」는 **의도된 엄격함**이고
+  그 비용(픽스처를 더하는 회차가 표를 함께 만진다)이 **어디에도 없었다**(실측: `AGENTS.md` 관련 문장 0)
+  ⇒ ★**`AGENTS.md` §Testing Boundaries 에 한 줄**로 남겼다.
+  ★**개악 대조(⒞)**: 정규화 한 줄을 되돌리면 ★**mac 에서도** `table_keys_use_forward_slashes_on_every_platform` 가 **진다** · 복원 green.
+  ★★**그래서 «문자열 치환»으로 구현했다** — `components()` join 이면 Unix 에서 역슬래시 입력이 **그대로 통과**해
+  ★**개악이 mac 에서 안 잡힌다**(대가: Unix 파일명의 진짜 역슬래시는 바뀐다 — 픽스처엔 없고 표는 우리 것이다).
+  ★Python 축은 **윈도우 없이** 실증했다(`PureWindowsPath`: `str()` 역슬래시 ↔ `as_posix()` 슬래시).
+  ★★**게이트③ 착지 — PR #57 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve**(★`-fix2` 승계분) ·
+  ★**핀 `888d8821` 불이동**(착수 실측 2026-09-17T06:21:43Z · `MERGEABLE/CLEAN` · base 뒤처짐 «0»).
+  ★★**게이트③이 «두 번» 돌았다 — 첫 회차는 «옳게» 막혔다**: base 를 당기면 이 PR 자신의 핀 테스트가 red 였다
+  (형제 #59 가 들여온 `MakeConcat*` 3개가 표에 없었다) ⇒ 머지 티켓은 코드를 고치지 않으므로 `-fix2` 로 넘겼고,
+  그 회차가 base 당김 + 표 **3행**(`record-class-file-versions.py` 1회 · 추가만 · 삭제 0)을 넣어 풀었다.
+  ⇒ ★**이 PR 이 세운 규율이 이 PR 에 처음 적용된 사례**이고, 검사기를 완화하지 않고 표를 고쳐 통과했다.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 이 형상에서 `cargo test --test test_fixture_pins` **3/3 green**(이 PR 이 만든 그 축).
+  ★**동봉은 이 기록 한 줄뿐**이다 — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
+  ★배포 **0**(이 저장소에 배포 워크플로 없음) · 자식 PR **0건** · 주기 자동 커밋 **0건** · 낡음 판별 도구 **0건**.
+  ★★**착지 순서 고지** — 이 PR 이 세운 규율(「`.class` 를 더하면 `test-data/class-file-versions.txt` 에 같은 커밋으로 행을 넣는다 ·
+  미등재 픽스처는 핀이 **실패**시킨다」)은 ★**열린 PR #60(신규 `.class` 3개)·#61(17개)에 «소급 적용»된다** —
+  그쪽이 표에 행을 넣지 않고 착지하면 **main 이 red** 가 된다. 텍스트 충돌이 없어 `mergeable` 로는 보이지 않는 종류다.
+- [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0] ★★**`test-data` 전체(150 클래스)의 클래스 파일 버전을 «동결»했다 — «통일»이 아니라.**
+  채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p0`(worklog json `adoptedProposals` 기록).
+  ★★**제안의 «비용 산정»을 바꿨다 — 기각이 아니라 «설계 교체»다.** 제안은 「**decide the intended target** per fixture or
+  per directory … recompiled … ★**The decision is the work**」라며 **통일**을 전제했는데, 정작 제안이 적은 이득은
+  「a regenerated fixture **cannot quietly start testing a different Java version's** bytecode shapes」 = ★**«드리프트 탐지»**다.
+  ⇒ ★**목표를 «동결»로 바꾸면 그 「work」가 통째로 사라진다**: 지금 값을 기록하고 혼자 움직이면 red —
+  ★**재컴파일 0 · 바이트 변경 0 · 「어느 타깃이 옳은가」 결정 자체가 불요.**
+  ★**대가는 정직하게**: 이 축은 ★**섞임을 «고치지» 않고 «굳힌다»**(루트에 52·65·66·68·70 이 그대로 남는다).
+  그것이 옳은 이유는 ★**통일 = 재컴파일 = 바이트 변경 = 「그 픽스처가 무엇을 시험하는지」의 변경**이기 때문이고(제안 자신의 경고),
+  그 판정은 **별 축(후속 L)** 으로 넘겼다.
+  ★★**ⓑ 이미 핀하는 축이 «둘» 있었고, 그 둘이 못 덮는 곳이 이 회차의 대상이었다**:
+  ⑴`tests/test_fixture_pins.rs` 는 **`test-data/indy` 만** ⑵**생성기 코드**가 자기 산출물 **16개**의 버전을 소스에 박는다
+  (`make_ldc_fixtures.py` 의 `major=52` + 항목별 오버라이드) ⇒ ★**남는 132개 = 「`.java` 소스가 있어 손수 재컴파일 가능한 것」**이고,
+  ★**루트의 66×8 · 68×1 · 70×3 이 그 사고가 «이미 일어난» 지문**이다.
+  ★**만든 것**: `test-data/class-file-versions.txt`(150행 + 머리 주석에 「이것은 타깃이 아니라 동결이다」) ·
+  `test-data/src/record-class-file-versions.py`(머리 주석 **보존** · 없으면 **거부** · docstring 이 「실패를 잠재우려고 돌리지 마라」를 못박는다) ·
+  테스트 `committed_fixtures_keep_their_recorded_class_file_version`.
+  ★★**세 방향을 «전부» 검사한다 — 이것이 급소다**: ⑴기록과 다름 ⑵★**기록에 없는 새 픽스처**
+  (★없으면 핀이 «옵트인»이 되어 **내일 추가되는 픽스처는 조용히 미보호** — 이 저장소가 반복해 잡은 그 형태의 변종) ⑶**유령 기록**.
+  ★**개악 3종 전건 red**: M1 `Hello.class` 버전 바이트 `65→70`(= 다른 JDK 재생성과 **같은 형상**) ·
+  M2 미기록 `.class` 투입 · M3 표에만 있는 행 ⇒ 복원 **green**(`test_fixture_pins` **2 passed**).
+  ★실패 문면이 **파일·두 버전·해소 명령**을 함께 말한다(`Hello.class: recorded 65.0, found 70.0`).
+  ★**기록기 멱등**(재실행 시 표 **바이트 동일**) · `cargo test --all` **572 → 573 / 0 failed / 1 ignored** · DoD **7줄 전건 rc=0**.
+  ★**알고 남긴 값**: 생성기 산출물 16개는 **이중 잠금**(생성기 + 표)이다 — ★**예외 목록을 두는 규칙보다 «전건 단일 규칙»이 덜 썩는다.**
 - [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1] ★★**「어느 javac 이 만들었나」를 «기록»에서 «검증»으로 바꿨다.**
   채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1`(worklog json `adoptedProposals` 기록). ★**제품 코드 무접촉.**
   ★★**제안의 결론 «둘»이 실측으로 반증됐다 — 그래서 제안이 «불가능»하다고 적은 쪽을 만들었다**:
@@ -252,6 +318,11 @@
   ★**여파**: 이 착지가 형제 **#54**(BSM 정적 인자)·**#55**(변이 감사)의 base 를 낡게 만든다.
   ★**#54 는 «코드 파일이 자동 병합»되도록 그 회차가 삽입 위치를 미리 갈라 뒀고**(그 done 회신의 `merge-tree` 실측),
   **#55 는 원장 3파일만 만진다** ⇒ 두 형제 모두 충돌은 **원장 계열에 국한**된다(게이트③ 계약 2-c⒜ 범위).
+  ★★**[정정 2026-09-17 · `…-jdk-pin-…-p0-fix`] 바로 윗줄의 「#55 는 원장 3파일만 만진다」는 «거짓»이었다.**
+  실측: `#55` 는 `test-data/indy/` 에 **`.class` 3개를 추가**하고 생성기·테스트도 만진다 ⇒ ★**원장만이 아니다.**
+  ★**그 오기가 «무해하지 않았다»** — 같은 시기 `#57`(버전 동결 표)이 「픽스처가 늘면 표도 함께」를 요구하는데,
+  ★**「#55 는 원장만」이라고 읽으면 그 상호작용이 «보이지 않는다».** 실제로 그 둘은 **텍스트 충돌 0인데 나중에 착지하는 쪽이 main 을 red** 로 만들었다.
+  ⇒ ★**교훈: 「어느 파일을 만지나」는 «PR 파일 목록»으로 확인하라 — 요약에서 추론하지 마라.**
 - [rustjava-ldc-tags-15-16-17-real-world-generator-survey] ★★**「못 쟀다」를 «쟀다»로 바꿨다 — ASM 은 태그 15/16/17 을 «낸다».**
   채택 제안 `2026-09-16-ldc-tags-15-16-17#p2`(worklog json `adoptedProposals` 기록). ★**조사 회차 · 크레이트 무접촉**(파서·테스트 0).
   ★★**ASM 9.7.1 = 낸다(실증)** — `visitLdcInsn(Handle)`·`(Type.getMethodType)`·`(ConstantDynamic)` 15줄로 만든 클래스에서

@@ -1,0 +1,54 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0",
+ "summary": "Froze the class file version of all 150 committed fixtures in a checked-in table, rather than unifying them on a target. The proposal's stated benefit is drift detection, and a freeze buys that with zero recompiles — so the 'decide a target per directory' work it called the main cost is not needed. Corrected after gate-2 review: the two places that build a table key used the platform separator, so all 36 subdirectory fixtures failed on Windows while the 114 in the root passed.",
+ "changes": [
+  "test-data/class-file-versions.txt: new, 150 rows of <major>.<minor> <path>, with a header saying it is a freeze rather than a target and why",
+  "test-data/src/record-class-file-versions.py: new, rewrites the table from disk; preserves the header and refuses to write without one",
+  "tests/test_fixture_pins.rs: committed_fixtures_keep_their_recorded_class_file_version, checking all three directions",
+  "tests/test_fixture_pins.rs: table_key() normalises separators and is unit-tested, so the rule is checkable without Windows",
+  "test-data/src/record-class-file-versions.py: as_posix(), so recording on Windows cannot write backslash rows that would then break everyone else",
+  "test-data/class-file-versions.txt: re-recorded after the fix — 150 -> 153 rows, the three fixtures PR #55 added",
+  "AGENTS.md: one line stating that adding or recompiling a fixture means editing the table in the same commit",
+  "STATE.md: corrected a landed claim that PR #55 touched only ledger files; it adds three .class fixtures, and that error is why the interaction was invisible"
+ ],
+ "verification": [
+  "census re-measured at start: root 52 x40, 65 x62, 66 x8, 68 x1, 70 x3; ldc 52 x7, 55 x6; indy 52 x1, 65 x6; 150 classes total — the proposal's numbers still hold in shape, 65 moved 61 -> 62 because this lineage added fixtures",
+  "existing coverage measured: tests/test_fixture_pins.rs pins only test-data/indy, and the generators pin their 16 outputs in source (make_ldc_fixtures.py has major=52 by default with per-fixture overrides)",
+  "the unpinned population is therefore the 132 javac-compiled fixtures that have .java sources — the ones a person can recompile by hand, which is exactly where the 66/68/70 outliers are",
+  "mutation M1, flipping Hello.class's version bytes 65 -> 70 (the same shape as a regeneration on another JDK): red, with the message naming the file, both versions and the fix",
+  "mutation M2, adding an unrecorded .class: red — without this direction the pin would be opt-in and new fixtures would be silently uncovered",
+  "mutation M3, adding a table row for a file that does not exist: red",
+  "restore: test_fixture_pins 2 passed",
+  "the recorder is idempotent: rerunning it leaves the table byte-identical",
+  "cargo test --all: 573 passed / 0 failed / 1 ignored (572 before; +1 test)",
+  "DoD 7 commands all rc=0",
+  "the reviewer's numbers reproduced: 150 fixtures = 114 root + 36 in subdirectories, and ci-presence on the reviewed pin reports CI_RED rc=1",
+  "existing table had zero backslash rows, so normalising alone is sufficient — no re-record was needed for that reason",
+  "Rust side unit-tested: table_key('dispatch\\\\base\\\\PackageBase.class') == 'dispatch/base/PackageBase.class'",
+  "Python side tested without Windows via PureWindowsPath: str() yields backslashes, as_posix() yields slashes",
+  "mutation: reverting the normalisation makes the unit test fail on macOS — which is why it is implemented as a string replacement rather than a components() walk, since the latter would let a backslash path through unchanged on Unix and the mutation would be invisible",
+  "finding 2 resolved by landing order: PR #55 landed first, pulling base made the pin fail naming exactly its three fixtures, and re-recording with the fixed recorder added exactly three rows and changed nothing else",
+  "remaining open siblings measured: #56 touches no test-data, #58 touches only a script, so neither interacts with the table"
+ ],
+ "issues": [
+  "This freezes the heterogeneity rather than fixing it: five majors remain in the root.",
+  "The 16 generator outputs are double-locked (generator source plus the table), deliberately — one uniform rule rots less than a rule with an exemption list.",
+  "The strictness is the point and it has a standing cost: every round that adds a fixture must touch the table. That is now stated in AGENTS.md rather than only in this worklog."
+ ],
+ "adoptedProposals": [
+  "2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p0"
+ ],
+ "proposals": [
+  {
+   "title": "Decide whether the root fixtures should be recompiled onto one target",
+   "plainSummary": "The main test-data directory holds fixtures built by five different Java versions. We froze that, which stops it drifting further, but did not decide whether it should be uniform.",
+   "userBenefit": "None directly. It would make a fixture's bytecode shapes predictable from one number instead of from its individual history.",
+   "why": "The freeze added in this round answers 'did it move', not 'is it what we want'. A fixture compiled at major 52 exercises pre-invokedynamic shapes; one at 70 may lower the same source differently. Nobody has decided which of those each test wants, and the current spread is an accident of when each file was last touched rather than a choice.",
+   "tradeoff": "Recompiling changes bytes, and a fixture's bytes are what its test asserts against — several compare output against a committed .txt. So this is not a bulk operation: it needs a per-fixture judgement about what that test is for, and the likely honest answer for most of them is 'leave it', which costs the review time and buys nothing.",
+   "effort": "L",
+   "target": "test-data/, test-data/src/"
+  }
+ ]
+}
