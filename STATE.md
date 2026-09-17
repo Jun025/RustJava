@@ -65,8 +65,12 @@
   ★★**그래서 «문자열 치환»으로 구현했다** — `components()` join 이면 Unix 에서 역슬래시 입력이 **그대로 통과**해
   ★**개악이 mac 에서 안 잡힌다**(대가: Unix 파일명의 진짜 역슬래시는 바뀐다 — 픽스처엔 없고 표는 우리 것이다).
   ★Python 축은 **윈도우 없이** 실증했다(`PureWindowsPath`: `str()` 역슬래시 ↔ `as_posix()` 슬래시).
-  ★★**게이트③ 착지 — PR #57 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
-  핀 `c56d43db` **불이동**(착수 실측 2026-09-17T00:52:46Z) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★★**게이트③ 착지 — PR #57 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve**(★`-fix2` 승계분) ·
+  ★**핀 `888d8821` 불이동**(착수 실측 2026-09-17T06:21:43Z · `MERGEABLE/CLEAN` · base 뒤처짐 «0»).
+  ★★**게이트③이 «두 번» 돌았다 — 첫 회차는 «옳게» 막혔다**: base 를 당기면 이 PR 자신의 핀 테스트가 red 였다
+  (형제 #59 가 들여온 `MakeConcat*` 3개가 표에 없었다) ⇒ 머지 티켓은 코드를 고치지 않으므로 `-fix2` 로 넘겼고,
+  그 회차가 base 당김 + 표 **3행**(`record-class-file-versions.py` 1회 · 추가만 · 삭제 0)을 넣어 풀었다.
+  ⇒ ★**이 PR 이 세운 규율이 이 PR 에 처음 적용된 사례**이고, 검사기를 완화하지 않고 표를 고쳐 통과했다.
   ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 이 형상에서 `cargo test --test test_fixture_pins` **3/3 green**(이 PR 이 만든 그 축).
   ★**동봉은 이 기록 한 줄뿐**이다 — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
   ★배포 **0**(이 저장소에 배포 워크플로 없음) · 자식 PR **0건** · 주기 자동 커밋 **0건** · 낡음 판별 도구 **0건**.
