@@ -4,6 +4,15 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p2-fix] ★★**포획 «순서»를 값으로 잠그고 «호스트 abort»를 없앤다 — 게이트② 반려 승계(PR #61).**
+  ★**검수자 F1·F2 둘 다 옳았다.** F1: 픽스처 전건이 포획 1개 이하라 **순서 축이 무관측**이었고 RM4(읽기 순서 역전)가 **576 green** 이었다
+  ⇒ 포획 2개 람다 둘 추가(`(String,int)`=`a:7` 글자로 · `(int,int)`=`120` ★값으로만) ⇒ **RM4 red**(`7:a`·`2001`).
+  F2: 서술자가 `I` 인 콜사이트가 **호스트 프로세스를 죽였다**. ★**고친 자리 = `validation.rs` 의 «사용 지점»**(JVMS 4.4.10:
+  InvokeDynamic=메서드 · Dynamic=필드) — 일반 `NameAndType` 팔의 `||` 는 **옳으므로 두었다**(Fieldref·Methodref 공유 항목).
+  ★근거는 실측이다: **OpenJDK 26 도 같은 파일을 `ClassFormatError`** 로 거부한다 ⇒ 「미지원」이 아니라 「파손」이 옳은 진단.
+  ★**조이기 비용 선측정**: 클래스 175 · indy/condy 44건 중 새로 위법 **1건**(이 회차 픽스처)뿐.
+  ★`lower()` 의 `try_parse` 는 둘째 층이고 ★**독립 관측 불가임을 명시**했다(남긴 근거 = 비용 비대칭).
+  ★개악 2종 전건 red · `--all` **578/0/1** · 픽스처 재생성 멱등(형제 #59 생성기와 합친 뒤에도 바이트 불변).
 - [rustjava-adopt-link-stringconcatfactory-p2] ★★**`LambdaMetafactory.metafactory` 링크 — 람다·메서드 참조가 «돈다».**
   채택 제안 `2026-09-16-link-stringconcatfactory#p2`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음**
   (람다 포함 클래스: 적재 거부 → 실행). ★`jvm/` 무접촉 · `java.lang.invoke` **0줄**.
