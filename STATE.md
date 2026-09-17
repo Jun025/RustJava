@@ -41,6 +41,44 @@
   열린 PR **#57**(ci-pending)이 「`.class` 미등재는 핀이 **실패**시킨다」(`test-data/class-file-versions.txt`)를 세우므로,
   ★**이 PR 이 먼저 착지하면 #57 의 표에 이 셋이 «없어»** 그 회차가 red 가 된다(해소 = `record-class-file-versions.py` 재생성).
   ★**텍스트 충돌 0 이라 `mergeable` 로는 보이지 않는다** — 같은 고지가 #60 회신에도 있다(그쪽은 다른 3개).
+- [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p1] ★★**「어느 javac 이 만들었나」를 «기록»에서 «검증»으로 바꿨다.**
+  채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p1`(worklog json `adoptedProposals` 기록). ★**제품 코드 무접촉.**
+  ★★**제안의 결론 «둘»이 실측으로 반증됐다 — 그래서 제안이 «불가능»하다고 적은 쪽을 만들었다**:
+  ⑴「**Nothing offline can verify** a recorded compiler version … buys **provenance, not enforcement**」 → ★**거짓**:
+  javac 은 같은 소스·플래그·컴파일러에 **결정적**이라, 기록된 도구(`javac 26.0.1 --release 21`)로 재빌드하니
+  ★**`test-data/indy` 의 6개가 «바이트 단위로 동일»**했다. ⇒ ★**기록이 «재현»으로 검증된다.**
+  ⑵「강제 가능한 축은 `constant_pool.rs` 의 상수 개수뿐이고 **한 픽스처만** 덮는다」 → ★**거짓**:
+  ★**javac 산출 indy 픽스처 «3/3»이 형상 단언 보유** — `ConstantKinds`(MethodType 1·Dynamic 3·MethodHandle 7·InvokeDynamic 3) ·
+  `StringConcat`(부트스트랩 **4축** + 인자가 «가리키는 값» `"a\u{1}"` + ★**바이트 창** `[15,6,0,35]` · 「layout changed」로 실패) ·
+  `Lambda`(`LambdaMetafactory.metafactory` · 인자 3 · ★`args[0]==args[2]!=args[1]`).
+  ★**제안이 든 위험(「현대 javac 은 enum switch 를 condy 로 낸다」)은 `ConstantKinds` 의 Dynamic **3** 이 이미 잠그고 있다.**
+  ★**만든 것**: `test-data/src/verify-javac-fixtures.sh` — ⑴★`--release` 를 **픽스처 자신의 major − 44** 에서 읽어
+  ★**외부 표(형제 PR #57 의 버전 표)에 의존하지 않는다**(동기화할 것이 없다 · 미착지 의존도 없다)
+  ⑵★명시한 `JAVAC` 가 안 되면 **조용히 다른 컴파일러로 대체하지 않고 rc=2** — 「무엇이 검증했나」가 흐려지면 안 된다
+  ⑶★**「못 만들었다」와 「만들었는데 다르다」를 «가른다»** — 합치면 발견을 과장한다.
+  ★**CI 에 배선하지 «않았다»**: `.github/workflows/rust.yml` 에 JDK 가 없고 PATH 에도 없다 ⇒
+  JDK 를 요구하는 테스트는 ★**어디서나 실패하거나 어디서나 건너뛴다.** 이건 «재생성했을 때 사람이 돌리는» 검사다(doc 주석에 명시).
+  ★★**실패담 둘을 남긴다 — 이 회차가 실제로 밟았다**: ⑴`command -v javac` 이 macOS **스텁**(실행되는데 「JDK 없음」)을 고른다
+  ⇒ 경로가 아니라 **실행해서** 판별한다 ⑵★**`-sourcepath` 를 넣었다가 «더 나빠졌다»** — `test-data/src` 에 **`Exception.java`**·
+  `Array.java`·`Method.java` 가 있어 javac 이 `Exception` 을 ★**`java.lang.Exception` 이 아니라 그 픽스처로** 해석했다
+  (멀쩡히 재현되던 파일들이 `incompatible types` 로 무너졌다) ⇒ **되돌리고 그 대가**(형제 참조 소스는 홀로 재빌드 불가)를 **따로 보고**한다.
+  ★**개악 대조**: 커밋본 **마지막 1바이트 반전** → ★**✗ 감지** · 복원 → **6 reproduced** · 명시 `JAVAC` 부재 → ★**rc=2 「nothing was verified」**(통과 아님).
+  ★★**일반화 — 시켜 보고 «나온 값»만 적었다(고치지 않았다)**: 루트 `sh … test-data` →
+  **109 rebuilt · 104 재현 · ★5 상이 · 3 재빌드 불가**. 상이 5건 = `MonitorSemantics`(+내부 2) · `NativeMethod`(`--release 8`) · `OddEven`(`--release 21`).
+  ★**원인은 단정하지 않는다** — 「다른 컴파일러」와 「빌드 뒤 소스 수정」이 **둘 다 이 관측과 맞는다**. ★범위 밖이라 후속(M)으로 넘겼다.
+  ★**그래도 적는 이유**: ★**제안이 걱정한 드리프트가 «실재»한다는 첫 «직접» 증거**다(그전까지는 버전 분포에서의 추론이었다).
+  ★**직전 회차가 «커밋하지 않기로» 한 개악 하네스와 다른 종류다** — 그건 **제품 소스를 치환**해 죽으면 트리를 오염시켰고,
+  이건 **읽고 비교만** 한다(실패해도 트리 무변) ⇒ 그래서 **남겼다.**
+  ★`cargo test --all` **572 / 0 failed / 1 ignored**(doc 주석만 바꿔 **불변**) · DoD **7줄 전건 rc=0**.
+  ★★**게이트③ 착지 — PR #58 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `38c02a2d` **불이동**(착수 실측 2026-09-17T00:27:39Z · 핀에서 `ci-presence` **rc=0 CI_GREEN**).
+  ★**충돌은 원장 2파일뿐**(`REPORT.md`·`STATE.md`) — 형제 **#55** 착지분과 겹쳤고 코드 파일 충돌 **0**.
+  해소는 전건 보존·합집합·**시간순**: 이 회차(`38c02a2d` 05:22)가 main 쪽 최신 항목(`30a31bda` 04:04)보다 **뒤**라 위에 얹었다.
+  ★줄 소실 **0**(양방향) · 합집합 밖 신규줄 **0** · ★계약 12 착지 diff numstat **해소 전후 동일**(6파일 · 해소면 밖 변경 0).
+  ★배포 **0** — 이 저장소에 배포 워크플로가 **없다**(CI 2종 + 스케줄 2종 + PR 댓글 1종) · 자식 PR **0건** · 주기 자동 커밋 **0건**.
+  ★★**게이트③ 2회차 — 형제 #59 가 그 사이 착지(`66bc49e8`)해 base 를 다시 당겼다.** 충돌은 또 **원장 2파일뿐**(코드 충돌 0).
+  ★**이번엔 시간순이 «뒤집혔다»** — main 쪽 항목(`3b04712e` 06:52)이 이 회차(`38c02a2d` 05:22)보다 **뒤**라 **위**에 얹었다.
+  ★두 번의 base 당김을 거쳐도 이 PR 의 기여 numstat 은 **불변**(`94/0` 검증 스크립트 · `14/2` 핀 테스트 · worklog 2건).
 - [rustjava-adopt-cp-tag-passthrough-detectable-p0-fix] ★★**신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다.**
   게이트② **request-changes** 승계(PR #55 · 핀 `ab13a3c7`). ★**제품 코드 무접촉** — 없던 것은 **픽스처**다.
   ★★**무엇이 틀렸나**: 직전 감사의 **M7**(「신원 4축 검사 제거」)은 네 비교를 ★**한꺼번에** 지운다 ⇒ 그 red 가 증명하는 것은
