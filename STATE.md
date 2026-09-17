@@ -4,6 +4,13 @@
 (없음 — 2026-09-16 실측: 착수 시 진행 티켓 0 · 열린 PR 0. ※「열린 PR 0」은 ★**이 회차 PR 착지 시점 기준**이다 — 회신 시점에는 그 PR 자신이 열려 있다)
 
 ## 완료
+- [rustjava-adopt-class-format-mutation-audit-p0] ★★**픽스처 «단일 결함» 감사 — 18/18 통과.** 채택 제안
+  `2026-09-16-class-format-mutation-audit#p0`(worklog json `adoptedProposals` 기록). ★**제품 코드 0줄**(감사 스크립트 1개).
+  ★**판정식을 «로드»가 아니라 «바이트 동일»로** 잡았다(생성기가 결함을 인자로 받으므로 더 강하고 더 싸다):
+  `generator(결함)==커밋본` **그리고** `generator(수리)==generator(표준)`.
+  ★결과 **검사 18 전건 single-defect · 무결함 유효 파일 5 · rc=0** ⇒ 회차마다 «적용»돼 온 규율을 처음으로 «측정»했다.
+  ★**덮지 않는 것을 스크립트에 적었다**(javac 산출물 · 적법-미구현 · 테스트 안 바이트 패치분).
+  ★개악 2종 red(둘째 결함 심기 **rc=1** · 커밋본 1바이트 반전 **rc=2**) · `--all` **576/0/1**(Rust 무접촉이라 불변).
 - [rustjava-adopt-link-stringconcatfactory-p0] ★★**`StringConcatFactory.makeConcat` 도 링크한다 — 단 «이유는 제안이 적은 것이 아니다».**
   채택 제안 `2026-09-16-link-stringconcatfactory#p0`(worklog json `adoptedProposals` 기록).
   ★**제품 동작 변경**: `makeConcat` 콜사이트가 **거부 대신 실행**된다. ★**실행기(`concat_with_constants`)는 한 줄도 안 바뀌었다.**

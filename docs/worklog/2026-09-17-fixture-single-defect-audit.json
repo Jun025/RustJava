@@ -1,0 +1,33 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-class-format-mutation-audit-p0",
+  "summary": "Audit the hand-assembled fixtures for single-defectness — is each file broken in exactly one way? Answered by byte equality against the canonical build rather than by loading, which is both stronger and cheaper. Result: 18 defective fixtures checked, all single-defect; 5 carry no defect at all.",
+  "changes": [
+    "test-data/src/audit-fixture-single-defect.py: repairs each generated fixture's named defect and requires the bytes to equal the canonical build"
+  ],
+  "verification": [
+    "audit: 18 checked / 18 single-defect / 5 no-defect (valid files) / rc=0",
+    "mutation M1: plant a second defect (NotFactoryDescriptor also gets reference kind 7) -> MULTI-DEFECT, rc=1",
+    "mutation M2: flip one byte of a committed fixture -> GENERATOR DRIFT, rc=2",
+    "cargo test --all unchanged (this round adds no Rust)"
+  ],
+  "issues": [
+    "The audit is a standalone script, not wired into DoD or CI. An audit nobody runs rots; whether this property is worth a permanent check is a separate decision, argued in the proposal below.",
+    "Three fixture classes are outside its reach and are named in the script header rather than silently skipped: javac output (no defect), legal-but-unimplemented files (no defect), and fixtures byte-patched inside a test (not on disk)."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-class-format-mutation-audit#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether single-defectness is a standing check or a one-off",
+      "plainSummary": "The audit passes today. Nobody runs it tomorrow.",
+      "userBenefit": "A fixture that grows a second defect stops covering what its test claims, and the test keeps passing — which is exactly the silence this round measured away.",
+      "why": "Every fixture is generated from a parameterised generator, so the check costs one python3 invocation and no JVM. The repository's own doctrine says a rule kept only in prose is the worst state: 'the rule exists and has no effect'.",
+      "tradeoff": "It would be an eighth DoD command, and check-dod-ci-parity.py then has to carry it in both directions — the parity lock is deliberately strict about that. Against: the property is stable by construction (the generators take the defect as a parameter), so the check may earn nothing for years.",
+      "effort": "S",
+      "target": "CLAUDE.md, .github/workflows/rust.yml"
+    }
+  ]
+}
