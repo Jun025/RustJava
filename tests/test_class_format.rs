@@ -28,9 +28,16 @@ fn hello_class() -> Vec<u8> {
     fs::read("test-data/Hello.class").unwrap()
 }
 
-// Only the exception *kind* is asserted, not the message: upstream `ClassFileError`
-// (cut 822504b) collapses every parse failure into a flat "Invalid class file",
-// so per-cause wording is no longer available. Restoring it needs upstream variants.
+// Only the exception *kind* is asserted, not the message: `ClassFileError::InvalidFormat` carries
+// no cause, and the two places that turn it into a Java exception hardcode the string "Invalid
+// class file", so there is no per-cause wording to assert.
+//
+// This note used to say the variants were "cut" upstream at 822504b and that restoring them "needs
+// upstream variants". Both halves were wrong, measured: that commit *created* classfile/src/error.rs
+// — before it, `ClassInfo::parse` returned `Option`, so failure carried nothing at all — and this
+// fork already diverges by hundreds of lines in this crate, so nothing about the change is upstream's
+// to make. What it does need is a cause threaded through three layers and `validate_class`'s eight-term
+// `||` chain split so the cause can differ per check. See docs/worklog/2026-09-17-classfile-error-cause-decision.md.
 #[tokio::test]
 async fn test_truncated_class_raises_class_format_error() {
     let (dir, path) = fixture("TruncatedHello.class", &hello_class()[..60]);

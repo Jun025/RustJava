@@ -41,6 +41,31 @@
   ★그래도 적는 이유: ★**제안이 걱정한 드리프트가 «실재»한다는 첫 직접 증거**다.
 - 검증: `cargo test --all` **572 / 0 failed / 1 ignored**(doc 주석만 바꿔 **불변**) · DoD 7명령 rc=0.
 - 후속 추천: 루트 5건이 **왜** 재현되지 않는지 규명(M) — 상세 = `docs/worklog/2026-09-17-javac-fixture-provenance-verified.md`.
+## [2026-09-17] `ClassFileError` 가 «원인»을 실어야 하는가 — ★**판정: 할 값 있다. 단 제안의 이름·이유·범위가 셋 다 틀렸다** (rustjava-adopt-cp-tag-passthrough-detectable-p1)
+- 무엇을: 낱말이 **`Decide`** 인 제안을 **판정**했다. ★**코드 변경은 «틀린 주석 한 곳» 정정뿐** — 구현은 후속으로 넘겼다.
+- 왜: 채택 제안 `2026-09-16-cp-tag-passthrough-detectable#p1`.
+- 사용자 영향: 없다(판정). ★바뀐 것은 ★**착지한 트리가 «거짓 전제»를 나르지 않게 된 것**이다.
+- ★★**제안의 «역사»가 거짓이다 — 두 겹으로**: ⑴`822504b` 는 `classfile/src/error.rs` 를 **«자르지» 않고 «만들었다»**
+  (`new file` · 내용이 지금과 **동일한 2변형**) ⑵그 이전에는 `ClassInfo::parse` 가 **`Option<Self>`** 를 돌려줬다
+  (실패에 정보 **0**) ⇒ ★**그 커밋은 «후퇴»가 아니라 «개선»이었고, 「again」·「restore」는 성립하지 않는다.**
+- ★★**「upstream 이 해야 한다」도 거짓**: `upstream/main` 기준 **5커밋 뒤**이고 그중 이 파일들을 만지는 것 **0건** ·
+  upstream 이 `error.rs` 를 만진 커밋은 **1건(생성)** 뿐 · ★**우리는 이미 이 crate 에서 크게 갈렸다**
+  (`constant_pool.rs` **+211/−6** · `validation.rs` **+137/−0** · `attribute.rs` **+129/−3** · `opcode.rs` **+83/−7**).
+  ※`AGENTS.md` 의 read-only 규율은 **upstream 으로 «보내는 것»**을 금할 뿐 로컬 변경을 금하지 않는다.
+- ★★**ⓑ 설계는 «한 enum 건너» 이미 증명돼 있다**: `ClassDefinitionError::UnsupportedFeature(&'static str)` 가
+  **5곳**에서 쓰이며 `"ldc of a method handle"` 같은 문장을 낸다 ⇒ ★**새 발명이 아니라 «일관성 회복»**이고, 모양도 자명하다.
+- ★**이득(과장하지 않는다)**: kind-only 단언 **8곳**이 원인을 이름 부를 수 있게 되고, 참조 JVM 격차가 줄어든다
+  (OpenJDK 는 `Multiple BootstrapMethods attributes…`·`argument_index 65535 has bad constant type` 를 내는데 우리는 전부 `Invalid class file`).
+  ★**그러나 「픽스처보다 강한 자물쇠」는 «절반만» 참이다** — 원인은 「어느 검사가 울렸나」를, 픽스처는 「그 검사가 관측 가능한가」를 잠근다.
+  ★**증거**: 직전 `-fix` 가 찾은 구멍(신원 4축 중 3축 미관측)은 **링크 축**이라 원인을 실었어도 **안 잡혔다**.
+- ★★**비용 — 제안의 `target: classfile/src/error.rs` 는 틀렸다(1파일이 아니라 3층)**: 평탄화가 아래로 두 번 더 일어난다
+  (`InvalidFormat` → `ClassDefinitionError::InvalidClassFile`(From 이 원인을 버린다) → ★**하드코딩 문자열 2곳**).
+  ⇒ ★**`error.rs` 만 고치면 관측 변화가 «0»** 이다. ★**진짜 비용은 `validate_class` 의 8항 `||` 사슬을 쪼개는 것**이고,
+  그것은 이 티켓이 **금지한 리팩터**다 ⇒ ★**여기서 구현하지 않고 «범위를 바로잡아» 넘겼다.**
+- 검증: `cargo test --all` **572 / 0 failed / 1 ignored**(주석만 바꿔 불변) · DoD 7명령 rc=0.
+- 후속 추천: 원인을 **3층에 관통**시키고 `validate_class` 를 **검사마다 반환**으로 쪼갠다(M) —
+  ★「⑴만 하고 멈추면 관측 변화 0 · ⑷ 없이 하면 평탄함이 «이사»할 뿐」까지 제안에 적었다.
+  상세 = `docs/worklog/2026-09-17-classfile-error-cause-decision.md`.
 ## [2026-09-17] 신원 4축을 «각각» 관측 가능하게 했다 — 감사의 「고칠 것이 없다」를 정정한다 (rustjava-adopt-cp-tag-passthrough-detectable-p0-fix)
 - 무엇을: `string_concat.rs` 의 부트스트랩 신원 **4축**(kind·class·name·descriptor) 중 ★**3축이 «관측되지 않고» 있었다** —
   근접 실패 픽스처가 **class 축 하나**뿐이었기 때문이다. 나머지 3축의 픽스처를 만들었다. ★**제품 코드 무접촉.**
