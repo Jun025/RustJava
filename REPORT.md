@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-17] base 를 당겼다 — ★**막고 있던 코드 충돌은 «이미 없었다»**(rustjava-adopt-link-stringconcatfactory-p1-fix2)
+- 무엇을: `origin/main` 당김(뒤처짐 **9**) + 그 당김이 만든 `test-data/class-file-versions.txt` **3행**. ★제품 코드 **0줄** · 픽스처 바이트 **불변**.
+- ★★**전제가 반증됐다**: 이 회차는 「`make_indy_fixtures.py` 4구역 코드 충돌」을 풀라고 발권됐는데, 지금 당기면 그 파일은 **충돌하지 않는다**. `-p1-fix` 회차가 **14:10 에 `0f06b93f` 로 이미 합집합 해소**했고 게이트②가 **15:43 에 그 head 를 approve** 했다 — 발권 근거였던 12:12 blocked 회신이 그 사이 **낡았다**.
+- ★**재발도 불가능하다**(그냥 「지금은 없다」가 아니다): 뒤진 9커밋 중 `make_indy_fixtures.py` 를 만진 것이 **0건**이다.
+- ★**그래도 합집합이 «진짜»인지 다시 쟀다** — 합집합의 전형적 실패는 「한쪽 의도가 조용히 빠지는 것」이라서다.
+  ⒜생성기를 **실제로 돌려** 10개 픽스처가 전부 **바이트 불변**(양쪽 가족 — theirs `MakeConcat*` 3 · ours `RecipeWants*` 3 — 을 **한 생성기**가 낸다).
+  ⒝★**양방향 개악**: ours 산출물 3개만 치우면 **ours 만 red**(theirs 2건 green) · theirs 3개만 치우면 **theirs 2건 red**(ours green). ⇒ 「선택」이 아니라 합집합이다.
+- ★**남은 것은 충돌이 아니라 «부채»였다**: base 를 당기면 #57 의 버전 표가 들어오고 이 PR 의 픽스처 3개가 미등재라 `test_fixture_pins` 가 red 가 된다(게이트② 검수가 「`-merge` 회차가 표 3행을 함께 진다」고 이미 지목한 그것). 생성기로 채웠다 — ★**`3  0`(삭제 0)**.
+- 원장 충돌 2건(`REPORT.md`·`STATE.md`)은 **합집합·시간순**. ★`STATE.md` 「진행중」 한 줄은 3-way 에서 **ours 가 이겼다**(base == theirs ⇒ 정상) — 결손이 아니다.
+- 검증: `test_class_format` **16/0** · `test_fixture_pins` **3/0** · `cargo test --all` **578 / 0 / 1** · DoD **7명령 전건 rc=0**.
+
 ## [2026-09-17] 부트스트랩 정적 인자는 «적재 가능 상수»여야 한다 — 경계에서 «종류»로 (rustjava-adopt-bound-bootstrap-static-arguments-p0)
 - 무엇을: 채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`. ★**제품 동작이 바뀐다** — 인자가 적재 불가 상수를 가리키는 클래스 파일이 **`ClassFormatError`** 로 거부된다.
 - 왜: JVMS 4.7.23 이 요구하는 것은 «인덱스가 어딘가에 닿는다»가 아니라 ★**「적재 가능 상수」**다(Integer·Float·Long·Double·Class·String·MethodHandle·MethodType·Dynamic).

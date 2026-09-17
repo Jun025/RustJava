@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-adopt-link-stringconcatfactory-p1-fix2] ★★**base 당김 — 그런데 막고 있던 코드 충돌은 «이미 없었다»(PR #60).**
+  ★**전제 반증**: 「`make_indy_fixtures.py` 4구역 충돌」은 `-p1-fix` 가 **14:10 `0f06b93f`** 로 합집합 해소했고 게이트②가 **15:43 그 head 를 approve** 했다.
+  발권 근거(12:12 blocked 회신)가 그 사이 낡은 것이다. ★**재발 불가**도 확인 — 뒤진 9커밋 중 그 파일을 만진 것 **0건**.
+  ★**합집합이 진짜인지 다시 쟀다**: 생성기 재실행이 10픽스처 **바이트 불변**(양쪽 가족을 한 생성기가 낸다) ·
+  ★**양방향 개악** — ours 산출물만 치우면 ours 만 red · theirs 만 치우면 theirs 2건만 red ⇒ 「선택」이 아니다.
+  ★**실제로 남아 있던 것은 부채**다: 당기면 #57 의 표가 들어와 이 PR 픽스처 3개가 미등재 ⇒ 생성기로 **3행**(★삭제 0) 등재.
+  ★원장 2파일 합집합·시간순 · `--all` **578/0/1** · DoD 7명령 rc=0.
 - [rustjava-adopt-bound-bootstrap-static-arguments-p0] ★★**부트스트랩 정적 인자 = «적재 가능 상수» — 경계에서 «종류»로.**
   채택 제안 `2026-09-16-bound-bootstrap-static-arguments#p0`(worklog json `adoptedProposals` 기록). ★**제품 동작 변경 있음.**
   ★**제안이 적은 위험을 먼저 쟀다**(「틀리면 람다가 전부 corrupt」): 태그 검사는 payload 를 읽지 않으므로 `attribute.rs` 설계와 충돌하지 않고,
