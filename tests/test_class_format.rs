@@ -28,9 +28,16 @@ fn hello_class() -> Vec<u8> {
     fs::read("test-data/Hello.class").unwrap()
 }
 
-// Only the exception *kind* is asserted, not the message: upstream `ClassFileError`
-// (cut 822504b) collapses every parse failure into a flat "Invalid class file",
-// so per-cause wording is no longer available. Restoring it needs upstream variants.
+// Only the exception *kind* is asserted, not the message: `ClassFileError::InvalidFormat` carries
+// no cause, and the two places that turn it into a Java exception hardcode the string "Invalid
+// class file", so there is no per-cause wording to assert.
+//
+// This note used to say the variants were "cut" upstream at 822504b and that restoring them "needs
+// upstream variants". Both halves were wrong, measured: that commit *created* classfile/src/error.rs
+// — before it, `ClassInfo::parse` returned `Option`, so failure carried nothing at all — and this
+// fork already diverges by hundreds of lines in this crate, so nothing about the change is upstream's
+// to make. What it does need is a cause threaded through three layers and `validate_class`'s eight-term
+// `||` chain split so the cause can differ per check. See docs/worklog/2026-09-17-classfile-error-cause-decision.md.
 #[tokio::test]
 async fn test_truncated_class_raises_class_format_error() {
     let (dir, path) = fixture("TruncatedHello.class", &hello_class()[..60]);
@@ -104,6 +111,28 @@ async fn test_only_the_two_recognised_bootstraps_are_linked() {
     }
 }
 
+// The factory's other entry point. `makeConcat` takes no static arguments — the call site
+// descriptor alone says what to concatenate — so the recipe is synthesised from its arity rather
+// than read from the bootstrap.
+//
+// The fixture prints its result, and this asserts *that* rather than only that the class ran: a
+// recipe synthesised at the wrong length still links and still runs, and would concatenate the
+// wrong number of arguments unnoticed if the value were discarded.
+//
+// javac does not emit this shape — targets 9 through 26 all emit `makeConcatWithConstants`, even
+// for `a + b` with no literal text — so the fixture is hand-assembled
+// (test-data/src/indy/make_indy_fixtures.py).
+#[tokio::test]
+async fn test_the_recipe_free_factory_concatenates_every_argument() {
+    let path = Path::new("test-data/indy/MakeConcat.class");
+
+    let output = run_class(path, &[Path::new("./test-data/indy/")], &[])
+        .await
+        .expect("a makeConcat call site should link and run");
+
+    assert_eq!(output.trim_end(), "ab", "both arguments must be concatenated, in order");
+}
+
 // The identity check above is four comparisons, and the test above can only observe one of them.
 // `NotStringConcatFactory` differs in the owning class, so deleting *that* comparison links it and
 // the test fails — but deleting any of the other three changes nothing any fixture can see. Measured
@@ -120,6 +149,13 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
         ("NotMakeConcatWithConstants", "method name"),
         ("NotFactoryDescriptor", "descriptor"),
         ("NotInvokeStaticFactory", "reference kind"),
+        // The same axis for the recipe-free entry point. It carries no static arguments, so the
+        // argument-count guard cannot refuse it and the descriptor comparison is all that is left
+        // — which is exactly what makes that comparison observable.
+        ("MakeConcatWrongDescriptor", "descriptor, on the recipe-free entry point"),
+        // And the other half of that entry point's rule: it takes no static arguments, so one that
+        // carries a static argument is not the shape it claims to be.
+        ("MakeConcatWithArgument", "a static argument the recipe-free entry point does not take"),
     ] {
         let path = PathBuf::from(format!("test-data/indy/{name}.class"));
 
