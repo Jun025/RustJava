@@ -107,6 +107,38 @@ async fn test_only_the_string_concat_bootstrap_is_linked() {
     }
 }
 
+// The identity check above is four comparisons, and the test above can only observe one of them.
+// `NotStringConcatFactory` differs in the owning class, so deleting *that* comparison links it and
+// the test fails — but deleting any of the other three changes nothing any fixture can see. Measured
+// before these fixtures existed: with the kind, name or descriptor comparison removed one at a
+// time, `cargo test --all` stayed at 570 passed / 0 failed.
+//
+// So each axis gets a fixture that differs in that axis alone. Every one of them is a valid class
+// file that reaches the identity check — nothing upstream can reject them — which is what makes
+// each comparison observable rather than merely present.
+#[tokio::test]
+async fn test_each_axis_of_the_factory_identity_is_observable() {
+    for (name, axis) in [
+        ("NotStringConcatFactory", "owning class"),
+        ("NotMakeConcatWithConstants", "method name"),
+        ("NotFactoryDescriptor", "descriptor"),
+        ("NotInvokeStaticFactory", "reference kind"),
+    ] {
+        let path = PathBuf::from(format!("test-data/indy/{name}.class"));
+
+        let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: a bootstrap differing in {axis} must not be linked, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: it has to reach the identity check, so it must be a readable file, got: {err}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn test_bad_magic_raises_class_format_error() {
     let mut bytes = hello_class();
