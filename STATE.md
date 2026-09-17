@@ -28,6 +28,14 @@
   ★★**그래서 «문자열 치환»으로 구현했다** — `components()` join 이면 Unix 에서 역슬래시 입력이 **그대로 통과**해
   ★**개악이 mac 에서 안 잡힌다**(대가: Unix 파일명의 진짜 역슬래시는 바뀐다 — 픽스처엔 없고 표는 우리 것이다).
   ★Python 축은 **윈도우 없이** 실증했다(`PureWindowsPath`: `str()` 역슬래시 ↔ `as_posix()` 슬래시).
+  ★★**게이트③ 착지 — PR #57 · `--merge`**(등재 repo · `merge_strategy: merge` 선언분). 게이트② **approve** ·
+  핀 `c56d43db` **불이동**(착수 실측 2026-09-17T00:52:46Z) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 이 형상에서 `cargo test --test test_fixture_pins` **3/3 green**(이 PR 이 만든 그 축).
+  ★**동봉은 이 기록 한 줄뿐**이다 — 원장(worklog 쌍·`STATE`·`REPORT`)은 구현 회차가 이미 실었다.
+  ★배포 **0**(이 저장소에 배포 워크플로 없음) · 자식 PR **0건** · 주기 자동 커밋 **0건** · 낡음 판별 도구 **0건**.
+  ★★**착지 순서 고지** — 이 PR 이 세운 규율(「`.class` 를 더하면 `test-data/class-file-versions.txt` 에 같은 커밋으로 행을 넣는다 ·
+  미등재 픽스처는 핀이 **실패**시킨다」)은 ★**열린 PR #60(신규 `.class` 3개)·#61(17개)에 «소급 적용»된다** —
+  그쪽이 표에 행을 넣지 않고 착지하면 **main 이 red** 가 된다. 텍스트 충돌이 없어 `mergeable` 로는 보이지 않는 종류다.
 - [rustjava-adopt-indy-fixture-jdk-pin-and-slot-accounting-p0] ★★**`test-data` 전체(150 클래스)의 클래스 파일 버전을 «동결»했다 — «통일»이 아니라.**
   채택 제안 `2026-09-16-indy-fixture-jdk-pin-and-slot-accounting#p0`(worklog json `adoptedProposals` 기록).
   ★★**제안의 «비용 산정»을 바꿨다 — 기각이 아니라 «설계 교체»다.** 제안은 「**decide the intended target** per fixture or
