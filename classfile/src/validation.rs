@@ -17,7 +17,7 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
         || !constant_pool_tags_fit_the_class_file_version(class)
         || !bootstrap_method_static_arguments_are_in_the_pool(class)
         || !bootstrap_method_indices_resolve(class)
-        || !at_most_one_bootstrap_methods_attribute(class)
+        || !at_most_one_of_each_single_class_attribute(class)
     {
         return Err(ClassFileError::InvalidFormat);
     }
@@ -191,25 +191,71 @@ fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
     })
 }
 
-/// JVMS 4.7.23: at most one `BootstrapMethods` attribute may appear in a ClassFile's attributes
-/// table. A file carrying two is broken, not a file using a feature this runtime lacks.
+/// JVMS 4.7: several ClassFile attributes may appear at most once. A file carrying two is broken,
+/// not a file using a feature this runtime lacks.
 ///
 /// Kept separate from `bootstrap_method_indices_resolve` because it is a different sentence: that
-/// one asks whether an index names a real entry, this one asks how many tables exist. Folding it in
-/// would also mean renaming that function for a rule it did not previously make.
+/// one asks whether an index names a real entry, this one asks how many tables exist. Counting is
+/// the same shape `validate_class` already uses for the per-member "at most one" rules
+/// (`ConstantValue` on a field, `Code` on a method).
 ///
-/// It matters because `bootstrap_method_indices_resolve` resolves the table with `find_map`, which
-/// stops at the first one. With two tables that choice is arbitrary — the index would be bounded
-/// against whichever came first and the other silently ignored — so the honest answer is to reject
-/// the file rather than pick. Counting is the same shape `validate_class` already uses for the
-/// per-member "at most one" rules (`ConstantValue` on a field, `Code` on a method).
-fn at_most_one_bootstrap_methods_attribute(class: &ClassInfo) -> bool {
-    class
-        .attributes
-        .iter()
-        .filter(|attribute| matches!(attribute, AttributeInfo::BootstrapMethods(_)))
-        .count()
-        <= 1
+/// `BootstrapMethods` came first, because a duplicate there makes an arbitrary choice observable:
+/// `bootstrap_method_indices_resolve` and `string_concat`'s `resolve_bootstrap_methods` both take
+/// the table with `find_map`, which stops at the first one. That argument covers one attribute, and
+/// the round that added it left the others as an open question.
+///
+/// ## Which others, and why not "all of them"
+///
+/// The list below is **what OpenJDK 26.0.1 actually rejects**, measured one attribute at a time
+/// rather than read off the spec, because the two do not agree:
+///
+/// | duplicated attribute | class file version | OpenJDK 26.0.1 |
+/// |---|---|---|
+/// | `SourceFile`, `InnerClasses`, `SourceDebugExtension`, `BootstrapMethods` | 52 | `ClassFormatError: Multiple … attributes` |
+/// | `NestHost`, `NestMembers` | 55 | `ClassFormatError: Multiple … attributes` |
+/// | `NestHost` | **52** | **loads** — the attribute is not defined before 55, so it is ignored (JVMS 4.7.1) |
+/// | `Synthetic` | 52 | **loads**, though JVMS 4.7.8 marks it at-most-one |
+///
+/// Two of those rows are the whole reason this is a table and not a `matches!` over every variant:
+///
+/// * **The version gate is load-bearing.** Counting `NestHost` at major 52 would reject a file every
+///   real JVM accepts. An attribute that does not exist at that version is not duplicated, it is
+///   unrecognised, and unrecognised attributes are ignored.
+/// * **`Synthetic` is excluded on evidence, not oversight.** The spec says at most one; HotSpot
+///   takes two. Rejecting it would make us stricter than the JVM we are trying to agree with, and
+///   nothing here reads the attribute, so there is no arbitrary choice to make observable either.
+///
+/// The other direction is deliberate too: attributes that belong to a field, method or Code table
+/// (`ConstantValue`, `Code`, `Exceptions`, `MethodParameters`, `StackMapTable`, `LineNumberTable`,
+/// `LocalVariableTable`) are not listed even when they turn up in a class's attribute table, because
+/// there they are attributes in a place they are not defined for — ignored, not counted.
+fn at_most_one_of_each_single_class_attribute(class: &ClassInfo) -> bool {
+    // (discriminant, the class file version that introduced the attribute)
+    fn single_valued(attribute: &AttributeInfo) -> Option<(u8, u16)> {
+        Some(match attribute {
+            AttributeInfo::SourceFile(_) => (0, 45),
+            AttributeInfo::InnerClasses(_) => (1, 45),
+            AttributeInfo::SourceDebugExtension => (2, 49),
+            AttributeInfo::BootstrapMethods(_) => (3, 51),
+            AttributeInfo::NestHost(_) => (4, 55),
+            AttributeInfo::NestMembers(_) => (5, 55),
+            _ => return None,
+        })
+    }
+
+    class.attributes.iter().enumerate().all(|(position, attribute)| {
+        let Some((kind, introduced_in)) = single_valued(attribute) else {
+            return true;
+        };
+        if class.major_version < introduced_in {
+            return true;
+        }
+
+        // Only the first of each kind looks behind it, so one duplicate is reported once.
+        !class.attributes[..position]
+            .iter()
+            .any(|earlier| single_valued(earlier).is_some_and(|(earlier_kind, _)| earlier_kind == kind))
+    })
 }
 
 fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {

@@ -7,6 +7,18 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-adopt-reject-duplicate-bootstrap-methods-p0] ★★**클래스 수준 속성 개수 규칙 — 다섯에 «예».** 채택 제안 `…-reject-duplicate-bootstrap-methods#p0`(worklog json 기록). ★**제품 동작 변경 있음.**
+  ★**제안 기준만으로는 «아니오»였다**(하류 `find_map` 소비자가 있는 것은 `BootstrapMethods` 뿐 · 나머지 6종 소비자 0).
+  ★★**판정을 바꾼 것은 진짜 JVM 이다** — OpenJDK 26.0.1 이 `SourceFile`·`InnerClasses`·`SourceDebugExtension`·`BootstrapMethods`(52)·`NestHost`·`NestMembers`(55) 중복을 ★**전건 `ClassFormatError`** 로 거부한다
+  ⇒ ★**제안의 「오늘 로드되는 파일을 더 거부한다」는 «거짓»**(그 파일들은 진짜 JVM 에서도 안 열린다).
+  ★★**통제군 둘이 표·버전게이트의 이유**: `NestHost`@**52** 는 ★**로드된다**(미정의 ⇒ 무시) · `Synthetic` 은 스펙이 하나라는데 ★**HotSpot 이 둘을 받는다**(근거로 뺐다).
+  ★**개악 4종 전건 red**(M1 게이트 제거·M2 Synthetic 추가 → **통제군** red · M3 한 칸 제거 · M4 호출부 원복) · 복원 17/0.
+  ★**대가**: 동작 변경 · 표는 수동 목록(늘어도 안 울린다) · Synthetic 배제는 JVM 하나에 의존 · ★**`attribute.rs` 한 줄**(제안 target 밖 — 신고).
+  ★`--all` **579/0/1** · 버전 표 **+7행** · DoD 7명령 rc=0.
+  ★★**게이트③ 착지 — PR #66 · `--merge`**(등재 repo `contracts/upstream-sync-repos.conf:22` · 티켓 `merge_strategy: merge` 선언분 ⇒ ★**계보 보존**).
+  게이트② **approve** · 핀 **`1da1379e`** ↔ 착수 시 PR head **동일**(불이동) · ★**`CONFLICTING`** ⇒ 예외 사유 ⓖ 로 별 `-merge` 가 발권된 회차다.
+  ★**충돌은 원장 2파일뿐**(`STATE.md`·`REPORT.md` 상단 삽입 · 제품 코드 **0**) — base 당김(뒤처짐 **3**) + 합집합 해소. 보존 증명 양방향 소실 **0** · 기여 불변 `--numstat` 정확 일치.
+  ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건**(최다 규칙성 author cv **0.57** > 0.1) · 라이브 실행 주체 **없음**.
 - [rustjava-adopt-ldc-tags-real-world-generator-survey-p0] ★★**「ldc 픽스처를 ASM 으로 재생성」 제안 — 기각.** ★**제품 코드 0줄**(`declinedProposals` 기록).
   ★**사유 ⑴ 더 센 오라클이 이미 있다** — ★**OpenJDK 26.0.1 이 양성 4건을 실행한다(전건 rc=0)** · 위법 5건은 전건 rc=1 · 「ASM 이 낸다」는 선행 회차가 이미 동적 실증.
   ★**⑵ 손의 흔적은 «옮겨갈» 뿐이다**(ASM 도 드라이버 15줄이 모양을 고른다) ★**⑶ 생성기가 «두 기구»가 된다**(음성 픽스처는 ASM 불가) ·
