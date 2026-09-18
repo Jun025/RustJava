@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-18",
+  "taskId": "rustjava-count-nonliteral-exception-call-sites",
+  "summary": "Counted every exception( call site and classified its first argument. Literal java/javax: 846 (exactly what the checker reads). Non-literal (name built at run time): 0. The blind spot the adopted proposal asked about is empty today; the predicate that says so was validated by a control (reproduces the checker's pre-fix 812) and a five-shape mutation probe.",
+  "measurements": {
+    "bare_exception_sites_total": 847,
+    "definition": 1,
+    "literal_java": 846,
+    "literal_other": 0,
+    "nonliteral": 0,
+    "suffixed_helper_sites_excluded": 41,
+    "suffixed_helper_nonliteral_if_wrongly_counted": 33,
+    "single_line_literal_control": 812,
+    "macro_body_sites": 3,
+    "macro_invocations": 22,
+    "expansion_basis_total": 865,
+    "literal_java_in_product": 781,
+    "literal_java_in_tests": 65
+  },
+  "verification": [
+    "control: single-line-only literal count = 812 = the checker's own pre-fix figure (846 - 34 rustfmt-split), same file set and anchor",
+    "mutation probe in jvm/src/jvm.rs: variable / format! / const / raw-string -> nonliteral 0->4; non-java literal -> literal_other 0->1; reverted, tree clean, back to 0/0",
+    "negative probes: 'exception (' with space = 0, Jvm::exception as value or UFCS = 0, macro_rules! files = 2 and neither pastes an identifier"
+  ],
+  "changes": [
+    "docs/worklog/2026-09-18-nonliteral-exception-call-sites.{md,json} (this pair)",
+    "REPORT.md, STATE.md — round record",
+    "no .rs and no scripts/ changes: this is a measurement round"
+  ],
+  "issues": [
+    "Counts are in source units, not expansion units: 3 exception( sites live in macro bodies invoked 22 times, so an expansion-basis total would be 865. All literal either way, so the answer M=0 is unaffected.",
+    "A token-pasting macro that builds the identifier `exception` would be invisible to any text predicate; measured 0 in this tree but it is a floor, not a proof."
+  ],
+  "adoptedProposals": [
+    "2026-09-18-named-exception-classes-are-loadable#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether nonliteral exception() call sites should be a check, now that the baseline is 0",
+      "plainSummary": "Right now every place that raises a Java error spells the class name out in full, so the existing safety check sees all of them. Nothing stops someone from building a name at run time in future, which would slip past unseen.",
+      "userBenefit": "Keeps the guarantee that an unknown class name throws a Java exception instead of crashing the whole runtime, even as new code is written.",
+      "why": "This round measured the blind spot at exactly 0 and produced the predicate that detects it (control-tested against the checker's own numbers, plus a five-shape mutation probe). A gate is therefore cheap to add and would start green. The reason it was not added here: the adopted proposal asked for a count, not a gate, and a gate whose baseline is 0 has its own cost — it turns a legitimate future refactor (passing a name through a variable) into a red that must be argued down, and this repo's rule is that a lock should be decided on its own merits rather than added because the number happened to be convenient.",
+      "tradeoff": "Adding it costs one more DoD command and makes run-time-assembled names a build failure rather than a review comment; not adding it means the floor stays unmeasured between rounds and the next non-literal call site lands silently.",
+      "effort": "S",
+      "target": "scripts/check-named-exception-classes-are-loadable.py, .github/workflows/rust.yml, CLAUDE.md"
+    }
+  ]
+}
