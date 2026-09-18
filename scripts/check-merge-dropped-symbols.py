@@ -20,10 +20,23 @@ file that parses, runs and agrees with every committed artefact. Both were measu
 
 Scope: a definition is flagged when it exists in the merge's second parent and not in the merge
 result, looked for in every file that either the merged-in branch or the merge itself changed.
-That second half costs something, measured over the last 200 commits of origin/main (83 merges) at
-gate 2: the narrow filter reports 8 merges / 19 definitions, this one reports 10 / 45. The extra
-includes 514d5b08, which is the second of the two real incidents, so the wider set is not simply
-noise -- but it is more to read, and more of it will need trailers. That deliberately also flags *our* intentional deletions, because from the outside the two
+That second half costs something. Measured by running both filters over one window of 83 merges
+(38b0df38..8c7b473f, the last 200 commits of origin/main at the time): the narrow filter reports
+8 merges / 19 definitions, this one reports 10 / 26. The seven extra definitions come from two
+merges -- 514d5b08 (six) and 37ea5a13 (one) -- and they are not all one kind. Four are the second
+of the two real incidents, restored later and present in the tree today. The other three are the
+class described next. Time is not the cost: in that window the wider filter was no slower than the
+narrow one, so the price is reading, not waiting.
+
+A branch that deletes or renames a definition main still has goes red on its next base pull, and an
+ordinary refactor then has to carry a trailer to say so. 37ea5a13 is exactly that: it pulled
+origin/main into a branch that had already generalised `at_most_one_bootstrap_methods_attribute`
+into `at_most_one_of_each_single_class_attribute`, and the pull reported the old name as dropped.
+Three of the seven extra definitions are this class, so it is a class and not a corner. "CI only
+looks at origin/main..HEAD" is not a reason to discount it -- that range is precisely where this
+lands, on the next base pull of an open branch.
+
+That deliberately also flags *our* intentional deletions, because from the outside the two
 look identical -- which is the whole difficulty. Saying which is which is a judgement, so it is
 recorded as one, on the merge commit:
 
@@ -140,7 +153,7 @@ def check(merge):
     # branch never touched -- "fixed the conflict in A and put B back" -- and that is this check's
     # whole reason for existing. Measured on the second of the two incidents, 514d5b08: with the
     # narrow filter it reports "0 file(s) examined" and passes; with this one it names the same four
-    # definitions the first incident dropped. The cost is real and is recorded in Scope below.
+    # definitions the first incident dropped. The cost is real and is recorded in Scope above.
     changed = set((run("diff", "--name-only", base, theirs) or "").split("\n")) | set(
         (run("diff", "--name-only", base, merge) or "").split("\n")
     )
