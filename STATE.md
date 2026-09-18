@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-loadable-set-from-loader-vs-rederive-decision] ★★**적재 가능 집합은 «재유도»를 유지한다 — 로더에서 읽지 않는다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p2`. ★**순수 결정 · 코드 0줄** · 산출 = `docs/loadable-set-source-of-truth.md`.
+  ★**전제 확인**: 「4중 3이 재유도」는 **참**(고침 커밋 `89c2e83c` 에서 갈랐다 — loadable 3 · named 1).
+  ★★**그 1건이 결정한다**: `named`(코드가 무엇을 넘기는가)는 **로더가 답할 수 없다** ⇒ 로더 읽기는 **파서 하나를 없앨 뿐 파싱을 못 없앤다**(그 절반에서 형제 회차가 ★**4시간 31분** 뒤에 또 잡았다 — ★**「다른 함수 8종 41자리」**를 쓸어담는 앵커 함정이고, 세면 **33** · 맞는 답은 **0** 이다).
+  ★**대가 실측**: 열거 API **0개**(268 등재가 함수 «안» 지역 배열) ⇒ **검사기 전용 생산 API** 가 필요 · 현행 **0.8초·무빌드**인데 `rust.yml` **5잡 중 4잡이 그 형상**이다.
+  ★★**결정적 실측**: 초판 검사기를 지금 트리에서 돌리면 **265/263 ↔ 등재 줄 268** ⇒ ★불변식 하나로 **결함 2건이 1회차에 잡혔을 값**(현행 268/268/268). ★단 «모든 오귀속»은 못 잡는다(과소계수 계급만).
+  ★**브리프 전제 1건이 거짓**: 이 repo 엔 `machine-independence-guard` 가 **없다**(다른 repo 축).
+  ★**재개 조건 사전 등록**: loadable 재유도 경로에서 **세 번째** 결함이 나오면 다시 연다(「고침 이후 0」은 하루짜리라 논거로 쓰지 않았다).
 - [rustjava-jvm-exception-throws-instead-of-unwrap] ★★**일으키려던 예외를 못 만들면 죽던 것을 «보고»로 바꿨다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p1`. ★시그니처 불변 · variant 0 · 호출부 편집 0.
   ★**급소**: `from_rust_string`·`new_class` 의 실패는 **이미 `JavaError`**(= 자바 예외)다 — unwrap 이 그것을 버렸다. ⇒ 그대로 돌려준다.
   ★**실측**: `panicked … unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)` — ★올바른 보고가 **패닉 메시지 안에** 실려 사라졌다.

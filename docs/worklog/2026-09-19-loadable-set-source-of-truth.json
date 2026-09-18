@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-19",
+  "taskId": "rustjava-loadable-set-from-loader-vs-rederive-decision",
+  "summary": "Decision round, no code changed. Keep re-deriving the loadable set from Rust source rather than reading it from the loader. The proposal's premise checks out - 3 of the 4 defects were in the re-derivation - but reading the loader removes one of the two parsers and not the parsing, needs a production API that only the check would use, and puts a build under a check that costs 0.8s with none. The failure mode it targets is catchable by a single invariant that would have broken in round 1.",
+  "decision": "keep re-derivation; do not read the loadable set from the loader",
+  "measurements": {
+    "defects_total": 4,
+    "defects_in_loadable_rederivation": 3,
+    "defects_in_named_scan": 1,
+    "loader_registration_lines": 268,
+    "prefix_checker_parsed_registrations": 265,
+    "prefix_checker_distinct_names": 263,
+    "current_checker_parsed_registrations": 268,
+    "current_checker_distinct_names": 268,
+    "checker_runtime_seconds": [0.96, 0.75, 0.77],
+    "public_enumeration_apis_for_protos": 0,
+    "ci_jobs_total": 5,
+    "ci_jobs_needing_toolchain": 1,
+    "rederivation_defects_since_the_fix": 0,
+    "days_of_that_evidence": 1
+  },
+  "verification": [
+    "the 3-of-4 claim was checked against fix commit 89c2e83c itself, not the prose: REGISTERED as_proto->(as|list)_proto, IMPL_BLOCK->IMPL_START+PROTO_FN, bare-name key->(module,type,function) are loadable-side; NAMED.finditer(line)->finditer(text) is named-side",
+    "invariant test: ran the pre-fix checker (38cbab7e) against today's tree - parsed 265 registrations, resolved 263 names, against 268 registration lines in loader.rs; current checker gives 268/268/268",
+    "no enumeration API: get_runtime_class_proto holds the 268 protos in a local array consumed by .find(|proto| proto.name == name); grep for public functions returning the proto list returns nothing",
+    "checker cost measured 3x with /usr/bin/time; CI job shapes read from rust.yml (4 of 5 jobs are checkout + python3, only rust_ci needs a toolchain)"
+  ],
+  "changes": [
+    "docs/loadable-set-source-of-truth.md - the decision, its measurements and the re-measure trigger",
+    "docs/worklog/2026-09-19-loadable-set-source-of-truth.{md,json}, REPORT.md, STATE.md",
+    "no .rs and no scripts/ changes"
+  ],
+  "issues": [
+    "The brief's machine-independence premise does not hold for this repo: RustJava has no machine-independence-guard (git ls-files grep is empty; rust.yml has five jobs). That axis belongs to another repo, so the cost weighed here is the toolchain/build dependency instead.",
+    "The '0 re-derivation defects since the fix' count is one day old and is deliberately not used as the argument; the re-measure trigger is stated instead.",
+    "The invariant that would have caught defects 1 and 3 is not claimed to catch every mis-attribution: a registration mapped to a wrong but distinct name keeps the count at 268."
+  ],
+  "adoptedProposals": [
+    "2026-09-18-named-exception-classes-are-loadable#p2"
+  ],
+  "proposals": [
+    {
+      "title": "Assert the loadable re-derivation did not come up short, instead of trusting it",
+      "plainSummary": "The safety check works out which classes the runtime can load by reading the source. When that reading quietly misses some, the check still says everything is fine - which is the one thing it must never do wrongly.",
+      "userBenefit": "A silent miscount in the check would go back to being visible immediately rather than waiting for someone to read the script alongside the source.",
+      "why": "Measured in this round: the first draft of the checker parsed 265 registrations and resolved 263 names against 268 registration lines in loader.rs. One invariant - registration lines == parsed registrations == distinct names - breaks on both of those, so two of the three loadable-side defects would have been caught in round 1 without giving up source independence, the 0.8s runtime, or the build-free CI job. This round decided against reading the loader; this is the cheap half of what that would have bought.",
+      "tradeoff": "It adds a third number the checker has to keep true, and it is a floor rather than a proof: a registration mapped to a wrong but still distinct name keeps the count at 268 and passes. It also couples the check to the textual shape of loader.rs (one registration per line), which is true today and is not guaranteed.",
+      "effort": "S",
+      "target": "scripts/check-named-exception-classes-are-loadable.py"
+    }
+  ]
+}
