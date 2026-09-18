@@ -9,22 +9,54 @@ enum MemberKind {
     Method,
 }
 
+/// Every rule the class file has to satisfy, each one naming itself.
+///
+/// This used to be an eight-term `||` chain feeding one `InvalidFormat`, which made the cause
+/// unrecoverable by construction: the caller could not tell "unknown constant pool tag" from
+/// "a bootstrap argument names nothing", and neither could the `ClassFormatError` a user reads.
+/// One `if` per rule is the cheapest thing that lets the cause differ — no dispatch, no table, and
+/// the reason lives next to the check it belongs to.
+///
+/// The strings are the message, so they are written the way a JVM writes one. They are not
+/// identifiers and nothing matches on them; tests assert them to pin *which* rule fired, which is
+/// the observability the flat version could not give.
 pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
-    if !is_internal_class_name(&class.this_class)
-        || class.super_class.as_ref().is_some_and(|name| !is_internal_class_name(name))
-        || class.interfaces.iter().any(|name| !is_internal_class_name(name))
-        || !validate_constant_pool(&class.constant_pool)
-        || !constant_pool_tags_fit_the_class_file_version(class)
-        || !bootstrap_method_static_arguments_are_in_the_pool(class)
-        || !bootstrap_method_indices_resolve(class)
-        || !at_most_one_of_each_single_class_attribute(class)
-    {
-        return Err(ClassFileError::InvalidFormat);
+    if !is_internal_class_name(&class.this_class) {
+        return Err(ClassFileError::InvalidFormat("this_class does not name a class"));
+    }
+    if class.super_class.as_ref().is_some_and(|name| !is_internal_class_name(name)) {
+        return Err(ClassFileError::InvalidFormat("super_class does not name a class"));
+    }
+    if class.interfaces.iter().any(|name| !is_internal_class_name(name)) {
+        return Err(ClassFileError::InvalidFormat("an interface entry does not name a class"));
+    }
+    if !validate_constant_pool(&class.constant_pool) {
+        return Err(ClassFileError::InvalidFormat("a constant pool entry names a missing or wrong-kind entry"));
+    }
+    if !constant_pool_tags_fit_the_class_file_version(class) {
+        return Err(ClassFileError::InvalidFormat(
+            "class file version does not support a constant tag it carries",
+        ));
+    }
+    if !bootstrap_method_static_arguments_are_in_the_pool(class) {
+        return Err(ClassFileError::InvalidFormat(
+            // The rule is wider than the function name: the docstring above says the argument must also
+            // be a loadable constant, and OpenJDK says the same ("bad constant type"). The name stayed
+            // behind when the rule widened; renaming it is not this round's scope, so the cause is what
+            // gets the wording right.
+            "a bootstrap method argument names nothing or is not a loadable constant",
+        ));
+    }
+    if !bootstrap_method_indices_resolve(class) {
+        return Err(ClassFileError::InvalidFormat("a dynamic constant names no bootstrap method"));
+    }
+    if !at_most_one_of_each_single_class_attribute(class) {
+        return Err(ClassFileError::InvalidFormat("a single-valued class attribute appears more than once"));
     }
 
     for field in &class.fields {
         if !is_field_descriptor(&field.descriptor) {
-            return Err(ClassFileError::InvalidFormat);
+            return Err(ClassFileError::InvalidFormat("a field descriptor is malformed"));
         }
 
         let constant_values = field
@@ -35,25 +67,27 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
                 _ => None,
             })
             .collect::<alloc::vec::Vec<_>>();
-        if constant_values.len() > 1
-            || constant_values.first().is_some_and(|value| {
-                !matches!(
-                    (field.descriptor.as_str(), *value),
-                    ("Z" | "B" | "C" | "S" | "I", ConstantPoolReference::Integer(_))
-                        | ("J", ConstantPoolReference::Long(_))
-                        | ("F", ConstantPoolReference::Float(_))
-                        | ("D", ConstantPoolReference::Double(_))
-                        | ("Ljava/lang/String;", ConstantPoolReference::String(_))
-                )
-            })
-        {
-            return Err(ClassFileError::InvalidFormat);
+        // Two rules, not one: "how many" and "of what type". The flat version could not say which.
+        if constant_values.len() > 1 {
+            return Err(ClassFileError::InvalidFormat("multiple ConstantValue attributes on a field"));
+        }
+        if constant_values.first().is_some_and(|value| {
+            !matches!(
+                (field.descriptor.as_str(), *value),
+                ("Z" | "B" | "C" | "S" | "I", ConstantPoolReference::Integer(_))
+                    | ("J", ConstantPoolReference::Long(_))
+                    | ("F", ConstantPoolReference::Float(_))
+                    | ("D", ConstantPoolReference::Double(_))
+                    | ("Ljava/lang/String;", ConstantPoolReference::String(_))
+            )
+        }) {
+            return Err(ClassFileError::InvalidFormat("a ConstantValue does not match its field descriptor"));
         }
     }
 
     for method in &class.methods {
         if !is_method_descriptor(&method.descriptor) {
-            return Err(ClassFileError::InvalidFormat);
+            return Err(ClassFileError::InvalidFormat("a method descriptor is malformed"));
         }
 
         let code_attributes = method
@@ -63,10 +97,10 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
             .count();
         if method.access_flags.intersects(MethodAccessFlags::ABSTRACT | MethodAccessFlags::NATIVE) {
             if code_attributes != 0 {
-                return Err(ClassFileError::InvalidFormat);
+                return Err(ClassFileError::InvalidFormat("an abstract or native method carries a Code attribute"));
             }
         } else if code_attributes != 1 {
-            return Err(ClassFileError::InvalidFormat);
+            return Err(ClassFileError::InvalidFormat("a method does not have exactly one Code attribute"));
         }
     }
 
@@ -306,9 +340,29 @@ fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bo
         // The bootstrap method index is bounded by `bootstrap_method_indices_resolve`, not here:
         // it needs the class attributes, and this function only gets the pool. What is left for
         // this arm is the half that the pool alone can answer.
-        ConstantPoolItem::Dynamic { name_and_type_index, .. } | ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => {
-            constant_pool.get(name_and_type_index).and_then(ConstantPoolItem::name_and_type).is_some()
-        }
+        //
+        // JVMS 4.4.10 makes the *kind* of descriptor part of that half, and it differs by tag: a
+        // `CONSTANT_InvokeDynamic` names a method, a `CONSTANT_Dynamic` names a field type. The
+        // `NameAndType` arm above cannot say this — one entry is shared by Fieldref and Methodref,
+        // so "a field *or* method descriptor" is the strongest rule available *there*. The usage
+        // site is where the choice is decided, which is why the check lives here and why the arm
+        // above stays as it is.
+        //
+        // Measured before tightening: of 175 committed class files and 44 invokedynamic/dynamic
+        // references, exactly one is rejected by this — `MetafactoryFieldDescriptorCallSite`, the
+        // fixture written for it. OpenJDK 26 refuses that same file
+        // (`ClassFormatError: Method "run" ... has illegal signature "I"`), so this moves us onto
+        // the real JVM's answer rather than away from it.
+        ConstantPoolItem::InvokeDynamic { name_and_type_index, .. } => constant_pool
+            .get(name_and_type_index)
+            .and_then(ConstantPoolItem::name_and_type)
+            .and_then(|(_, descriptor_index)| constant_pool.get(&descriptor_index).and_then(ConstantPoolItem::utf8))
+            .is_some_and(|descriptor| is_method_descriptor(&descriptor)),
+        ConstantPoolItem::Dynamic { name_and_type_index, .. } => constant_pool
+            .get(name_and_type_index)
+            .and_then(ConstantPoolItem::name_and_type)
+            .and_then(|(_, descriptor_index)| constant_pool.get(&descriptor_index).and_then(ConstantPoolItem::utf8))
+            .is_some_and(|descriptor| is_field_descriptor(&descriptor)),
         _ => true,
     })
 }

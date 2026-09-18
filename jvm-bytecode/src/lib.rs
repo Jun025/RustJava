@@ -8,6 +8,7 @@ mod class_instance;
 mod error;
 mod field;
 mod interpreter;
+mod lambda;
 mod method;
 mod stack_frame;
 mod string_concat;

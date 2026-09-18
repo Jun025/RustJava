@@ -69,7 +69,12 @@ pub struct MethodHandleRef {
 }
 
 impl MethodHandleRef {
-    fn resolve(constant_pool: &BTreeMap<u16, ConstantPoolItem>, index: u16) -> Option<Self> {
+    /// Public because a bootstrap method's *static arguments* are method handles too, and the only
+    /// thing that can read them is a consumer outside this crate: `BootstrapMethod::arguments` is
+    /// raw indices by design (see below), so whoever links a call site resolves them itself.
+    /// `LambdaMetafactory.metafactory` is the case that made this necessary — its second static
+    /// argument is the implementation method, and it is a `CONSTANT_MethodHandle`.
+    pub fn resolve(constant_pool: &BTreeMap<u16, ConstantPoolItem>, index: u16) -> Option<Self> {
         let ConstantPoolItem::MethodHandle {
             reference_kind,
             reference_index,
@@ -99,6 +104,19 @@ impl MethodHandleRef {
             member: FieldMethodref::from_reference_info(constant_pool, class_index, name_and_type_index)?,
         })
     }
+}
+
+/// The descriptor a CONSTANT_MethodType names (JVMS 4.4.9).
+///
+/// Here for the same reader as `MethodHandleRef::resolve`: two of `LambdaMetafactory`'s three
+/// static arguments are method types. A method type *is* just its descriptor as far as anything
+/// outside `java.lang.invoke` is concerned, so this hands back the string rather than a type.
+pub fn method_type_descriptor(constant_pool: &BTreeMap<u16, ConstantPoolItem>, index: u16) -> Option<Arc<String>> {
+    let ConstantPoolItem::MethodType { descriptor_index } = constant_pool.get(&index)? else {
+        return None;
+    };
+
+    constant_pool.get(descriptor_index)?.utf8()
 }
 
 /// One entry of the `BootstrapMethods` attribute (JVMS 4.7.23).

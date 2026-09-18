@@ -1,0 +1,50 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-link-stringconcatfactory-p2",
+  "summary": "Link LambdaMetafactory.metafactory, so lambdas and method references run. The proposal expected java.lang.invoke to become unavoidable; it did not — what a metafactory call site needs is an object, and this runtime already has the two pieces that make one: a Rust method body and a class registry.",
+  "changes": [
+    "classfile/src/opcode.rs: LambdaCallSite + Opcode::InvokedynamicLambda (the parser never emits it; jvm-bytecode writes it)",
+    "classfile/src/attribute.rs: MethodHandleRef::resolve made public, plus method_type_descriptor — a bootstrap's static arguments are method handles and method types, and only their consumer can resolve them",
+    "jvm-bytecode/src/lambda.rs: four-axis recogniser, the pass-through signature check, the synthetic class, and the interface method body that dispatches by reference kind",
+    "jvm-bytecode/src/class_definition.rs, interpreter.rs: run the lowering pass, execute the opcode",
+    "test-data/src/indy/LambdaKinds.java: capture, object capture, constructor reference, unbound receiver, interface method reference, void interface method",
+    "test-data/src/indy/LambdaCapturingThis.java: --release 8, the only way to get a REF_invokeSpecial implementation out of javac",
+    "test-data/src/indy/LambdaBoxing.java: the boundary — an adapter this runtime will not insert",
+    "test-data/src/indy/make_indy_fixtures.py: six hand-assembled near misses for the metafactory (four identity axes, two static-argument shapes)",
+    "tests/test_fixture_pins.rs: pin per fixture rather than one release for all, so the --release 8 fixture is pinned rather than exempt"
+  ],
+  "verification": [
+    "LambdaKinds output matches OpenJDK 26.0.1 line for line (10 lines); Lambda prints 1; LambdaCapturingThis prints 42",
+    "mutation: 14 product-side mutations, all red — lowering not called, each of the four identity axes, each of the two static-argument checks, the signature check, the capture store, the receiver handling, the void drop, REF_invokeSpecial, REF_newInvokeSpecial, and the fixture pin",
+    "cargo test --all: 576 passed / 0 failed / 1 ignored (origin/main baseline 573 / 0 / 1)",
+    "DoD 7 commands all rc=0; indy fixture regeneration idempotent"
+  ],
+  "issues": [
+    "The void-drop mutation survived at first: a stray value left on the operand stack is never popped again by well-formed bytecode, so nothing in the interpreter can see it. It is observable only from outside — Thread.run() invokes Runnable.run()V from Rust and converts the result to (), which panics on anything but Void. The fixture now goes through that path.",
+    "Call sites needing an adapter (boxing, unboxing, widening) are not linked, so a class containing one is refused whole. That is a deliberate boundary, not a gap — but it means `Supplier<Integer> s = list::size` still does not load."
+  ],
+  "adoptedProposals": [
+    "2026-09-16-link-stringconcatfactory#p2"
+  ],
+  "proposals": [
+    {
+      "title": "Insert the adapters LambdaMetafactory would, starting with boxing",
+      "plainSummary": "A method reference whose interface returns Object and whose implementation returns int is still refused.",
+      "userBenefit": "The generic functional interfaces are exactly where this bites: anything shaped like Supplier<Integer> or Function<T, Integer> reaches an implementation that returns a primitive.",
+      "why": "The refusal is one predicate — `passes` in jvm-bytecode/src/lambda.rs — and the conversion it declines is `Integer.valueOf` on the way out and `intValue` on the way in, both of which this runtime already has. test-data/indy/LambdaBoxing.class is the fixture, already committed and already asserting the refusal, so the change is visible the moment it is made.",
+      "tradeoff": "Adapters are where a linker stops being a recogniser: every conversion pair is a decision about what is allowed, and getting one wrong turns a refusal into a wrong answer. The pass-through case has to stay exactly as it is, which argues for adding conversions one measured pair at a time rather than a general rule.",
+      "effort": "M",
+      "target": "jvm-bytecode/src/lambda.rs"
+    },
+    {
+      "title": "Decide whether a lambda class should be visible to reflection",
+      "plainSummary": "The class made for each lambda is registered under a name like Host$$Lambda$0, and getClass().getName() will say so.",
+      "userBenefit": "Code that prints or logs a lambda sees a name; whether it is the right one is a question nobody has asked yet here.",
+      "why": "OpenJDK's spun classes are hidden classes — not findable by name, not in the registry — and this one is an ordinary registered class. Nothing in the tests looks, so the difference is invisible today, which is exactly why it is worth deciding before something depends on it.",
+      "tradeoff": "Hiding it means a second kind of class registration, which is machinery bought for a property nobody has needed. Leaving it visible costs one registry entry per call site, for the life of the JVM.",
+      "effort": "S",
+      "target": "jvm-bytecode/src/lambda.rs, jvm/src/jvm.rs"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "worklog/v1",
+  "date": "2026-09-17",
+  "taskId": "rustjava-adopt-link-stringconcatfactory-p2-fix",
+  "summary": "Gate-2 request-changes follow-up: make capture *order* observable (it was not, so reversing it stayed green), and stop a class file from aborting the host process at load time — fixed at the usage site JVMS 4.4.10 names, which also makes the diagnosis match OpenJDK's.",
+  "changes": [
+    "test-data/src/indy/LambdaKinds.java: two two-capture lambdas — (String,int) shows a swap in the text, (int,int) shows it only in the value",
+    "tests/test_class_format.rs: those two lines added to the asserted output; new test for the field-descriptor call site with the reviewer's control",
+    "classfile/src/validation.rs: InvokeDynamic requires a method descriptor, Dynamic a field descriptor (JVMS 4.4.10) — the shared NameAndType arm is left as it is",
+    "jvm-bytecode/src/lambda.rs: lower() parses the call site descriptor with try_parse instead of the panicking parse/as_method",
+    "test-data/src/indy/make_indy_fixtures.py: call_site_descriptor parameter + MetafactoryFieldDescriptorCallSite fixture; merged with the sibling generator that landed as #59"
+  ],
+  "verification": [
+    "RM4 (reviewer's mutation: capture read order reversed) — was green at 576, now red: a:7 -> 7:a and 120 -> 2001",
+    "F2 mutation (revert the InvokeDynamic descriptor rule) — the new test fails; with the fix the file is ClassFormatError, matching OpenJDK 26",
+    "cost of tightening measured before doing it: 175 committed class files, 44 invokedynamic/dynamic references, exactly 1 newly rejected — the fixture written for it",
+    "cargo test --all: 578 passed / 0 failed / 1 ignored",
+    "regenerating the indy fixtures leaves every pre-existing one byte-identical, after merging two siblings' generators into one file"
+  ],
+  "issues": [
+    "The try_parse in lower() is a second layer and I could not construct an input that passes the tightened validation and still fails it — so it is not independently observable. It stays because the cost of being wrong there is a host abort rather than a guest exception, and that asymmetry is the justification, not a measurement.",
+    "The same host abort exists on origin/main through the string-concat path (extract_invoke_params). The validation rule closes that entrance too, which was not this round's goal but follows from putting the rule where JVMS puts it."
+  ],
+  "adoptedProposals": [],
+  "proposals": [
+    {
+      "title": "Give ClassFormatError the reason it was rejected for",
+      "plainSummary": "Every malformed class file reports the same flat 'Invalid class file'.",
+      "userBenefit": "A file rejected for an illegal call-site descriptor reads the same as one with a truncated constant pool; the message cannot tell you which.",
+      "why": "This round added a rule whose whole value is the distinction between 'unsupported' and 'malformed', and the malformed side still cannot say why. OpenJDK names the member and the signature. The parser already knows which predicate failed at the moment it fails.",
+      "tradeoff": "ClassFileError is a flat enum by an upstream cut (822504b); adding variants means touching the error type every validator shares, and the tests that assert on the kind rather than the text would need to keep working.",
+      "effort": "M",
+      "target": "classfile/src/error.rs, classfile/src/validation.rs"
+    }
+  ]
+}

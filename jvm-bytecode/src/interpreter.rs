@@ -6,7 +6,7 @@ use core::iter;
 use classfile::{AttributeInfoCode, ConstantPoolReference, Opcode, StringConcatCallSite};
 use jvm::{ClassInstance, JavaChar, JavaError, JavaType, JavaValue, Jvm, Result, runtime::JavaLangString};
 
-use crate::stack_frame::StackFrame;
+use crate::{lambda, stack_frame::StackFrame};
 
 enum ExecuteNext {
     Continue,
@@ -629,6 +629,14 @@ impl Interpreter {
             }
             Opcode::Invokedynamic(_) => {
                 todo!()
+            }
+            Opcode::InvokedynamicLambda(call_site) => {
+                // The call site's parameters are the captured values, so this is the ordinary
+                // argument extraction — what differs is that they are stored rather than passed.
+                let captures = Self::extract_invoke_params(stack_frame, &call_site.descriptor);
+                let instance = lambda::instantiate(jvm, call_site, captures).await?;
+
+                stack_frame.operand_stack.push(JavaValue::Object(Some(instance)));
             }
             Opcode::InvokedynamicStringConcat(call_site) => {
                 let params = Self::extract_invoke_params(stack_frame, &call_site.descriptor);

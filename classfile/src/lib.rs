@@ -12,11 +12,11 @@ mod opcode;
 mod validation;
 
 pub use {
-    attribute::{AttributeInfo, AttributeInfoCode, BootstrapMethod, MethodHandleKind, MethodHandleRef},
+    attribute::{AttributeInfo, AttributeInfoCode, BootstrapMethod, MethodHandleKind, MethodHandleRef, method_type_descriptor},
     class::ClassInfo,
     constant_pool::{ConstantPoolReference, FieldMethodref},
     error::ClassFileError,
     field::FieldInfo,
     method::MethodInfo,
-    opcode::{Opcode, StringConcatCallSite},
+    opcode::{LambdaCallSite, Opcode, StringConcatCallSite},
 };
