@@ -10,6 +10,18 @@
 - ★**잃는 것**: ★**main 은 #67 착지까지 밋밋한 채로 남는다**(오늘 사용자는 **규칙 이름조차** 못 받는다) · 이 회차는 제안의 값을 **전혀 전달하지 않았고** 전달한 것은 **순서**다 · #67 이 폐기되면 이 판단은 **한 회차를 버린 것**이 된다.
 - 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · base `8c7b473f`) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
 - ★후속 추천: 새 카드 「**구조화된 variant 로** bootstrap argument 의 인덱스와 태그를 말한다」(★**M** · ★초판은 `S` 였다 — **실측 후 올렸다**: 잔여도 #67 과 **같은 3층**을 건넌다(중간층 `jvm-bytecode` 도 `&'static str` · 경계는 `&str`) ⇒ `target` **5파일 / 4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★**층은 3인데 크레이트는 4다**: 경계 층 하나가 두 크레이트에 걸친다). ★`InvalidFormat` 을 넓히면 생성 **17**곳 + 값 매치 **11**곳이라 **새 variant** 를 고르되 ★**두 갈래가 생기는 대가**를 카드에 적었다) — ★**#67 «뒤»에** · 상세 = `docs/worklog/2026-09-18-bootstrap-argument-diagnostic-sequencing.md`.
+## [2026-09-18] 루트 fixture 를 한 target 으로 모을 것인가 — ★**모으지 않는다**(rustjava-adopt-test-data-version-freeze-uniform-target-p0)
+- 무엇을: 채택 제안 `2026-09-17-test-data-version-freeze#p0` 의 **결정**(worklog json `adoptedProposals` 기록). ★**코드 0행 · 재컴파일 0 · `.class` 바이트 0 변경** — 산출물은 `docs/test-data-target-policy.md` 와 그 근거다.
+- ⑴**분포**(동결 파일이 아니라 fixture 자신에서 읽었다): 루트 **114**건 · major **52×40 · 65×62 · 66×8 · 68×1 · 70×3** — 동결 파일 머리주석과 일치.
+- ⑵★★**양방향으로 갈랐다 — 이것이 이 회차의 실질이다**:
+  ⒜★**버전이 곧 시험 대상**: **문자열 연결**(52 의 `StringBuilder` 3건을 21 로 재컴파일하면 ★`BootstrapMethods` 가 생기고, 그중 **둘**은 `StringBuilder` 가 사라진다 — ★**셋째 `$FailingAppendable` 은 남는다**(`FormatterIntegration.java:36` 의 명시적 필드 선언 = 낮춤 산물이 아니다) · ★`StringConcat.class` 는 루트에서 indy 를 가진 **유일한** fixture ⇒ **낮춤 전략마다 하나씩**) · **nestmate**(`ThreadInterruption` `access$`**×10** → 21 에서 **0 + `NestMembers`** · `MonitorSemantics` ×4 동일 · JEP 181).
+  ⒝★**아무 버전이나 되는 것**: 「`StringBuilder`·indy 둘 다 없고 단독 재빌드 가능」한 20건을 21 로 재컴파일해 **명령 시퀀스 전체 대조** → ★**16건 완전 동일**.
+  ⇒ ★**본 20건 중 «3건»이 버전이 답이고(nestmate 2 + `NativeMethod`) 1건은 단독 재빌드 불가, 16건은 아무래도 좋다.** ★초판이 적은 「5건」은 **자기 산술과 어긋났다**(5+16=21≠20) — 선별에서 «이미 배제한» `StringBuilder` 2건을 얹어야 나오는 수이고, ★**결론을 더 세게 보이게 하는 방향의 오차**였다(결론은 이 비가 아니라 「0·0」에 선다).
+- ★★**그 커버리지는 다른 데 없다**: `test-data/{cp,indy,ldc,attr}` 생성기 산출 **64건 전수**에서 `StringBuilder` **0** · `access$` **0** ⇒ 루트 52 무리가 **유일한 시험면**이다.
+- ★**결론의 근거**: 제안의 이득(「숫자 하나로 예측」)이 실측에 **뒤집힌다** — 지금 major 52 는 「전-indy·전-nestmate」라는 **뜻을 실제로 갖고**, 전부 펴면 그 구분이 사라지며 **런타임이 아직 구현해야 하는 두 경로의 유일한 커버리지**가 지워진다. 대가도 실재한다(핀 `test_fixture_pins` · 루트 **66건**의 `.txt` 출력 대조).
+- ★**잃는 것**: 비균일은 그대로 남고(신규 fixture 의 target 규칙은 **세우지 않았다** — 별 축) · 16건은 「아무래도 좋은 채」로 남으며 · ★**본 것은 40 중 20 이다**(16/20 을 40 의 비로 읽지 마라) · ★`NativeMethod` 의 명령 차이는 **원인을 못 밝혔다**.
+- 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · ★이 브랜치 base `8c7b473f` 기준이다. 같은 날 앞 회차들의 **579** 는 PR #61 착지 «전» base 의 수라 다르다) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천(★**worklog `.json` `proposals[]` 에 카드 2장으로 «기계 채널»에 실었다** — 초판은 `REPORT` 에만 적어 cockpit 에 **0장**이었다): ⑴**신규 fixture 의 target 규칙**을 세울 것인가(M) ⑵**되돌릴 조건에 «관측자»를 붙인다**(S · 넷 중 셋은 문서를 열어야만 발화한다 — 게이트② 실측). ★초판이 ⑴로 적은 「`NativeMethod` 제3 축 여부」는 ★**검수자가 규명해 닫혔다**(축 2 의 다른 얼굴) ⇒ 카드로 내지 않는다. 상세 = `docs/worklog/2026-09-18-root-fixture-target-decision.md`.
 
 ## [2026-09-17] 코드 2파일 합집합 — ★**그런데 ours 의 «삭제»는 의도가 아니라 선행 머지의 «조용한 롤백»이었다** (rustjava-adopt-link-stringconcatfactory-p2-fix3)
 - 무엇을: 게이트③이 `code-conflict-out-of-scope` 로 세운 PR #61 의 충돌 4파일(원장 2 + 코드 2)을 합집합으로 해소. ★제품 Rust **0줄**(테스트·픽스처 생성기만).

@@ -13,6 +13,13 @@
   ★**설계 제약 기록** — `ClassFileError` 는 `Copy`(파일 4 · 크레이트 2 의존) · 정적사유+`u16`+`u8` 로 **깨지 않고 된다**.
   ★**잃는 것**: main 은 #67 착지까지 **밋밋한 채**(규칙 이름조차 없다) · 이 회차가 전달한 것은 **값이 아니라 순서**다.
   ★`--all` **583/0/1**(불변 · base `8c7b473f`).
+- [rustjava-adopt-test-data-version-freeze-uniform-target-p0] ★★**루트 fixture 를 한 target 으로 모을 것인가 — «모으지 않는다».** 채택 제안 `2026-09-17-test-data-version-freeze#p0`(worklog json 기록). ★**코드 0행 · 재컴파일 0 · `.class` 0 변경** — 산출물 = `docs/test-data-target-policy.md`.
+  ★분포 **114**건 · **52×40 · 65×62 · 66×8 · 68×1 · 70×3**(fixture 자신에서 읽음).
+  ★★**양방향**: ⒜**버전이 답** — `StringBuilder` 3건을 21 로 재컴파일 → ★indy 생기고 StringBuilder 사라짐(★`StringConcat` 이 루트의 **유일한** indy) · `ThreadInterruption` `access$`×10 → **0 + NestMembers**(JEP 181) ⒝**아무 버전이나** — 20건 중 ★**16건 명령 시퀀스 완전 동일**.
+  ★**그 커버리지는 다른 데 없다** — 생성기 산출 64건에서 `StringBuilder` 0 · `access$` 0.
+  ★**이유**: 제안의 이득(「숫자 하나로 예측」)이 뒤집힌다 — 52 는 「전-indy·전-nestmate」라는 뜻을 **실제로 갖고**, 펴면 그 구분이 사라지며 유일한 커버리지가 지워진다.
+  ★**잃는 것**: 비균일 잔존(신규 target 규칙 **미수립**) · 16건은 그대로 · ★**본 것은 40 중 20** · `NativeMethod` 차이는 **미규명**.
+  ★`--all` **583/0/1**(불변 · base `8c7b473f` — 앞 회차의 579 는 #61 착지 전 base 다) · 되돌릴 조건 4개를 결정 문서에 명시.
 - [rustjava-adopt-link-stringconcatfactory-p2-fix2] ★★**#57 의 버전 표에 25행 등재 — 「착지 순서」가 만든 부채를 갚는다(PR #61).**
   ★**막힌 것은 CI 도 충돌도 아니었다**: 핀 `85cf0fba` 에서 rc=0 CI_GREEN · `git merge origin/main` **코드 충돌 0** 인데
   ★**합친 결과**가 #57 이 세운 「미등재 픽스처는 핀을 실패시킨다」를 어겼다(미등재 **25건** 재현).
