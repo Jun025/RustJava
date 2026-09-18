@@ -19,16 +19,25 @@ noticed; dropping a whole feature -- which is what taking one side of a conflict
 file that parses, runs and agrees with every committed artefact. Both were measured.
 
 Scope: a definition is flagged when it exists in the merge's second parent and not in the merge
-result. That deliberately also flags *our* intentional deletions, because from the outside the two
+result, looked for in every file that either the merged-in branch or the merge itself changed.
+That second half costs something, measured over the last 200 commits of origin/main (83 merges) at
+gate 2: the narrow filter reports 8 merges / 19 definitions, this one reports 10 / 45. The extra
+includes 514d5b08, which is the second of the two real incidents, so the wider set is not simply
+noise -- but it is more to read, and more of it will need trailers. That deliberately also flags *our* intentional deletions, because from the outside the two
 look identical -- which is the whole difficulty. Saying which is which is a judgement, so it is
 recorded as one, on the merge commit:
 
-    Dropped-from-theirs: Pool.fieldref -- superseded by the new pool builder, see <round>
+    Dropped-from-theirs: method fieldref -- superseded by the new pool builder, see <round>
 
-One trailer per name, a reason after `--`, and both are required. The list lives in the merge
-commit message rather than in a file on purpose: a file accumulates entries that outlive the merge
-they excused and quietly turns the check off, while a trailer can only ever excuse the one commit
-it is written on.
+One trailer per name, a reason after `--`, and both are required. THE NAME MUST BE COPIED FROM THIS
+CHECK'S OWN OUTPUT, character for character -- it is matched literally, so `method fieldref` works
+and `Pool.fieldref` does not, even though the second reads better. Run the check, copy the name it
+prints after the colon, paste it. (An earlier version of this docstring used the prettier form as its
+only worked example, which meant anyone who followed it got no exemption and lost a round.)
+
+The list lives in the merge commit message rather than in a file on purpose: a file accumulates
+entries that outlive the merge they excused and quietly turns the check off, while a trailer can
+only ever excuse the one commit it is written on.
 
 Usage:
     check-merge-dropped-symbols.py [<range>]     # default: origin/main..HEAD
@@ -126,8 +135,15 @@ def check(merge):
     base = (run("merge-base", ours, theirs) or "").strip()
     if not base:
         return [], 0
-    # Only files the merged-in branch actually changed can have lost its work.
-    changed = (run("diff", "--name-only", base, theirs) or "").split("\n")
+    # Both what the merged-in branch touched and what the merge itself touched. Restricting this to
+    # the first set was the original shape and it was wrong: a resolution can revert a file the other
+    # branch never touched -- "fixed the conflict in A and put B back" -- and that is this check's
+    # whole reason for existing. Measured on the second of the two incidents, 514d5b08: with the
+    # narrow filter it reports "0 file(s) examined" and passes; with this one it names the same four
+    # definitions the first incident dropped. The cost is real and is recorded in Scope below.
+    changed = set((run("diff", "--name-only", base, theirs) or "").split("\n")) | set(
+        (run("diff", "--name-only", base, merge) or "").split("\n")
+    )
     findings = []
     examined = 0
     accounted = excused(merge)
