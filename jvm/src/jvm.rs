@@ -941,13 +941,31 @@ impl Jvm {
         }
     }
 
+    /// Builds the exception to raise, and reports whatever went wrong instead of aborting if it cannot.
+    ///
+    /// This runs *after* something has already failed, so it is the one path that must not take the
+    /// process down with it. Both steps below fail with a `JavaError` -- that is, with a Java exception
+    /// describing the failure, which is exactly what this function returns. Unwrapping them threw that
+    /// report away: asking for a class the loader cannot provide aborted with
+    /// `called Result::unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)`, the
+    /// panic message carrying the very report the caller should have received. Returning it instead
+    /// costs nothing and changes no signature.
+    ///
+    /// What the caller gets is then the *real* failure rather than the requested one -- a
+    /// NoClassDefFoundError for the missing class, or whatever the constructor threw -- which is how a
+    /// JVM behaves when raising one exception runs into another.
     pub async fn exception(&self, r#type: &str, message: &str) -> JavaError {
         tracing::info!("throwing java exception: {} {message}", r#type);
 
-        let message_str = JavaLangString::from_rust_string(self, message).await.unwrap();
-        let instance = self.new_class(r#type, "(Ljava/lang/String;)V", (message_str,)).await.unwrap();
+        let message_str = match JavaLangString::from_rust_string(self, message).await {
+            Ok(x) => x,
+            Err(e) => return e,
+        };
 
-        JavaError::JavaException(instance)
+        match self.new_class(r#type, "(Ljava/lang/String;)V", (message_str,)).await {
+            Ok(instance) => JavaError::JavaException(instance),
+            Err(e) => e,
+        }
     }
 
     pub fn stack_trace(&self) -> Vec<String> {

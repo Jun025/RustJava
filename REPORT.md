@@ -1,4 +1,22 @@
 # REPORT
+## [2026-09-19] 일으키려던 예외를 못 만들면 «죽었다» — 그 보고를 손에 쥔 채로(rustjava-jvm-exception-throws-instead-of-unwrap)
+- 무엇을: 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p1`(worklog json `adoptedProposals` 기록). `Jvm::exception` 의 `.unwrap()` 두 개를 **반환**으로 바꿨다. ★**시그니처 불변 · 새 enum variant 0 · 호출부 편집 0.**
+- ★★**급소 — 실패가 «이미» JavaError 다.** `from_rust_string`·`new_class` 는 `jvm::Result<T>` = `Result<T, JavaError>` 를 돌려주므로 그 실패는 **그 자체가 자바 예외**다. unwrap 은 그것을 버리고 프로세스를 죽였다. ⇒ **그대로 돌려준다.**
+- ★**실측이 그 한 줄을 말한다**(가설 아님): 못 싣는 이름을 부르면
+  `panicked at jvm/src/jvm.rs:948:94: called Result::unwrap() on an Err value: JavaException(ClassInstance(java/lang/NoClassDefFoundError))`
+  ⇒ ★`load_class` 가 **이미 올바른 `NoClassDefFoundError` 를 만들어 건넸는데** 그 보고가 «패닉 메시지 안에» 실려 사라졌다.
+- ★**재현 가능성을 두 축으로 갈라 적는다**(「이론상」과 「실측」을 섞지 않는다): ⒜**이 트리 자기 호출부에서는 0** — named 43 전건 loadable(PR #72 검사기가 잠근다) **그리고** 43 전건이 `<init>(Ljava/lang/String;)V` 를 **자기 proto 에** 갖는다(이 회차 실측 · 누락 0 · 조상 의존 0) ⒝★**공개 API 로는 도달한다** — `pub async fn exception` 이고 `wie` 가 이 크레이트를 싣는다. 로더가 못 주는 이름을 부르면 **호스트 프로세스가 죽는다**.
+- ★**양방향 축**(★제품 함수에 · 픽스처 사본 아님) `jvm/tests/test_exception_construction.rs`: 전 **FAILED**(위 패닉) ↔ 후 **ok**. ★`jvm.rs` 를 되돌리면 **red** 가 된다.
+- ★★**호출부 파급 — 「조용히 통과하는 경로」를 «구조로» 없앴다**: `.exception(` **846 → 846**(편집 0) · `JavaError::` **527자리 편집 0**. ⇒ ★**대안이던 「JavaError 에 variant 추가」였다면 `let …else`/`if let` **460자리**가 조용히 `else` 로 새고**, `jvm.rs:1073` 의 **반증불가 let**(variant 가 하나라서 컴파일되는 자리)이 깨졌다. 이 형상은 그 함정을 **애초에 만들지 않는다**.
+- ★**진짜 행동 변화 하나는 숨기지 않는다**: 실패 시 호출자는 **요청한 것과 «다른» 예외 클래스**를 받는다. ⇒ 잡은 예외를 클래스로 분기하는 **제품 12자리**(`print_stream`·`print_writer`·`filter_output_stream`·`formatter` 의 `IOException` · `integer`·`long` 의 `NumberFormatException`)는 그 경우 **매치하지 않고 전파**된다. 죽는 것보다 낫지만 **무해한 변경은 아니다**.
+- ★**안 고친 것**: ⒤★**퇴화 경우는 불변이고 그것은 패닉이 아니라 «무한 재귀»다** — `NoClassDefFoundError` 자신이 안 실리면 `load_class → exception → new_class → load_class` 가 돈다. ★**옛 unwrap 도 그것을 막지 못했다**(안쪽 `new_class` 가 애초에 돌아오지 않아 unwrap 에 닿지 않는다). ★**이것은 호출그래프에서 읽은 것이고 «실측이 아니다»** — 커스텀 로더 하네스가 필요해 범위 밖으로 뒀다(후속 카드) ⒥`from_rust_string` 쪽 unwrap 도 같은 방식으로 고쳤지만 ★**재현 경로를 못 찾았다**(그 실패는 `java/lang/String` 자체를 못 만들 때뿐) — **주장하지 않는다**.
+- ★★**이 회차가 «자기 diff 밖»에서 바꾼 것 둘 — 둘 다 선택이 아니었다**:
+  ⑴★**검사기 문면 3자리가 «거짓»이 됐다** — `check-named-exception-classes-are-loadable.py` 가 「unwraps … aborts the process」·「DELIBERATELY NOT DONE HERE: turning the `.unwrap()` into a thrown exception」·실패 메시지 「panics instead of throwing」을 **단언**하고 있었다. ⇒ **문면만 고쳤다(술어 무접촉)**. ★잠금의 «이유»가 바뀐다: 못 싣는 이름은 이제 **죽이지 않고 «틀린 예외»를 던진다**(IOException 을 물었는데 NoClassDefFoundError 가 와서 `catch` 가 안 걸린다) ⇒ **더 조용해졌으니 잠금 가치는 오히려 커졌다**. ★그 검사기 축을 양방향 재검증했다: 등재 1줄 제거 → **rc=1** · 원복 → **rc=0**.
+  ⑵★★**형제 회차의 «0» 이 «1» 이 된다** — `2026-09-18-nonliteral-exception-call-sites` 가 비리터럴 **0** 을 재고 ★**관문으로 올리지 않기로** 했는데, 하루 만에 **정당한 비리터럴 호출부**가 생겼다: ★**이 테스트는 «못 싣는 이름»을 불러야 하고**, 리터럴로 쓰면 loadable 검사기가 **실제로 red 였다**(실측 · `test_exception_construction.rs:13` 지목). ⇒ ★**그때 관문을 걸었다면 이 테스트가 막혔다.** 재측 = **비리터럴 1**(그 1이 이 테스트다).
+  ※그 술어가 ★**«주석 안의 토큰»도 센다**는 것도 이때 드러났다(주석 한 줄 때문에 2로 읽혔다 → 문구 교체). 형제 제안을 이어받는 회차 몫이다.
+- 검증: DoD 9명령 · 아래 절.
+- ★후속 추천: **퇴화 재귀에 바닥을 깔 것인가**(M · 재진입 가드 ↔ 비-예외 실패 표현 — 후자는 460자리를 조용히 바꾼다). 상세 = `docs/worklog/2026-09-19-exception-reports-instead-of-aborting.md`.
+
 ## [2026-09-18] 「조용한 실패」를 잡는 검사기에 «조용히 통과하는 길»이 있었다 (rustjava-merge-dropped-symbols-checker-swallows-git-failures)
 - 무엇을: `scripts/check-merge-dropped-symbols.py` 의 `run()` 이 git 실패를 `None` 으로 삼키고 호출부가 전부 `(… or "")` 로 받아 ★**「git 이 못 답했다」가 「없다고 답했다」로 접혔다** ⇒ `✓ (0 file(s) examined)` · **rc=0**.
 - ★**재현은 합성이 아니라 «진짜 얕은 클론»이다**(`--depth 10`): **전 rc=0** 에 `✓ 97660921 (0 …)` · `✓ 56bb54fa (0 …)` ↔ ★**완전 클론에서 `56bb54fa` 는 examined «20»** 이다. ⇒ 20개를 보던 머지가 0으로 접히고 run 전체가 green 이었다. **후 rc=2** `cannot measure: shallow clone: …(git fetch --unshallow)`.
