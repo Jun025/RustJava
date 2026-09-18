@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-count-nonliteral-exception-call-sites] ★★**사각의 «크기»를 쟀다 — 비리터럴 exception() 호출부는 «0» 이다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p0`. ★**순수 측정 · `.rs` 0줄 · `scripts/` 0줄.**
+  ★**수**: bare `exception(` **847** = 정의 1 + **리터럴 846** + 그 밖 리터럴 **0** + ★**비리터럴 0** ⇒ 검사기가 보는 집합 = 실제 호출부 집합(지금은 일치).
+  ★★**술어를 갈라야 답이 맞는다** — `exception(` 부분일치가 `assert_exception(` 등 **다른 함수 8종 41자리**(첫 인자가 `jvm`)를 쓸어담는다. 안 갈랐으면 ★**M=33 이라는 틀린 답**이었다.
+  ★**양방향으로 술어를 시험했다**: 대조군 = 한 줄 리터럴만 세면 **812** = 검사기 초판 수와 정확히 일치 · 개악 주입(변수·`format!`·`const`·raw string) → 전건 `nonliteral` **0→4**, 비-java 리터럴 → `literal_other` **0→1**, 원복 후 **0/0**·트리 클린.
+  ★**단위 주의**: 매크로 본문 **3자리 × 22전개** ⇒ 전개 기준이면 **865**(소스 기준 846). 이름이 전부 리터럴이라 **답은 불변** — 사각이 아니라 단위 차이다.
+  ★**잃는 것**: 토큰 붙이기 매크로는 어떤 텍스트 술어도 못 본다(이 트리 0) · 「리터럴인데 오타」는 종전 한계 그대로 · `new_class(`·`find_class(` 는 요지 밖이라 미계수.
+  ★**게이트 승격은 «안 했다»** — 제안이 요구한 것은 계수이고, 베이스라인 0 관문은 별 결정이라 후속 카드로 남겼다.
 - [rustjava-merge-dropped-symbols-checker-swallows-git-failures] ★★**「조용한 실패」 검사기에 «조용히 통과하는 길»이 있었다 — 닫았다.**
   ★**재현 = 진짜 얕은 클론**(`--depth 10`): 전 **rc=0** `✓ 56bb54fa (0 file(s) examined)` ↔ ★완전 클론에선 **examined 20** ⇒ 20→0 으로 접히고 green. 후 **rc=2 `cannot measure: shallow clone…`**.
   ★raise 경로도 쟀다 — 범위 오류·루프 내 diff 실패·비-git **전부 rc=2**(git stderr 동봉).
