@@ -1,4 +1,25 @@
 # REPORT
+## [2026-09-19] 부분 클론도 «거절»할까 — ★**아니다. 모호했던 것은 «환경»이 아니라 «호출 하나»였다**(rustjava-partial-clone-refusal-decision)
+- 무엇을: 채택 제안 `2026-09-18-merge-drops-no-silent-git-failure#p0`(worklog json 기록). ★**거절하지 않는다** — 대신 `symbols()` 가 실패한 `git show` 를 «부재»로 읽기 «전»에 `git ls-tree` 로 그 경로가 트리에 있는지 묻는다. ★결정을 `preflight()` docstring 에 못박았다(다음 사람이 다시 묻지 않도록).
+- ★★**추측하지 않고 «진짜 부분 클론»을 만들어 쟀다**(`--filter=blob:none` · 범위는 알려진 사고 머지 `e53b2142^..e53b2142`):
+
+  | 클론 | promisor | 결과 | 시간 |
+  |---|---|---|---|
+  | 완전 | — | `6 dropped` · **rc 1** | 2.5s |
+  | blobless | ★**도달 가능** | `6 dropped` · **rc 1** — ★**완전히 동일** | 15.7s |
+  | blobless(신선) | ★**도달 불가** | `0 dropped` · ★★**rc 0 = green** | 8.3s |
+
+- ★★**그래서 제안은 «절반만» 맞다**: 「부분 클론이면 아무것도 없는 것처럼 보인다」는 **그 자체로는 거짓**이다 — promisor 가 닿으면 git 이 blob 을 투명하게 받아 와 답이 **바이트 동일**하다. ⇒ ★**거절은 «돌아가는 설정»을 막는 것**이고, shallow 와 달리 부분 클론은 **없는 것을 가져올 수 있다**.
+  ★**그러나 조용한 green 은 «실재»한다** — 조건이 좁을 뿐(promisor **도달 불가**). 그 상태에서 검사기는 `✓ … (3 file(s) examined)` 를 찍고 **rc 0** 으로 끝냈다(완전 클론은 6건 보고).
+- ★**방법 주의(자기정정)**: 첫 오프라인 측정은 **오염됐다** — 앞선 온라인 실행이 그 blob 들을 이미 캐시해 «맞는 답»이 나왔다. 위 수는 **신선한 클론 + 읽기 «전»에 원격을 깨뜨린** 형상에서 다시 잰 것이다.
+- ★**위험이 실현되나 — 실측 0**: `.github` 어디에도 `filter:` 가 **없고**(`merge_drops` 는 `fetch-depth: 0`) ⇒ 오늘 이 거짓 green 은 «개발자 노트북 + blobless + 오프라인»에서만 난다. ★그것이 **거절을 고르지 않은 이유**이지, **모호함을 남길 이유는 아니다** — 닫는 비용이 git 호출 하나로 드러났기 때문이다.
+- ★**왜 `ls-tree` 인가(대안 둘을 각각 기각한 근거)**: ⒜**거절** — 탐지는 된다(`remote.origin.partialclonefilter = blob:none` · ★`rev-parse --is-shallow-repository` 는 **false** 라 현행 preflight 가 못 잡는다)지만 **맞는 답을 내는 경우까지 막는다** ⒝**에러 문면 대조** — 두 실패는 문면으로 갈리지만(`does not exist in` ↔ `could not fetch … from promisor remote`) **둘 다 exit 128** 이고, preflight 를 만든 회차가 이미 «git 판올림에 약하다»며 미뤘다 ⒞★**`ls-tree` 는 «트리 객체»로 답한다** — 부분 클론은 blob 이 없어도 **트리는 갖는다**. 두 클론에서 **동작 동일** 실측(있으면 1항목·없으면 빈 출력·rc 0).
+- ★**양방향 축**(제품 스크립트): 거짓 green 형상 — 전 **rc 0 `0 dropped`** ↔ 후 ★**rc 2 `cannot measure: …:jvm-bytecode/src/class_definition.rs is in that tree but its content could not be read…`**. ★**과차단 0**: blobless + promisor 도달 가능은 고친 뒤에도 **rc 1 · 6 dropped** · 완전 클론도 **불변**.
+- ★**비용 유의차 없음**: 같은 범위 3회씩 — 전 **7.78/7.99/7.05s** ↔ 후 **6.39/6.72/8.06s**(구간 겹침) · DoD 기본 범위 **0.46s → 0.33s**. 추가 호출은 `show` 가 **이미 실패한** 경로에서만 돈다.
+- ★**재다가 발견했고 «고치지 않았다»**: 이 검사기의 **출력 순서가 실행마다 다르다**(findings 가 set 에서 나온다). `origin/main` 판본을 `PYTHONHASHSEED=random` 으로 5회 돌려 **순서 2종**(4+1). rc·집합은 동일하고 **줄 순서만** 움직인다 ⇒ ★**선행 결함**이고, 전/후 diff 에서 잠깐 «회귀»처럼 보였기에 적는다(후속 카드).
+- 검증: DoD 9명령 · 아래 절.
+- ★후속 추천: **findings 를 정렬해 두 실행을 비교 가능하게 할 것인가**(S). 상세 = `docs/worklog/2026-09-19-partial-clone-blob-vs-absence.md`.
+
 ## [2026-09-18] 리터럴이 «아닌» 이름으로 exception() 을 부르는 자리는 몇 개인가 — ★**0 이다**(rustjava-count-nonliteral-exception-call-sites)
 - 무엇을: 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p0`(worklog json `adoptedProposals` 기록). ★**순수 측정 회차 — `.rs` 0줄 · `scripts/` 0줄.** 산출은 «수»와 «술어»다.
 - ★**답**: bare `exception(` **847** = 정의 **1** + ★**리터럴(java/javax) 846** + 리터럴(그 밖) **0** + ★★**비리터럴 «0»**.
