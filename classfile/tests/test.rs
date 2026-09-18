@@ -367,9 +367,96 @@ fn test_a_bootstrap_argument_that_is_not_a_loadable_constant_is_rejected() {
 
     assert_eq!(
         ClassInfo::parse(&mutated).err(),
-        Some(ClassFileError::InvalidFormat(
-            "a bootstrap method argument names nothing or is not a loadable constant"
-        )),
-        "a bootstrap argument naming a Utf8 is not a loadable constant"
+        Some(ClassFileError::InvalidBootstrapArgument {
+            method_index: 0,
+            argument_index: 0,
+            actual: Some("Utf8"),
+        }),
+        "a bootstrap argument naming a Utf8 is not a loadable constant, and the refusal says which argument and what it found"
     );
+}
+
+/// ★ The index has to *follow the input*, not be a constant that happens to read correctly.
+///
+/// `StringConcat` above has a single argument, so its `argument_index` is 0 whether the code
+/// computes it or hardcodes it — that test cannot tell the two apart. A lambda's bootstrap method
+/// takes three (samMethodType, implMethod, instantiatedMethodType), so breaking a different one has
+/// to move the number. Both mutations are the same edit at a different offset, which is what makes
+/// the pair a control for each other.
+#[test]
+fn test_the_reported_bootstrap_argument_index_follows_the_broken_argument() {
+    let lambda = include_bytes!("../../test-data/indy/Lambda.class");
+    let class = ClassInfo::parse(lambda).unwrap();
+    let arguments = &bootstrap_methods(&class)[0].arguments;
+    assert_eq!(arguments.len(), 3, "a LambdaMetafactory call site carries three static arguments");
+
+    // Derived from the parse rather than hardcoded, so a regenerated fixture moves the window with it.
+    let mut window = vec![0u8, arguments.len() as u8];
+    for argument in arguments {
+        window.extend_from_slice(&argument.to_be_bytes());
+    }
+    let at = lambda
+        .windows(window.len())
+        .position(|candidate| candidate == window)
+        .expect("test-data/indy/Lambda.class layout changed; the BootstrapMethods argument list moved");
+
+    // Entry #4 is a Utf8 ("java/lang/Object"): a real pool entry that is not a loadable constant.
+    // The kind is not assumed — the assertion below reads it back, so a regenerated fixture whose
+    // #4 is something else fails here rather than passing for the wrong reason.
+    let utf8: u16 = 4;
+    assert!(class.constant_pool.get(&utf8).is_some(), "the replacement index must be in the pool");
+
+    for broken in [0usize, 2usize] {
+        let mut mutated = lambda.to_vec();
+        let offset = at + 2 + broken * 2;
+        mutated[offset..offset + 2].copy_from_slice(&utf8.to_be_bytes());
+
+        assert_eq!(
+            ClassInfo::parse(&mutated).err(),
+            Some(ClassFileError::InvalidBootstrapArgument {
+                method_index: 0,
+                argument_index: broken as u16,
+                actual: Some("Utf8"),
+            }),
+            "breaking argument #{broken} must report argument #{broken}"
+        );
+    }
+}
+
+/// The other half of the rule: an index that names no entry at all reports `actual: None`, and the
+/// message says "names no constant pool entry" rather than guessing a kind.
+#[test]
+fn test_a_bootstrap_argument_naming_nothing_reports_no_kind() {
+    let string_concat = include_bytes!("../../test-data/indy/StringConcat.class");
+    let class = ClassInfo::parse(string_concat).unwrap();
+    let window = [0u8, 1, 0, 34, 0, 1, 0, 32];
+    let at = string_concat
+        .windows(window.len())
+        .position(|candidate| candidate == window)
+        .expect("test-data/indy/StringConcat.class layout changed; the BootstrapMethods entry moved");
+
+    let past_end = u16::MAX;
+    assert!(class.constant_pool.get(&past_end).is_none(), "the index must name nothing");
+
+    let mut mutated = string_concat.to_vec();
+    mutated[at + 6..at + 8].copy_from_slice(&past_end.to_be_bytes());
+
+    assert_eq!(
+        ClassInfo::parse(&mutated).err(),
+        Some(ClassFileError::InvalidBootstrapArgument {
+            method_index: 0,
+            argument_index: 0,
+            actual: None,
+        })
+    );
+}
+
+/// The cost of the variant, measured rather than asserted in prose: it stays `Copy` and the enum
+/// does not grow, because two `u16`s and a `&'static str` fit in the space `InvalidFormat` already
+/// needed for its string.
+#[test]
+fn test_the_structured_variant_does_not_grow_the_error_type() {
+    assert_eq!(size_of::<ClassFileError>(), size_of::<&'static str>() + size_of::<usize>());
+    fn assert_copy<T: Copy>() {}
+    assert_copy::<ClassFileError>();
 }
