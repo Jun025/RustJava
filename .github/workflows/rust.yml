@@ -80,3 +80,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-dod-ci-parity.py
+
+  # Jvm::exception unwraps new_class(), so naming a class the loader cannot resolve panics instead
+  # of throwing. This compares the names against the registered protos (see the script's docstring
+  # for what it cannot see). One runner, not the matrix.
+  named_exception_classes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-named-exception-classes-are-loadable.py
