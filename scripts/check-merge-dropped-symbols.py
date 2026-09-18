@@ -136,10 +136,31 @@ def run(*args, absence_is_an_answer=False):
 def preflight():
     """What has to be true before a failing `git show` can be read as "the path is not there".
 
-    Only one thing, and it is the environment this check is blind in: a shallow clone does not hold
-    the objects a merge's second parent needs, so every read of it fails and every failure used to
-    read as "empty". Measured on this repository at depth 10: merges that examine 20 files in a full
-    clone examined 0 and the run was green.
+    One environment is refused here, and it is the one this check is blind in: a shallow clone does
+    not hold the objects a merge's second parent needs, so every read of it fails and every failure
+    used to read as "empty". Measured on this repository at depth 10: merges that examine 20 files in
+    a full clone examined 0 and the run was green.
+
+    PARTIAL CLONES ARE NOT REFUSED -- decided 2026-09-19, `rustjava-partial-clone-refusal-decision`,
+    adopting `2026-09-18-merge-drops-no-silent-git-failure#p0`. Do not "fix" this by adding a
+    `remote.origin.partialclonefilter` check here; the question was asked and answered with numbers:
+
+      * A blobless clone (`--filter=blob:none`) with its promisor reachable gives the **identical**
+        answer to a full clone -- measured on `e53b2142^..e53b2142`: both rc 1, both 6 dropped
+        definitions -- it is only slower (15.7 s vs 2.5 s). Refusing it would refuse a setup that
+        works, and unlike a shallow clone it can fetch what it is missing.
+      * The failure is narrower than "partial clone": it needs the promisor to be **unreachable**.
+        Measured on a fresh blobless clone with the remote pointed at an invalid host, the same range
+        printed `0 definition(s) dropped` and exited **0** -- a green run where a full clone reports
+        six. That is the silent pass, and it is real.
+      * So the fix belongs where the ambiguity is, not in the environment: `symbols()` now asks
+        `ls-tree` whether the path is in that tree before reading a failed `show` as absence. Trees
+        are present in a partial clone even when blobs are not, so it separates the two without
+        matching git's error text (rejected as version-fragile by the round that added `preflight`).
+
+    Detection axis, if it is ever needed: `git config --get remote.origin.partialclonefilter`
+    returns `blob:none`, while `rev-parse --is-shallow-repository` returns false -- which is why the
+    shallow check above does not catch this case.
     """
     if (run("rev-parse", "--is-shallow-repository") or "").strip() == "true":
         raise CannotMeasure(
@@ -156,9 +177,18 @@ def symbols(rev, path):
     else:
         return None
     # The only tolerated failure in the file: a path that is not in this tree is a real answer,
-    # and it means "no definitions here". preflight() has already ruled out the other reason.
+    # and it means "no definitions here". Everything else has to be ruled out before that reading
+    # is safe -- preflight() rules out a shallow clone, and the `ls-tree` below rules out the other
+    # environment that makes `show` fail on a path that *is* there (see partial clones, above).
     blob = run("show", f"{rev}:{path}", absence_is_an_answer=True)
     if blob is None:
+        if (run("ls-tree", rev, "--", path) or "").strip():
+            raise CannotMeasure(
+                f"{rev}:{path} is in that tree but its content could not be read. In a partial clone this is "
+                "a blob the promisor remote did not hand over; reading it as 'no definitions here' is the "
+                "silent green this check exists to prevent. Restore access to the remote (or run "
+                "`git fetch origin` to materialise the missing blobs) and run again."
+            )
         return set()
     found = set()
     for line in blob.split("\n"):
