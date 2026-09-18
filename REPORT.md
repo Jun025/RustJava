@@ -9,7 +9,7 @@
 - ★**#67 위에 쌓지 않은 이유**(선택이지 누락 아님): ⑴아직 approve 아님(게이트② 재검 중) ⑵head 가 회차마다 움직임 ⑶**자식 PR** 이 되어 base 소멸 시 자동으로 닫힌다(게이트③ 계약 5).
 - ★**잃는 것**: ★**main 은 #67 착지까지 밋밋한 채로 남는다**(오늘 사용자는 **규칙 이름조차** 못 받는다) · 이 회차는 제안의 값을 **전혀 전달하지 않았고** 전달한 것은 **순서**다 · #67 이 폐기되면 이 판단은 **한 회차를 버린 것**이 된다.
 - 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · base `8c7b473f`) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
-- ★후속 추천: 새 카드 「**구조화된 variant 로** bootstrap argument 의 인덱스와 태그를 말한다」(★**M** · ★초판은 `S` 였다 — **실측 후 올렸다**: 잔여도 #67 과 **같은 3층**을 건넌다(중간층 `jvm-bytecode` 도 `&'static str` · 경계는 `&str`) ⇒ `target` **5파일 / 3크레이트**. ★`InvalidFormat` 을 넓히면 생성 **17**곳 + 값 매치 **11**곳이라 **새 variant** 를 고르되 ★**두 갈래가 생기는 대가**를 카드에 적었다) — ★**#67 «뒤»에** · 상세 = `docs/worklog/2026-09-18-bootstrap-argument-diagnostic-sequencing.md`.
+- ★후속 추천: 새 카드 「**구조화된 variant 로** bootstrap argument 의 인덱스와 태그를 말한다」(★**M** · ★초판은 `S` 였다 — **실측 후 올렸다**: 잔여도 #67 과 **같은 3층**을 건넌다(중간층 `jvm-bytecode` 도 `&'static str` · 경계는 `&str`) ⇒ `target` **5파일 / 4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★**층은 3인데 크레이트는 4다**: 경계 층 하나가 두 크레이트에 걸친다). ★`InvalidFormat` 을 넓히면 생성 **17**곳 + 값 매치 **11**곳이라 **새 variant** 를 고르되 ★**두 갈래가 생기는 대가**를 카드에 적었다) — ★**#67 «뒤»에** · 상세 = `docs/worklog/2026-09-18-bootstrap-argument-diagnostic-sequencing.md`.
 
 ## [2026-09-17] 코드 2파일 합집합 — ★**그런데 ours 의 «삭제»는 의도가 아니라 선행 머지의 «조용한 롤백»이었다** (rustjava-adopt-link-stringconcatfactory-p2-fix3)
 - 무엇을: 게이트③이 `code-conflict-out-of-scope` 로 세운 PR #61 의 충돌 4파일(원장 2 + 코드 2)을 합집합으로 해소. ★제품 Rust **0줄**(테스트·픽스처 생성기만).
