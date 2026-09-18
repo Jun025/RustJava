@@ -1,4 +1,16 @@
 # REPORT
+## [2026-09-18] 이름으로 부르는 예외 클래스가 «실을 수 있는» 것인가 — 한 자리에서 대조한다 (rustjava-lock-every-named-exception-class-is-loadable)
+- 무엇을: 채택 제안 `2026-09-17-string-concat-recipe-arity#p0`(worklog json `adoptedProposals` 기록). 산출물 = `scripts/check-named-exception-classes-are-loadable.py` **한 자리** + CI job + DoD 한 줄. ★**런타임 클래스 추가 0 · `.unwrap()` 무접촉.**
+- ★**전제를 코드로 확인했다**(총괄 선실측 없음): `jvm/src/jvm.rs:943-950` 의 `new_class(...).await.`★**`unwrap()`** ⇒ 부트스트랩 로더가 이름을 못 풀면 **Java 예외가 아니라 프로세스가 죽는다**. ★**자기 참조다** — `:842` 가 클래스 부재를 `exception("java/lang/NoClassDefFoundError", …)` 로 보고하므로 **오류 경로 자신의 클래스**가 실려야 한다.
+- ★**베이스라인 실측**: `exception(` 리터럴 클래스명 **41 고유 / 호출부 812** ↔ `loader.rs` 등재 **265항목(고유 263) · 이름 해석 265/265** ⇒ ★**못 싣는 이름 «0»**(제안의 「baseline is now 0」 재현).
+  ★**제안의 「72」는 재현되지 않았다** — 내 술어는 「`exception(` 첫 인자 리터럴·고유」로 **41**이다. ★**재현 못 한 수는 인용하지 않았다.**
+- ★**실을 수 있는 집합 = «등재분»이지 «`name:` 리터럴 전수»가 아니다** — 정의는 됐는데 미등재인 이름이 **5건** 있다(전부 `exception(` 밖이라 베이스라인은 어느 쪽이든 0).
+- ★**양방향 4축**: ⒜현 상태 **rc=0** ⒝★**⑶ 실제 사례 재현** — `BootstrapMethodError` 등재 1줄 제거 → **rc=1**(`interpreter.rs:1109` 지목) ⒞프로토 이름 오타 → **rc=1**(321 호출부) ⒟★**fail-closed** — 해석 불가 등재 → **rc=2 «못 쟀다»**(집합을 조용히 줄여 false red 를 내지 않는다). 배선도 양방향 — CI step 제거 시 `dod_parity` **rc=1**.
+- ★**못 보는 것**(바닥이지 증명이 아니다): ★**런타임 조립 이름**(`format!`·상수·변수)은 **안 보인다** · `exception(` 만 훑는다(`new_class(`·`find_class(` 는 `Result` 를 돌려주므로 축이 다르다) · 초기화 실패는 통과 · 다른 실재 클래스와 겹치는 오타는 통과.
+- ★**잃는 것**: DoD 명령 **6 → 7**(실측 **~1초**/회차 · 초판 32.7초를 `target/` 가지치기로 없앴다) · ★**「green 이니 패닉 없다」는 거짓**(위 구멍) · ★**`.unwrap()` 은 그대로**라 새는 이름이 생기면 여전히 패닉한다(전환은 범위 밖).
+- 검증: `cargo test --all` **rc=0** · `check-dod-ci-parity` **「명령 7개 · toolchain 2개」 rc=0** · `check-worklog-json` rc=0.
+- ★후속 추천: ⑴**리터럴이 «아닌» `exception(` 호출부를 세라**(S — 구멍의 크기를 아직 모른다) ⑵**`.unwrap()` → throw 전환**(M · 이 회차가 명시적으로 범위 밖으로 둔 것). 상세 = `docs/worklog/2026-09-18-named-exception-classes-are-loadable.md`.
+
 ## [2026-09-18] 「어느 bootstrap argument 가 왜 나빴나」 — ★**대전제 ⓒ 에서 끝난다: 그 일을 하는 축이 이미 떠 있다**(rustjava-adopt-loadable-bootstrap-arguments-diagnostic)
 - 무엇을: 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0` 의 처분(worklog json `adoptedProposals` 기록). ★**코드 0행** — `classfile/src/{error,validation}.rs` **무접촉**.
 - ★**제안의 전제는 참이다 — CLI 로 돌려서 봤다**(`main` @ `8c7b473f`): 서로 다른 세 규칙(`LdcDynamicBSMArgPastEnd` 나쁜 argument · `LdcDynamicDuplicateBSM` 중복 속성 · `LdcDynamicOldMajor` 버전 게이트)이 ★**글자 하나 다르지 않은 `java.lang.ClassFormatError: Invalid class file`** 를 낸다.

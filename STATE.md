@@ -7,6 +7,14 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-lock-every-named-exception-class-is-loadable] ★★**이름으로 부르는 예외 클래스가 «실을 수 있는» 것인가 — 대조 한 자리.** 채택 제안 `2026-09-17-string-concat-recipe-arity#p0`(worklog json 기록).
+  ★**전제 확인(코드)**: `jvm/src/jvm.rs:943-950` `new_class(...).await.`**`unwrap()`** ⇒ 못 싣는 이름은 **throw 가 아니라 패닉**. ★자기 참조 — `:842` 가 부재를 `exception("java/lang/NoClassDefFoundError")` 로 보고한다.
+  ★**베이스라인 0**: `exception(` 리터럴 **41 고유 / 812 호출부** ↔ 등재 프로토 **265(고유 263) · 해석 265/265**. ★제안의 「72」는 **재현 안 됨** ⇒ 내 수(41)를 적었다.
+  ★**실을 수 있는 집합 = 등재분**(미등재 `name:` 5건 존재 — 전부 `exception(` 밖).
+  ★**양방향**: 현 상태 rc=0 · ★`BootstrapMethodError` 등재 제거 → **rc=1**(실제 패닉 사례 재현) · 프로토 이름 오타 → rc=1 · ★해석 불가 등재 → **rc=2(못 쟀다 · fail-closed)** · CI step 제거 → `dod_parity` rc=1.
+  ★**못 보는 것**: **런타임 조립 이름 안 보임**(바닥이지 증명 아님) · `exception(` 만 · 초기화 실패 통과.
+  ★**잃는 것**: DoD **6→7**(~1초 · 초판 32.7초는 `target/` 가지치기로 해소) · ★`.unwrap()` 무접촉(전환은 범위 밖).
+  ★`--all` rc=0 · `dod-ci-parity` **명령 7개** rc=0.
 - [rustjava-adopt-loadable-bootstrap-arguments-diagnostic] ★★**대전제 ⓒ 에서 끝났다 — 그 일을 하는 축(PR #67)이 이미 떠 있다.** 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0`(worklog json 기록). ★**코드 0행.**
   ★**전제는 참**(CLI 실행: 세 규칙이 전부 `ClassFormatError: Invalid class file` 동일 문면) — 그러나 ★**편집 영역은 전부 겹친다**(전달된 값은 **3 중 1** — 아래): #67 이 제안 `target` 두 파일을 고치고, 이 술어에 **이미 사유를 주며**, 밋밋한 문면 **두 자리**를 둘 다 고쳤다. ★제안 `tradeoff` 자신이 「두 번 하지 말고 함께 하라」고 적었다.
   ★**남는 잔여는 좁다** — `&'static str` 이라 **인덱스를 못 담는다** ⇒ 「기대」 달성 · 「인덱스·실제」 미달 ⇒ ★**새 카드를 냈다**(★**M** — 초판 `S` 에서 **실측 후 올렸다**: 잔여도 **같은 3층**을 건너 `target` **5파일/4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★층 3 ↔ 크레이트 4: 경계 층이 두 크레이트에 걸친다) · `InvalidFormat` 을 넓히면 생성 17 + 매치 11 이라 **새 variant** 를 고르고 **두 갈래의 대가**를 적었다).

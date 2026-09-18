@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-18",
+  "taskId": "rustjava-lock-every-named-exception-class-is-loadable",
+  "summary": "Jvm::exception ends in new_class(...).unwrap(), so naming a class the bootstrap loader cannot resolve panics instead of throwing. This round added one cross-check, scripts/check-named-exception-classes-are-loadable.py, wired into the DoD block and a CI job. It compares the class names the Rust code writes as literals in exception(...) against the protos actually registered in rustjava-runtime/src/loader.rs. No runtime class was added and the .unwrap() was not touched.",
+  "changes": [
+    "scripts/check-named-exception-classes-are-loadable.py — new. Two sets: literal java//javax/ names in the first argument of exception(, and the name: field of every type registered via ::as_proto() in loader.rs. Exit 0 all loadable, 1 something is not, 2 cannot measure.",
+    ".github/workflows/rust.yml — new job named_exception_classes, one runner like worklog_json and dod_parity rather than the 6-cell matrix.",
+    "CLAUDE.md — the DoD block gains the command, which is what check-dod-ci-parity.py then locks against the workflow."
+  ],
+  "verification": [
+    "PREMISE CONFIRMED BY READING THE CODE, not by quoting the proposal: jvm/src/jvm.rs:943-950 is `let instance = self.new_class(r#type, \"(Ljava/lang/String;)V\", (message_str,)).await.unwrap();`. new_class returns Result, so an unresolvable name aborts. The axis is self-referential: jvm.rs:842 reports a missing class by calling exception(\"java/lang/NoClassDefFoundError\", ...), so the error path's own class must be loadable or the report panics.",
+    "BASELINE, measured this round: 41 distinct literal names across 812 exception( call sites; loader.rs registers 265 ::as_proto() entries (263 distinct types), all 265 resolved back to a name: literal; names named but not loadable = 0. The proposal's 'baseline is now 0' reproduces.",
+    "THE PROPOSAL'S 72 DID NOT REPRODUCE. This round counts 41, using 'distinct literal first argument of exception('. 72 is presumably a different predicate (call sites, or new_class included); it was not reproduced, so this round writes its own number rather than quoting one it cannot stand behind.",
+    "LOADABLE SET IS THE REGISTERED ONE, NOT EVERY name: LITERAL. Five names exist under classes/ but are absent from loader.rs — java/util/AbstractList$ListItr, java/util/ArrayList$ListItr, java/util/Vector$ListItr, java/util/logging/Formatter, org/rustjava/net/JarURLConnection — so using every literal would overstate what the loader can return. None of the five is named in exception(, so the baseline is 0 either way.",
+    "BIDIRECTIONAL: current tree rc=0 (41 named, 263 loadable). Removing the BootstrapMethodError registration from loader.rs — the case that actually panicked — gives rc=1 naming java/lang/BootstrapMethodError at jvm-bytecode/src/interpreter.rs:1109. Renaming the NullPointerException proto while leaving it registered gives rc=1 with 321 call sites. Adding a registered entry whose type cannot be resolved gives rc=2 'cannot measure', not a false red. Restoring gives rc=0.",
+    "WIRING MEASURED BOTH WAYS: deleting the new CI step makes check-dod-ci-parity.py rc=1 (FAIL 대칭차 있음: 축 A); restoring gives rc=0 with 'commands 7, toolchains 2'.",
+    "COST: 0.80s / 0.98s / 0.91s over three runs on a loaded machine. The first draft took 32.7s because rglob walked target/; pruning target and .git at the top level removed that, and the reason is in a comment so it does not get re-introduced."
+  ],
+  "issues": [
+    "IT IS A FLOOR, NOT A PROOF. A name assembled at run time (format!, a const, a variable, a match arm) is not a literal at the call site and is invisible. Reading the check as 'green means no panic' is wrong.",
+    "Only exception( is scanned. new_class( and find_class( are out of scope because they hand the Result back rather than unwrapping it, which is why the panic lives on this path.",
+    "A registered proto that fails to initialise at run time still passes; only name resolvability is checked. A typo that collides with another real class also passes.",
+    "The .unwrap() itself was not changed. This round removes what there is to unwrap on; it does not remove the unwrap. If a name escapes through the hole above it still panics.",
+    "DoD grows from 6 commands to 7, and check-dod-ci-parity.py now carries that symmetry too. Measured cost is ~1s per local round.",
+    "OPEN PR INTERACTION: PR #71 also adds a DoD command and a CI job, touching the same CLAUDE.md block and the same region of rust.yml. Whichever lands second will conflict there, and the resolution must be a union of both commands or dod_parity goes red."
+  ],
+  "adoptedProposals": ["2026-09-17-string-concat-recipe-arity#p0"],
+  "proposals": [
+    {
+      "title": "Count the exception() call sites whose class name is not a literal",
+      "plainSummary": "The new check only sees class names written out in full; nobody knows yet how many are built at run time instead, so we cannot say how big the blind spot is.",
+      "userBenefit": "A name assembled at run time can still name a class the runtime cannot load, and that still ends as a crash rather than a Java exception — exactly the failure the new check was meant to close.",
+      "why": "The check landed this round reads the first argument of exception( only when it is a string literal, and 41 distinct names across 812 call sites pass that filter. What is not known is the denominator: how many call sites pass something else. Until that number exists, 'the check is a floor' is a statement without a size, and nobody can judge whether closing the gap is worth anything.",
+      "tradeoff": "Counting is cheap, but acting on the count is not: forcing literals would mean a constant table and touching every non-literal call site, and some of those names genuinely depend on runtime state. The count may also show the gap is tiny, in which case the right answer is to write the number down and stop — which is still worth the measurement.",
+      "effort": "S",
+      "target": "scripts/check-named-exception-classes-are-loadable.py, jvm/src/jvm.rs"
+    },
+    {
+      "title": "Make Jvm::exception throw instead of unwrapping",
+      "plainSummary": "When the runtime cannot build the exception it wants to raise, it crashes the process; it should report the failure the Java way instead.",
+      "userBenefit": "A JVM must not abort on an error path. Today an unresolvable class name takes the whole process down, and no amount of checking source text can guarantee that never happens.",
+      "why": "jvm/src/jvm.rs:943-950 unwraps new_class(). The lock added this round makes the input set safe as far as literals go, but it is explicitly a floor — a name built at run time bypasses it entirely. The last line of defence is still missing, and it is one Result away.",
+      "tradeoff": "exception() currently returns JavaError, not Result<JavaError>, so every caller changes — 812 call sites reference it. There is also a genuine question of what to throw when the class you wanted to throw is itself unavailable, which is the self-referential case at jvm.rs:842; picking a wrong answer there turns one crash into an infinite recursion.",
+      "effort": "M",
+      "target": "jvm/src/jvm.rs, jvm-bytecode/src/interpreter.rs, rustjava-runtime/src/classes/"
+    }
+  ]
+}
