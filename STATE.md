@@ -7,6 +7,15 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-jvm-exception-throws-instead-of-unwrap] ★★**일으키려던 예외를 못 만들면 죽던 것을 «보고»로 바꿨다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p1`. ★시그니처 불변 · variant 0 · 호출부 편집 0.
+  ★**급소**: `from_rust_string`·`new_class` 의 실패는 **이미 `JavaError`**(= 자바 예외)다 — unwrap 이 그것을 버렸다. ⇒ 그대로 돌려준다.
+  ★**실측**: `panicked … unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)` — ★올바른 보고가 **패닉 메시지 안에** 실려 사라졌다.
+  ★**도달성 두 축**: 자기 호출부 **0**(named 43 전건 loadable + 43 전건 String 생성자 보유 · 이 회차 실측) ↔ ★**공개 API 로는 도달**(`wie` 가 싣는다 · 호스트가 죽는다).
+  ★**양방향**(제품 함수): 전 **FAILED**(패닉) ↔ 후 **ok** · 되돌리면 red.
+  ★**파급 0 의 근거**: `.exception(` **846→846** · `JavaError::` **527 편집 0** ⇒ variant 추가안이었다면 `let …else` **460자리**가 조용히 샜다(그래서 그 안을 버렸다).
+  ★**대가**: 실패 시 **다른 클래스의 예외**가 온다 ⇒ 클래스로 분기하는 **제품 12자리**는 못 잡고 전파한다(죽는 것보다 낫지만 무해하지 않다).
+  ★**불변**: 퇴화 경우(폴백 클래스 자체 부재)는 **무한 재귀**이고 옛 unwrap 도 못 막았다 — ★호출그래프에서 읽었고 **실측 아님**(후속 카드).
+  ★**자기 diff 밖 파급 둘**: ⑴검사기 문면 3자리가 거짓이 돼 **문면만** 고쳤다(술어 무접촉 · 축 양방향 재검증 rc=1/rc=0) — 잠금의 이유가 「죽는다」에서 ★**「틀린 예외가 온다」**로 바뀐다 ⑵★형제 회차의 비리터럴 **0 → 1**(이 테스트가 그 1이다) — ★**그 회차가 관문을 «안» 건 판단이 하루 만에 값을 했다**(걸었으면 이 테스트가 막혔다).
 - [rustjava-partial-clone-refusal-decision] ★★**부분 클론을 «거절하지 않는다» — 모호했던 것은 환경이 아니라 «호출 하나»였다.** 채택 제안 `2026-09-18-merge-drops-no-silent-git-failure#p0`.
   ★**진짜 blobless 클론으로 쟀다**: promisor **도달 가능**이면 답이 **완전 클론과 동일**(rc 1 · 6 dropped · 15.7s vs 2.5s) ⇒ ★거절은 «돌아가는 설정»을 막는 것.
   ★**그러나 조용한 green 은 실재**: 신선한 blobless + promisor **도달 불가** → `0 dropped` · ★**rc 0**(완전 클론은 6건).

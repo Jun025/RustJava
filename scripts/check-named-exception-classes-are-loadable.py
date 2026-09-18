@@ -5,9 +5,12 @@ What this answers: *will an error path throw, or panic*. `Jvm::exception` (jvm/s
 
     let instance = self.new_class(r#type, "(Ljava/lang/String;)V", (message_str,)).await.unwrap();
 
-so a name the bootstrap loader cannot resolve does not become a Java exception -- it unwraps an
-`Err` and aborts the process. That is the one failure mode a JVM must not have, and it is invisible
-until something walks that path. It is also self-referential: jvm.rs:842 reports a missing class by
+Since 2026-09-19 (`rustjava-jvm-exception-throws-instead-of-unwrap`) that `.unwrap()` is gone: a name
+the loader cannot resolve now returns the NoClassDefFoundError the loader raised, rather than aborting
+the process. The check did not lose its job, it changed: an unresolvable name no longer kills the
+runtime, it silently raises *the wrong exception* -- the caller asked for IOException and gets
+NoClassDefFoundError, so the `catch` that was supposed to handle it does not match. That is quieter
+than a crash and therefore worth locking, and it is invisible until something walks that path. It is also self-referential: jvm.rs:842 reports a missing class by
 calling `exception("java/lang/NoClassDefFoundError", ...)`, so the error path's own class has to be
 loadable or the report itself panics.
 
@@ -39,8 +42,8 @@ WHAT THIS DOES NOT SEE -- it is a floor, not a proof:
     resolvability of the name, not the health of the class.
   * Names are compared as written. A typo that happens to match another real class passes.
 
-DELIBERATELY NOT DONE HERE: turning the `.unwrap()` into a thrown exception. That is a separate
-axis -- this one makes sure there is nothing left to unwrap on.
+DONE SEPARATELY, as its own axis: `Jvm::exception` reporting instead of unwrapping
+(`jvm/tests/test_exception_construction.rs`). This check is what keeps that report from being needed.
 
 Exit: 0 every named class is loadable
       1 at least one named class has no registered proto
@@ -176,7 +179,9 @@ def main():
             sites = named[name]
             print(f"  ✗ {name} — named at {sites[0]}" + (f" and {len(sites) - 1} more" if len(sites) > 1 else ""))
         print()
-        print("Jvm::exception unwraps new_class(), so each of these panics instead of throwing.")
+        print("Jvm::exception returns whatever new_class() failed with, so each of these raises")
+        print("NoClassDefFoundError instead of the exception the code asked for -- a catch on the")
+        print("intended class will not match.")
         print("Add the class under rustjava-runtime/src/classes/ and register its as_proto() in")
         print("rustjava-runtime/src/loader.rs, or stop naming it.")
         return 1

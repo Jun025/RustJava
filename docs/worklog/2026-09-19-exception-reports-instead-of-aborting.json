@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-19",
+  "taskId": "rustjava-jvm-exception-throws-instead-of-unwrap",
+  "summary": "Jvm::exception unwrapped the two Results it builds the exception from, so a failure there aborted the process. Both failures are already JavaError - a Java exception describing what went wrong - so they are now returned. No signature change, no new enum variant, no call site edited: 846 exception( sites and 527 JavaError:: sites are untouched.",
+  "measurements": {
+    "exception_call_sites_before": 846,
+    "exception_call_sites_after": 846,
+    "javaerror_sites_untouched": 527,
+    "javaerror_let_else_sites_that_a_new_variant_would_have_silently_diverted": 460,
+    "product_sites_dispatching_on_exception_class": 12,
+    "named_classes_all_loadable": 43,
+    "named_classes_missing_string_ctor": 0,
+    "named_classes_relying_on_ancestor_string_ctor": 0,
+    "reachable_from_in_tree_call_sites": 0,
+    "reachable_through_public_api": true,
+    "nonliteral_call_sites_before_this_round": 0,
+    "nonliteral_call_sites_after_this_round": 1
+  },
+  "verification": [
+    "axis, product function (not a fixture copy): jvm/tests/test_exception_construction.rs asks for an unloadable class; BEFORE = FAILED with 'panicked at jvm/src/jvm.rs:948:94: called Result::unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)'; AFTER = ok, 1 passed. Reverting jvm.rs turns it red.",
+    "fan-out: .exception( count 846 before and after; no call site edited; no JavaError variant added, so none of the 460 let-else sites change behaviour",
+    "reachability measured two ways: all 43 named classes loadable (checker, PR #72) and all 43 declare <init>(Ljava/lang/String;)V directly (0 missing, 0 inherited)",
+    "the edited checker still bites both ways: removing one loader registration -> rc=1 naming java/lang/BootstrapMethodError; restored -> rc=0; normal form 846 call sites / 43 names / 268 loadable"
+  ],
+  "changes": [
+    "jvm/src/jvm.rs — Jvm::exception returns the JavaError it was given instead of unwrapping it (+ doc comment recording the measured panic)",
+    "jvm/tests/test_exception_construction.rs — new axis test",
+    "docs/worklog/2026-09-19-exception-reports-instead-of-aborting.{md,json}, REPORT.md, STATE.md",
+    "scripts/check-named-exception-classes-are-loadable.py - rewrote the three passages this change falsified (docstring x2 + failure message); predicate untouched"
+  ],
+  "issues": [
+    "Behavioural, not a no-op: in the failure case the caller receives a different exception class than it asked for, so the 12 product sites that dispatch on the caught class will not match and the error propagates instead of being caught. Better than aborting, but it is a real difference.",
+    "The degenerate case is unchanged and is unbounded recursion, not a panic: if java/lang/NoClassDefFoundError itself were unloadable, load_class -> exception -> new_class -> load_class cycles. Read off the call graph, NOT measured - the old unwrap never bounded it either, because the inner new_class never returns.",
+    "No reproduction was found for the from_rust_string unwrap (it fails only if java/lang/String cannot be built). Fixed the same way but not claimed as measured.",
+    "This round creates the tree's first non-literal exception( call site, so the sibling round's measured nonliteral count moves 0 -> 1. That round deliberately did not gate on the zero; had it done so, this test would have been blocked by it. The test cannot use a literal: a literal unloadable name turns check-named-exception-classes-are-loadable.py red (measured).",
+    "While re-measuring, found that the sibling round's predicate also counts the token inside comments (a comment mentioning it read as a second non-literal site until reworded). Belongs to whoever picks up that proposal."
+  ],
+  "adoptedProposals": [
+    "2026-09-18-named-exception-classes-are-loadable#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Bound the exception-construction recursion when the fallback class itself is unloadable",
+      "plainSummary": "If the runtime cannot even build the error it uses to report a missing class, it keeps trying in a loop until it runs out of stack. This was already true before this round's change; nothing here made it worse or better.",
+      "userBenefit": "A host embedding the runtime with an incomplete class set would get a clear failure instead of a stack overflow, which is the one remaining way this path can still take the process down.",
+      "why": "load_class raises NoClassDefFoundError by calling Jvm::exception, which calls new_class, which calls load_class. If that class is missing the cycle has no floor. This round deliberately did not touch it: bounding it needs either a re-entrancy guard on Jvm or a non-exception failure representation, both of which are larger than the adopted proposal's point, and proving it needs a custom-loader test harness this tree does not have.",
+      "tradeoff": "A re-entrancy guard adds state to Jvm and a branch to the hottest error path; a non-exception JavaError variant would change 460 let-else sites' behaviour silently, which is exactly what this round avoided. Doing nothing leaves a stack overflow reachable only by an embedder whose loader lacks java/lang/NoClassDefFoundError.",
+      "effort": "M",
+      "target": "jvm/src/jvm.rs, jvm/src/error.rs, test-utils/src/lib.rs"
+    }
+  ]
+}
