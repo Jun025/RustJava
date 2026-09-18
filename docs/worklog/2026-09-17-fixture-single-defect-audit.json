@@ -1,0 +1,48 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-17",
+ "taskId": "rustjava-adopt-class-format-mutation-audit-p0",
+ "summary": "Audit the hand-assembled fixtures for single-defectness — is each file broken in exactly one way? Answered by byte equality against the canonical build rather than by loading, which is both stronger and cheaper. CORRECTED after gate-2 review (round rustjava-adopt-class-format-mutation-audit-p0-fix): the original claim \"18 checked, all single-defect\" was not a measurement. 14 of the 18 rebuilt `repaired` from canonical arguments instead of deriving it from the fixture's own, so a second defect was discarded by both sides and the verdict could not fail. Only the 4 indy near-misses were really measured. The fix derives `repaired` from `given` for all four families; the 18 committed fixtures still pass, but now that is a result rather than a tautology.",
+ "changes": [
+  "test-data/src/audit-fixture-single-defect.py: repairs each generated fixture's named defect and requires the bytes to equal the canonical build",
+  "test-data/src/audit-fixture-single-defect.py (p0-fix): `repaired` is now `given` with only the named axis overwritten, for all four families, via a single add() helper",
+  "test-data/src/audit-fixture-single-defect.py (p0-fix): `given` is bound to the generator's named parameters with inspect.signature(...).bind(*spec), so a parameter added to a generator is carried into `repaired` instead of being dropped by tuple indexing",
+  "test-data/src/audit-fixture-single-defect.py (p0-fix): new AUDIT SPEC STALE verdict (rc=2) when a spec sets a parameter no CANON table names — the guard on the repaired/canonical asymmetry",
+  "test-data/src/audit-fixture-single-defect.py (p0-fix): docstring gains a fourth coverage limit (the canonical arguments and the named axis are human annotations) and a note that the MULTI-DEFECT byte count is a loudness figure, not an edit distance"
+ ],
+ "verification": [
+  "audit: 18 checked / 18 single-defect / 5 no-defect (valid files) / rc=0 — SUPERSEDED: gate 2 showed 14 of those 18 verdicts could not fail, so this line reports 4 measurements and 14 vacuous passes. Re-run after the p0-fix round gives the same numbers, and they now mean what they say.",
+  "mutation M1: plant a second defect (NotFactoryDescriptor also gets reference kind 7) -> MULTI-DEFECT, rc=1",
+  "mutation M2: flip one byte of a committed fixture -> GENERATOR DRIFT, rc=2",
+  "cargo test --all unchanged (this round adds no Rust)",
+  "p0-fix: baseline unchanged on the real tree — 18 checked / 18 single-defect / 5 no-defect / rc=0",
+  "p0-fix mutation M-A (ldc, LdcDynamicOldMajor also gets a duplicate BootstrapMethods): before rc=0, after rc=1 MULTI-DEFECT 13 bytes",
+  "p0-fix mutation M-B (cp, generator grows a `major` parameter and UnreferencedTag13 gets major 45): before rc=0, after rc=2 AUDIT SPEC STALE — the audit refuses to judge a parameter it does not know the canonical of",
+  "p0-fix mutation M-B2 (M-B plus telling the audit that major 52 is canonical): rc=1 MULTI-DEFECT 1 byte — the cp family is judgeable once the CANON table is current",
+  "p0-fix mutation M-C (indy near-miss, NotInvokeStaticFactory also gets the wrong method name): rc=1 before and after — the family that already worked still works",
+  "p0-fix mutation M-D (indy LINKED, MakeConcatWrongDescriptor also gets a static argument): before rc=0, after rc=1 MULTI-DEFECT 4 bytes",
+  "p0-fix: each mutation ran in a scratch copy with the fixture regenerated, so built()==committed still holds and the run is not a GENERATOR DRIFT"
+ ],
+ "issues": [
+  "CORRECTED: the original 18/18 was 4/18 measured. See the p0-fix entries above.",
+  "The audit is a standalone script, not wired into DoD or CI. An audit nobody runs rots; whether this property is worth a permanent check is a separate decision, argued in the proposal below.",
+  "Three fixture classes are outside its reach and are named in the script header rather than silently skipped: javac output (no defect), legal-but-unimplemented files (no defect), and fixtures byte-patched inside a test (not on disk).",
+  "p0-fix: the verdict now depends on the CANON tables in the script being right. A wrong canonical produces a confident false MULTI-DEFECT where the old form was silently green — louder, but a new way to be wrong.",
+  "p0-fix: growing a generator now blocks the audit with AUDIT SPEC STALE until its CANON table is updated. Deliberate — the alternative is guessing — but it is a standing cost on anyone adding a generator parameter.",
+  "p0-fix: the committed count did not go down (18 still pass). What went down is the set of inputs that could pass: structurally-unfailable cases 14 -> 0."
+ ],
+ "adoptedProposals": [
+  "2026-09-16-class-format-mutation-audit#p0"
+ ],
+ "proposals": [
+  {
+   "title": "Decide whether single-defectness is a standing check or a one-off",
+   "plainSummary": "The audit passes today. Nobody runs it tomorrow.",
+   "userBenefit": "A fixture that grows a second defect stops covering what its test claims, and the test keeps passing — which is exactly the silence this round measured away.",
+   "why": "Every fixture is generated from a parameterised generator, so the check costs one python3 invocation and no JVM. The repository's own doctrine says a rule kept only in prose is the worst state: 'the rule exists and has no effect'.",
+   "tradeoff": "It would be an eighth DoD command, and check-dod-ci-parity.py then has to carry it in both directions — the parity lock is deliberately strict about that. Against: the property is stable by construction (the generators take the defect as a parameter), so the check may earn nothing for years.",
+   "effort": "S",
+   "target": "CLAUDE.md, .github/workflows/rust.yml"
+  }
+ ]
+}
