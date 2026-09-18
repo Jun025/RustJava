@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [2026-09-18-nonliteral-exception-call-sites-p0] ★★**비리터럴 사각은 «관문»이 아니라 «보고»다 — 제안의 전제 둘 다 소멸.** 채택 제안 `2026-09-18-nonliteral-exception-call-sites#p0`.
+  ★**전제 재측**: 「baseline 0」 → ★**1**(그 1자리는 **정상**이고 «비리터럴이어야만» 한다 — 리터럴이면 이 검사기가 red) · 「죽는다」 → ★**더는 안 죽는다**(#76 착지) ⇒ 해악이 «죽음»에서 «틀린 catch»로 내려갔다.
+  ★**관문을 0으로 걸었으면 제안된 날 main 이 red** 였다 — ★제안이 자기 `why` 에 그 비용을 예고했고 **4시간 뒤** 현실이 됐다.
+  ★**지은 것**: 매 실행에 사각을 **세어 찍는다**(never fail) · **1파일 +90/−6** · 새 DoD 명령 **0** · 새 CI 잡 **0** · 종료코드 불변.
+  ★**축**: 제품 코드 주입 → **1→2**(파일:줄 지목) · 원복 → 1 · rc 양쪽 0 · 술어 민감도 **42**.
+  ★**대가**: 찍힌 수는 무시할 수 있다 · 수는 술어만큼만 정확 · 제품/테스트 미구별(후속 카드).
+  ★**회귀 둘을 스스로 만들고 재서 걷어냈다**(두 번 걷기 · 개행 인덱스) ⇒ 최종 비용 **유의차 없음**.
 - [rustjava-jvm-exception-throws-instead-of-unwrap] ★★**일으키려던 예외를 못 만들면 죽던 것을 «보고»로 바꿨다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p1`. ★시그니처 불변 · variant 0 · 호출부 편집 0.
   ★**급소**: `from_rust_string`·`new_class` 의 실패는 **이미 `JavaError`**(= 자바 예외)다 — unwrap 이 그것을 버렸다. ⇒ 그대로 돌려준다.
   ★**실측**: `panicked … unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)` — ★올바른 보고가 **패닉 메시지 안에** 실려 사라졌다.

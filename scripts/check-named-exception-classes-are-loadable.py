@@ -35,6 +35,23 @@ HOW THE TWO SETS ARE BUILT
 WHAT THIS DOES NOT SEE -- it is a floor, not a proof:
   * A name built at run time (`format!`, a `const`, a variable, a match arm returning &str) is not a
     literal at the call site, so it is invisible here. Only the literal spelling is checked.
+    THIS ONE IS NOW COUNTED AND PRINTED, AND DELIBERATELY NOT FAILED ON -- decided 2026-09-19,
+    `2026-09-18-nonliteral-exception-call-sites-p0`, adopting the proposal of the same name. Do not
+    "finish the job" by turning that count into a non-zero exit; the proposal asked for exactly that
+    and both of its premises had expired by the time it was picked up:
+      - "now that the baseline is 0" -- it is 1. `jvm/tests/test_exception_construction.rs` has to
+        pass an unloadable name through a variable, because a literal there makes *this* check red.
+        A gate at zero would have been red on main the day it was written, against a site that is
+        correct. The proposal predicted this exact cost in its own `why` field.
+      - "instead of crashing the whole runtime" -- since `rustjava-jvm-exception-throws-instead-of-
+        unwrap` landed, an unloadable name does not crash. It raises NoClassDefFoundError instead of
+        the intended exception: a `catch` that does not match, which is a wrong behaviour and not a
+        dead process.
+    So the harm is real but smaller, and the gate's own cost is now paid up front rather than
+    hypothetically. Printing the number keeps the floor measured between rounds -- which is what the
+    proposal was actually worried about -- without turning a correct test into a build failure.
+    What would change the answer: a run-time-assembled name appearing in *product* code (every site
+    today is a test), or the count growing without anyone noticing it grew.
   * Only `exception(` is scanned. A class named through `new_class(` or `find_class(` directly is
     not covered; those paths return Result to their caller rather than unwrapping, which is why the
     panic axis is this one.
@@ -76,6 +93,18 @@ IMPL_START = re.compile(r"^impl\s+([A-Za-z0-9_]+)\s*\{", re.M)
 # `pub fn as_proto() -> RuntimeClassProto { … }` inside such a block.
 PROTO_FN = re.compile(r"pub fn ([a-z_]+)\(\)\s*->\s*RuntimeClassProto\s*\{(.*?)\n    \}", re.S)
 NAME_FIELD = re.compile(r'name:\s*"([^"]+)"')
+# Every `exception(` site, literal or not, so the blind spot can be counted rather than assumed.
+# The prefix group matters: `exception(` is a substring of eight helper functions in the test trees
+# (`assert_exception(`, `suppress_io_exception(`, …, 41 sites) whose first parameter is `jvm`, not a
+# class name. Counting those as run-time-assembled names answers 33 where the answer is 1.
+# Anchored on the literal so the regex engine can use a fast substring search: the earlier form
+# `[A-Za-z0-9_]*exception\(` made it try every word-character position and doubled the check's
+# runtime. Whether the site is a *bare* `exception(` is decided by looking at the preceding
+# character instead, which is the same question and costs nothing.
+ANY_SITE = re.compile(r'exception\(\s*')
+IDENT_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+FIRST_ARG_LITERAL = re.compile(r'"(?:[^"\\]|\\.)*"')
+IS_DEFINITION = re.compile(r"\bfn\s+$")
 
 
 def die(message):
@@ -102,6 +131,40 @@ def rust_files():
             yield entry
 
 
+_SCAN_CACHE = None
+
+
+def scan_call_sites():
+    """Both axes in one walk: {literal name: [site, ...]} and [non-literal site, ...].
+
+    One pass because the two used to be two, and reading every *.rs twice tripled the check
+    (measured 3.3-4.3 s -> 10.0-13.3 s). Cached because `main()` asks for both.
+    """
+    global _SCAN_CACHE
+    if _SCAN_CACHE is not None:
+        return _SCAN_CACHE
+    named, blind = {}, []
+    for path in rust_files():
+        text = read(path)
+        rel = path.relative_to(ROOT)
+        for match in ANY_SITE.finditer(text):
+            if match.start() and text[match.start() - 1] in IDENT_CHARS:
+                continue  # assert_exception( and friends: a different function
+            if IS_DEFINITION.search(text[max(0, match.start() - 12) : match.start()]):
+                continue
+            # `count` rather than an index of newline offsets: there are ~850 matches in the whole
+            # tree, and building a per-character index for every file cost more than it saved
+            # (measured: it was the regression, not the scan).
+            line = text.count("\n", 0, match.start()) + 1
+            literal = NAMED.match(text, match.start())
+            if literal:
+                named.setdefault(literal.group(1), []).append(f"{rel}:{line}")
+            elif not FIRST_ARG_LITERAL.match(text[match.end() :]):
+                blind.append(f"{rel}:{line}")
+    _SCAN_CACHE = (named, blind)
+    return _SCAN_CACHE
+
+
 def named_classes():
     """{class name: [file:line, ...]} for every literal exception(...) name.
 
@@ -109,13 +172,19 @@ def named_classes():
     after `exception(` and the pattern's `\\s*` has to cross that newline. Line numbers are
     recovered from the match offset so the report still points at a place.
     """
-    found = {}
-    for path in rust_files():
-        text = read(path)
-        for match in NAMED.finditer(text):
-            line = text.count("\n", 0, match.start()) + 1
-            found.setdefault(match.group(1), []).append(f"{path.relative_to(ROOT)}:{line}")
+    found, _ = scan_call_sites()
     return found
+
+
+def runtime_assembled_sites():
+    """`Jvm::exception` call sites whose class name is *not* a literal -- this check's blind spot.
+
+    Reported, never failed on. The decision not to gate it is recorded in the docstring above; the
+    number is printed so that "how big is the blind spot" stops being something a round has to go
+    and measure before it can answer.
+    """
+    _, sites = scan_call_sites()
+    return sites
 
 
 def loadable_classes():
@@ -168,10 +237,25 @@ def loadable_classes():
     return names
 
 
+def report_blind_spot():
+    """One line, always, whether the check passes or fails. Never changes the exit code."""
+    sites = runtime_assembled_sites()
+    if not sites:
+        print("Blind spot: 0 call sites build the class name at run time -- everything below is checked.")
+        return
+    print(f"Blind spot: {len(sites)} call site(s) build the class name at run time, so this check")
+    print("does not see them. Not an error -- an unloadable name there raises NoClassDefFoundError")
+    print("rather than the intended exception, which is a wrong catch, not a crash:")
+    for site in sites:
+        print(f"  ? {site}")
+
+
 def main():
     named = named_classes()
     loadable = loadable_classes()
     missing = sorted(name for name in named if name not in loadable)
+
+    report_blind_spot()
 
     if missing:
         print(f"{len(missing)} named exception class(es) the runtime cannot load:")
