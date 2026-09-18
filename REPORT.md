@@ -1,4 +1,17 @@
 # REPORT
+## [2026-09-18] 루트 fixture 를 한 target 으로 모을 것인가 — ★**모으지 않는다**(rustjava-adopt-test-data-version-freeze-uniform-target-p0)
+- 무엇을: 채택 제안 `2026-09-17-test-data-version-freeze#p0` 의 **결정**(worklog json `adoptedProposals` 기록). ★**코드 0행 · 재컴파일 0 · `.class` 바이트 0 변경** — 산출물은 `docs/test-data-target-policy.md` 와 그 근거다.
+- ⑴**분포**(동결 파일이 아니라 fixture 자신에서 읽었다): 루트 **114**건 · major **52×40 · 65×62 · 66×8 · 68×1 · 70×3** — 동결 파일 머리주석과 일치.
+- ⑵★★**양방향으로 갈랐다 — 이것이 이 회차의 실질이다**:
+  ⒜★**버전이 곧 시험 대상**: **문자열 연결**(52 의 `StringBuilder` 3건을 21 로 재컴파일하면 ★`BootstrapMethods` 가 생기고, 그중 **둘**은 `StringBuilder` 가 사라진다 — ★**셋째 `$FailingAppendable` 은 남는다**(`FormatterIntegration.java:36` 의 명시적 필드 선언 = 낮춤 산물이 아니다) · ★`StringConcat.class` 는 루트에서 indy 를 가진 **유일한** fixture ⇒ **낮춤 전략마다 하나씩**) · **nestmate**(`ThreadInterruption` `access$`**×10** → 21 에서 **0 + `NestMembers`** · `MonitorSemantics` ×4 동일 · JEP 181).
+  ⒝★**아무 버전이나 되는 것**: 「`StringBuilder`·indy 둘 다 없고 단독 재빌드 가능」한 20건을 21 로 재컴파일해 **명령 시퀀스 전체 대조** → ★**16건 완전 동일**.
+  ⇒ ★**본 20건 중 «3건»이 버전이 답이고(nestmate 2 + `NativeMethod`) 1건은 단독 재빌드 불가, 16건은 아무래도 좋다.** ★초판이 적은 「5건」은 **자기 산술과 어긋났다**(5+16=21≠20) — 선별에서 «이미 배제한» `StringBuilder` 2건을 얹어야 나오는 수이고, ★**결론을 더 세게 보이게 하는 방향의 오차**였다(결론은 이 비가 아니라 「0·0」에 선다).
+- ★★**그 커버리지는 다른 데 없다**: `test-data/{cp,indy,ldc,attr}` 생성기 산출 **64건 전수**에서 `StringBuilder` **0** · `access$` **0** ⇒ 루트 52 무리가 **유일한 시험면**이다.
+- ★**결론의 근거**: 제안의 이득(「숫자 하나로 예측」)이 실측에 **뒤집힌다** — 지금 major 52 는 「전-indy·전-nestmate」라는 **뜻을 실제로 갖고**, 전부 펴면 그 구분이 사라지며 **런타임이 아직 구현해야 하는 두 경로의 유일한 커버리지**가 지워진다. 대가도 실재한다(핀 `test_fixture_pins` · 루트 **66건**의 `.txt` 출력 대조).
+- ★**잃는 것**: 비균일은 그대로 남고(신규 fixture 의 target 규칙은 **세우지 않았다** — 별 축) · 16건은 「아무래도 좋은 채」로 남으며 · ★**본 것은 40 중 20 이다**(16/20 을 40 의 비로 읽지 마라) · ★`NativeMethod` 의 명령 차이는 **원인을 못 밝혔다**.
+- 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · ★이 브랜치 base `8c7b473f` 기준이다. 같은 날 앞 회차들의 **579** 는 PR #61 착지 «전» base 의 수라 다르다) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천(★**worklog `.json` `proposals[]` 에 카드 2장으로 «기계 채널»에 실었다** — 초판은 `REPORT` 에만 적어 cockpit 에 **0장**이었다): ⑴**신규 fixture 의 target 규칙**을 세울 것인가(M) ⑵**되돌릴 조건에 «관측자»를 붙인다**(S · 넷 중 셋은 문서를 열어야만 발화한다 — 게이트② 실측). ★초판이 ⑴로 적은 「`NativeMethod` 제3 축 여부」는 ★**검수자가 규명해 닫혔다**(축 2 의 다른 얼굴) ⇒ 카드로 내지 않는다. 상세 = `docs/worklog/2026-09-18-root-fixture-target-decision.md`.
+
 ## [2026-09-18] 거부된 클래스 파일이 «왜»를 말한다 — 세 층을 관통하는 사유 (rustjava-adopt-classfile-error-cause-decision-p0)
 - 무엇을: 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음** — `ClassFormatError` 메시지가 **모든 거부에 같던 「Invalid class file」** 에서 **사유별 문장**으로 바뀐다.
 - ★**제안이 스스로 all-or-nothing 이라 못박았다** — 타입만 고치면 **관측되는 것이 없고**, `||` 사슬을 안 쪼개면 **평평함이 사라지는 게 아니라 옮겨갈 뿐**이다. 넷 다 했다:
