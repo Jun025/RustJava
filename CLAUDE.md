@@ -31,6 +31,7 @@
   cargo test --all
   python3 scripts/check-worklog-json.py
   python3 scripts/check-dod-ci-parity.py
+  python3 scripts/check-named-exception-classes-are-loadable.py
   python3 scripts/check-merge-dropped-symbols.py
   ```
   ★★**이 블록은 이제 «기계가 지킨다» — `scripts/check-dod-ci-parity.py`(CI job `dod_parity`)가
