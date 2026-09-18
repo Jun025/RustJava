@@ -25,8 +25,12 @@ That second half costs something. Measured by running both filters over one wind
 8 merges / 19 definitions, this one reports 10 / 26. The seven extra definitions come from two
 merges -- 514d5b08 (six) and 37ea5a13 (one) -- and they are not all one kind. Four are the second
 of the two real incidents, restored later and present in the tree today. The other three are the
-class described next. Time is not the cost: in that window the wider filter was no slower than the
-narrow one, so the price is reading, not waiting.
+class described next. On time: the measurement noise is larger than the difference between the two
+versions -- three independent runs of the narrow filter over this window span 229s to 585s, a factor
+of 2.6, while the gap between the versions in one back-to-back run was 70s over 83 merges, about
+0.8s per merge. So there is no significant increase to report, which is a weaker claim than "no
+slower" and the one the numbers actually support. A pull request carries 0-2 internal merges. The
+price of widening is reading, not waiting.
 
 A branch that deletes or renames a definition main still has goes red on its next base pull, and an
 ordinary refactor then has to carry a trailer to say so. 37ea5a13 is exactly that: it pulled
@@ -151,9 +155,11 @@ def check(merge):
     # Both what the merged-in branch touched and what the merge itself touched. Restricting this to
     # the first set was the original shape and it was wrong: a resolution can revert a file the other
     # branch never touched -- "fixed the conflict in A and put B back" -- and that is this check's
-    # whole reason for existing. Measured on the second of the two incidents, 514d5b08: with the
-    # narrow filter it reports "0 file(s) examined" and passes; with this one it names the same four
-    # definitions the first incident dropped. The cost is real and is recorded in Scope above.
+    # whole reason for existing. Measured on the second of the two incidents, 514d5b08, by calling
+    # check() on each version: the narrow filter examines 4 files, finds 0 and passes; this one
+    # examines 13 and names the same four definitions the first incident dropped. The narrow filter
+    # was not blind -- it read four files and still missed it, because none of the four was where
+    # the loss landed. The cost is real and is recorded in Scope above.
     changed = set((run("diff", "--name-only", base, theirs) or "").split("\n")) | set(
         (run("diff", "--name-only", base, merge) or "").split("\n")
     )
