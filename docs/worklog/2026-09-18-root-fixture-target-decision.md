@@ -35,7 +35,8 @@ javap -c -p <class> | grep -oE '^\s+[0-9]+: [a-z0-9_]+' | awk '{print $2}'   # �
 
 | fixture | 커밋본(52) | `--release 21` 재컴파일 |
 |---|---|---|
-| `FormatterIntegration` · `$FailingAppendable` · `NullSpecGuards` | `StringBuilder` | ★`BootstrapMethods` 생기고 `StringBuilder` **사라짐** |
+| `FormatterIntegration` · `NullSpecGuards` | `StringBuilder` | ★`BootstrapMethods` 생기고 `StringBuilder` **사라짐** |
+| `FormatterIntegration$FailingAppendable` | `StringBuilder` | ★`BootstrapMethods` 는 생기나 **`StringBuilder` 는 남는다** — `FormatterIntegration.java:36` 의 `private final StringBuilder output` 은 ★**«낮춤 산물»이 아니라 «명시적 API 사용»**이라 target 과 무관하다 |
 
 ★**`StringConcat.class`(major 65)는 루트에서 `invokedynamic` 을 가진 «유일한» fixture 다**
 ⇒ 루트 트리는 **낮춤 전략마다 정확히 하나씩** 갖고 있고, 52 를 재타깃하면 **전-indy 쪽이 지워진다**.
@@ -50,8 +51,11 @@ javap -c -p <class> | grep -oE '^\s+[0-9]+: [a-z0-9_]+' | awk '{print $2}'   # �
 
 ★이 repo 는 `NestHost`/`NestMembers` 처리를 **최근에** 넣었다 ⇒ 양쪽 다 **살아 있는 시험면**이다.
 
-★**설명하지 못한 것 하나**: `NativeMethod` 도 21 에서 명령 수가 바뀐다(`invokespecial` 3→2 · `invokevirtual` 1→2)
-— 양쪽 다 Nest 속성 0 · `StringBuilder` 0 이라 위 두 축으로 설명되지 않는다. ★**원인을 못 밝혔고, 밝히지 못한 채로 적는다.**
+★★**`NativeMethod` 는 «제3 축»이 아니라 축 2 의 «다른 얼굴»이다 — 게이트② 검수자가 규명했다**(★재조사하지 않고 인용한다).
+`javap -c -p` 전문 diff 가 **단 한 줄**이다: `private native void missing()` 를 **같은 클래스의 `static main`** 에서 부르는 자리가
+`invokespecial` → **`invokevirtual`** 로 바뀐다. JEP 181 이후 **같은 nest 안의 private 인스턴스 메서드**는 직접 호출되고,
+여기서는 **자기 클래스가 자기 nest host** 라 지울 `access$` 브리지가 없어 **opcode 만** 움직인다.
+⇒ ★**상이 3건이 두 축으로 «전부» 설명된다 — 설명 안 되는 잔여 0.**
 
 ### 아무 버전이나 되는 것 (★재타깃해도 얻는 것이 0)
 
@@ -62,7 +66,9 @@ major 52 중 **소스가 있고 단독 재빌드 가능**하며 `StringBuilder`�
 - 3건 다름 = 위 nestmate 둘 + `NativeMethod`.
 - 1건 재빌드 불가(형제 참조 — `verify-javac-fixtures.sh` 의 알려진 한계).
 
-⇒ ★**정직한 분할: 본 20건 중 «5건은 버전이 답이고 16건은 아무래도 좋다».**
+⇒ ★**정직한 분할: 본 20건 중 «3건이 버전이 답»(nestmate 2 + `NativeMethod`) · «1건 단독 재빌드 불가» · «16건은 아무래도 좋다».**
+★**초판의 「5건」은 자기 산술과 어긋났다**(5+16=21≠20) — 선별 기준(`StringBuilder` 없음)에서 **정의상 배제된** 2건을 얹은 수다.
+★**오차의 방향이 급소다**: 「버전이 답」쪽 **과대**라 ★**결론을 더 세게 보이게 한다.** 결론 자체는 이 비가 아니라 아래 「0·0」에 선다.
 
 ### ★그 커버리지는 다른 데 «없다»
 
@@ -90,7 +96,7 @@ major 52 중 **소스가 있고 단독 재빌드 가능**하며 `StringBuilder`�
 - **런타임이 옛 모양을 버리면** — major ≤ 52 를 안 받거나 `StringBuilder`·`access$` 경로가 불요가 되면 52 무리는 커버리지가 아니다.
 - **그 커버리지가 다른 데서 생기면** — 위 「0 · 0」은 **날짜 있는 측정**이지 항구 속성이 아니다. 뒤 회차가 그 경로를 덮는 fixture 를 넣으면 재실행하라.
 - **동결이 사라지면** — 이 결정은 `class-file-versions.txt` + `test_fixture_pins.rs` 가 버전을 붙잡아 준다는 전제 위에 선다.
-- **`NativeMethod` 의 차이가 설명되면** — 제3의 버전 축이면 「버전이 답인」 집합이 넓어진다(이 결정을 **강화**한다).
+- **제3의 버전 축이 나오면** — 「버전이 답인」 집합이 넓어져 이 결정을 **강화**한다. ★단 초판이 그 후보로 적은 `NativeMethod` 는 ★**축 2 로 닫혔다**(위) ⇒ 현재 축은 **둘**이고, 이 조건은 «새 후보»를 기다린다.
 
 ## 잃는 것 — 「없다」로 적지 않는다
 
@@ -98,4 +104,16 @@ major 52 중 **소스가 있고 단독 재빌드 가능**하며 `StringBuilder`�
   이 결정은 **기존 것을 건드리지 않기로** 한 것이지 **신규 규칙을 세운 것이 아니다**(그건 별 축이다).
 - ★**16건은 «아무래도 좋은 채»로 남는다** — 정리하면 깔끔해질 자리를 정리하지 않기로 했고, 그 이유는
   이득(0)보다 대가(핀 갱신 · `.txt` 대조 위험)가 크기 때문이지 **그 자리가 옳아서가 아니다.**
-- ★**본 것은 40 중 20 이다.** 나머지 20(소스 없음 · 내부 클래스)은 **재지 않았다** — 16/20 을 40 전체의 비로 읽지 마라.
+- ★**본 것은 40 중 20 이다.** 나머지 20 은 **내부 클래스 18 + `StringBuilder` 보유 최상위 2** 다 — ★**«소스 없음»은 공집합이다**(major-52 **40건 전건**이 `test-data/src/<outer>.java` 를 갖는다 · NOSRC **0**). ★초판이 적은 배제 사유가 틀렸다(수 20 은 맞다). 16/20 을 40 전체의 비로 읽지 마라.
+- ★**선별 기준은 「소스가 있는」이 아니라 「최상위 + `StringBuilder` 없음」이다** — 초판은 「단독 재빌드 가능한 20건」이라 적었는데 ★그중 1건(`VirtualDispatchSemantics`)은 **재빌드가 안 됐다** ⇒ 재빌드 가능 여부는 **기준이 아니라 결과**다.
+
+## 후속 — ★**카드로 냈다**(초판은 산문에만 적어 cockpit 도달이 «0장»이었다)
+
+worklog `.json` 의 `proposals[]` **2장**(7키 전부):
+⑴**신규 fixture 의 target 규칙을 세울 것인가**(M — 위 「잃는 것」 첫 줄이 연 자리) ·
+⑵**되돌릴 조건에 «관측자» 붙이기**(S — 게이트② 실측: 넷 중 «동결이 사라지면» 하나만 자기집행이고
+나머지 셋은 **누군가 이 문서를 열어야만** 발화한다).
+
+★**초판이 후속으로 적은 「`NativeMethod` 제3 축 여부」는 카드가 아니다** — 게이트② 검수자가 그 자리에서
+규명해 **닫혔다**(축 2 의 다른 얼굴). 닫힌 질문을 카드로 내면 운영자가 **이미 답이 있는 것**을 채택하게 된다.
+

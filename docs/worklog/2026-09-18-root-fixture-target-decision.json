@@ -10,16 +10,39 @@
   "version distribution read from the fixtures themselves (od on bytes 6-7), not from the freeze file: 114 root fixtures, major 52 x40, 65 x62, 66 x8, 68 x1, 70 x3 — matches what test-data/class-file-versions.txt's header claims",
   "VERSION IS THE SUBJECT, axis 1: the three major-52 fixtures carrying StringBuilder (FormatterIntegration, its inner class, NullSpecGuards) gain BootstrapMethods and lose StringBuilder when recompiled at --release 21. StringConcat.class (major 65) is the only root fixture with invokedynamic at all, so the tree holds exactly one fixture per lowering strategy",
   "VERSION IS THE SUBJECT, axis 2: ThreadInterruption has 10 access$ bridges and no nest attributes at 52; at 21 the bridges are gone and NestMembers appears. MonitorSemantics the same with 4. That is JEP 181 nestmates, and this repo added NestHost/NestMembers handling recently",
-  "VERSION IS IRRELEVANT: of the 20 major-52 fixtures with a rebuildable source and neither StringBuilder nor BootstrapMethods, 16 recompile at --release 21 to an identical full opcode sequence; 3 differ (the two nestmate cases plus NativeMethod) and 1 cannot be rebuilt alone",
+  "VERSION IS IRRELEVANT: of the 20 major-52 fixtures that are top-level and carry neither StringBuilder nor BootstrapMethods, 16 recompile at --release 21 to an identical full opcode sequence; 3 differ (the two nestmate cases plus NativeMethod) and 1 cannot be rebuilt alone",
   "NO REDUNDANT COVERAGE: across the 64 generator-built fixtures in test-data/{cp,indy,ldc,attr}, the count of StringBuilder is 0 and of access$ bridges is 0 — so the root 52 cohort is the only place those paths are exercised",
-  "cargo test --all: 583 passed / 0 failed / 1 ignored, unchanged — this round adds no code. Measured on this branch's base 8c7b473f; earlier rounds the same day reported 579 against a base that predates PR #61's landing, so the two numbers are both correct for their own base and should not be compared directly."
+  "cargo test --all: 583 passed / 0 failed / 1 ignored, unchanged — this round adds no code. Measured on this branch's base 8c7b473f; earlier rounds the same day reported 579 against a base that predates PR #61's landing, so the two numbers are both correct for their own base and should not be compared directly.",
+  "SELECTION, restated after gate 2: the 20 are 22 top-level major-52 fixtures minus the 2 that carry StringBuilder. Counted at fix time: INNER 18, TOP 22, NOSRC 0 — every one of the 40 has a source under test-data/src, so 'no source' was an empty set and the first draft's stated reason for excluding the other 20 was wrong even though the count was right.",
+  "NativeMethod, resolved by the gate-2 review and cited rather than re-investigated: the whole javap -c -p diff is one line, invokespecial becoming invokevirtual on a call to a private native method from static main in the same class. That is JEP 181 again — the class is its own nest host, so there is no access$ bridge to remove and only the opcode moves. All three differing fixtures are therefore explained by the two axes, with no residue."
  ],
  "issues": [
   "NativeMethod's opcode counts also change at 21 (invokespecial 3->2, invokevirtual 1->2) with no nest attributes and no StringBuilder on either side. The cause was not isolated; it is recorded as a real difference rather than attributed to one of the two axes. If it turns out to be a third version axis it widens the 'version is the subject' set.",
   "The 'no redundant coverage' claim is a measurement with a date, not a standing property. A later round that adds StringBuilder or access$ fixtures under test-data/ subdirectories would make the root cohort redundant and this decision should be re-run.",
-  "The 20 examined are the major-52 fixtures that can be rebuilt alone. The other 20 at major 52 either have no source under test-data/src or carry an inner-class marker, so the 16/20 ratio is not a claim about all 40."
+  "The 20 examined are the top-level major-52 fixtures without StringBuilder. The other 20 are 18 inner classes plus the 2 top-level fixtures that carry StringBuilder — 'no source' is an empty set, since all 40 have one. The 16/20 ratio is not a claim about all 40. Selection is by source shape, not by rebuildability: one of the 20 (VirtualDispatchSemantics) could not be rebuilt alone, which is a result rather than a criterion.",
+  "One of the three string-concatenation fixtures does not lose StringBuilder when retargeted. FormatterIntegration$FailingAppendable declares `private final StringBuilder output` at test-data/src/FormatterIntegration.java:36, so that use is explicit API rather than a lowering artefact and survives any target. What the target moves is the concatenation, not every mention."
  ],
  "adoptedProposals": [
   "2026-09-17-test-data-version-freeze#p0"
+ ],
+ "proposals": [
+  {
+   "title": "Decide which target a newly added root fixture should be built for",
+   "plainSummary": "We decided not to move the fixtures we already have, but nobody has said what target a new one should use, so the next person picks whatever their JDK defaults to.",
+   "userBenefit": "A fixture's target stops being an accident of who added it and when, which is the drift the freeze can record but not prevent.",
+   "why": "The decision round measured the existing spread and left this open on purpose — it is about new files, not existing ones, so folding it in would have widened a decision ticket into a policy one. The freeze plus test_fixture_pins stops a fixture moving on its own but says nothing about what it should have been. Measured in that round: the target changes the shape for 3 of 20 examined and is arbitrary for 16, so the answer is probably 'pick one and say why', not 'it does not matter'.",
+   "tradeoff": "Picking a single target contradicts the decision this round just made for existing fixtures, so the rule has to be written as 'new fixtures default to X unless the test is about a version behaviour', and that exception is where the judgement lives — which means the rule cannot be fully mechanical. Writing it also invites a follow-up urge to retrofit existing fixtures, which this round measured as not worth its cost.",
+   "effort": "M",
+   "target": "docs/test-data-target-policy.md, AGENTS.md"
+  },
+  {
+   "title": "Give the revert conditions in the target policy an observer",
+   "plainSummary": "The policy lists four conditions that should make us revisit it, but only one of them is something a person or a check would actually notice.",
+   "userBenefit": "A decision that records when it stops being true is only useful if someone finds out when that happens; otherwise it quietly becomes folklore.",
+   "why": "Measured by the gate-2 review of that round: of the four conditions, 'the freeze goes away' is effectively self-enforcing because deleting class-file-versions.txt or test_fixture_pins.rs shows up as a diff and a red test; 'that coverage turns up elsewhere' has a command to measure it but nobody scheduled to run it; 'the runtime drops the old shapes' has no observer at all; and the fourth was retired when NativeMethod turned out to be the nestmate axis. So three of four rely on someone happening to open the document.",
+   "tradeoff": "The cheap version — re-run the zero-coverage count in CI — adds a check whose failure mode is a judgement call rather than a defect, and this repo has been bitten before by checks that fire on something nobody is obliged to act on. The alternative, leaving it to review discipline, is what produced the current state.",
+   "effort": "S",
+   "target": "docs/test-data-target-policy.md, scripts/"
+  }
  ]
 }
