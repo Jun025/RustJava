@@ -1,0 +1,36 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-18",
+ "taskId": "rustjava-adopt-classfile-error-cause-decision-p0",
+ "summary": "A rejected class file now says what is wrong with it, all the way out to the ClassFormatError message. ClassFileError::InvalidFormat carries a &'static str, ClassDefinitionError::InvalidClassFile carries it too so the From impl stops dropping it, both boundary sites pass it through, and validate_class's eight-term || chain is one `if` per rule so the cause can differ. Threading the cause immediately caught two things the flat error had been hiding: a test that believed the wrong layer refused its input, and a predicate whose name went stale when a previous round widened it.",
+ "changes": [
+  "classfile/src/error.rs: InvalidFormat -> InvalidFormat(&'static str), with the reasoning for a string rather than a variant per rule",
+  "classfile/src/validation.rs: the eight-term || chain becomes one `if` per rule; 14 distinct causes across the class, field and method rules (8 class, 3 field, 3 method — counted with `grep -c 'ClassFileError::InvalidFormat(' classfile/src/validation.rs`)",
+  "classfile/src/class.rs: 3 parse-level causes (unparsable, trailing bytes, version below 45)",
+  "jvm-bytecode/src/error.rs: InvalidClassFile(&'static str); the From impl carries the cause instead of discarding it",
+  "src/runtime.rs, test-utils/src/lib.rs: the ClassFormatError message is the cause instead of the hardcoded \"Invalid class file\"",
+  "classfile/tests/test.rs: 11 assertions now pin which rule fired, not just that something did",
+  "tests/test_class_format.rs: test_a_rejected_class_says_why at the user-visible boundary, plus the stale note about why this could not be asserted"
+ ],
+ "verification": [
+  "MUTATION M2, make the From impl drop the cause again (the exact bug the proposal named): test_a_rejected_class_says_why red",
+  "MUTATION M3, collapse two distinct causes to one string in validate_class: red — caught by the per-row `assert!(err.contains(cause))`, measured: the failure is reported at tests/test_class_format.rs:450 and execution never reaches the end of the loop. An earlier draft of this round credited a dedup assertion at the end of the test; that was wrong, because the vector it de-duplicated held the table's expected literals rather than anything the product said, so it compared constants to constants and could not fail. Proven by neutering `contains` while the collapse was still applied: the test then passed. The dedup block has been removed rather than left as a comment claiming a guarantee it did not provide",
+  "MUTATION M1, make src/runtime.rs hardcode \"Invalid class file\" again: red. This is the third of the three layers, so the whole path is covered by a mutation.",
+  "restore after each: test_class_format 17 passed / 0 failed",
+  "FINDING 1 — a test believed the wrong layer. classfile/tests/test.rs asserted that an index naming the wrong constant kind is refused by validation; the cause says it is refused by the parser (\"truncated or unparsable class file\"). The assertion was corrected to the measurement rather than the code to the assumption, and the comment now says it was measured.",
+  "FINDING 2 — a predicate's name went stale and nothing noticed. bootstrap_method_static_arguments_are_in_the_pool also requires the argument to be a loadable constant (its own docstring says so, and quotes OpenJDK's \"bad constant type\"). The cause is worded for the rule as it now is; the function was NOT renamed, since that is a refactor and out of scope.",
+  "cargo test --all: 578 -> 579 passed / 0 failed / 1 ignored (this round adds one test)",
+  "classfile suite: 15 + 13 passed / 0 failed"
+ ],
+ "issues": [
+  "COVERAGE GAP, measured not assumed: the last hop is written twice — src/runtime.rs and test-utils/src/lib.rs — and only the first is under test. Mutating the test-utils copy to drop the cause leaves cargo test --all at 579 passed / 0 failed. Deduplicating them is a refactor and was not done; the gap is reported instead.",
+  "The causes are strings, so nothing stops two rules from being given the same wording, and nothing in the suite checks that they do not. An earlier draft of this round claimed a dedup assertion covered it; that assertion compared the table's expected literals to each other rather than anything the product said, so it could not fail, and it has been removed. What remains is the per-row `assert!(err.contains(cause))`, which covers exactly the three fixtures that test names.",
+  "This does not replace the shaped-fixture discipline, as the proposal said: a cause names which check fired, not whether every axis inside a multi-axis check is observable.",
+  "Scope collision: PR #66 (open) also edits validate_class's chain. Whichever lands second pulls base and re-splits the added term — the conflict is real but mechanical, and both changes are additive within the same function.",
+  "UPSTREAM DIVERGENCE: docs/upstream-sync-approach.md section 3-B closes the message axis with \"upstream wins on wording\", and this round reopens it — every rejection message in classfile/src/validation.rs is now ours and differs from upstream's single \"Invalid class file\". The next sync round meets this file first, so the cost is named here rather than discovered there."
+ ],
+ "adoptedProposals": [
+  "2026-09-17-classfile-error-cause-decision#p0"
+ ],
+ "proposals": []
+}
