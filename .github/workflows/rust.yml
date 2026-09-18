@@ -62,6 +62,17 @@ jobs:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-worklog-json.py
 
+  # a conflict resolution that drops one side's work leaves no other trace: no marker, mergeable
+  # CLEAN, suite green. fetch-depth 0 because the check needs the merge commits and their parents,
+  # which a shallow checkout does not have. One runner, not the matrix.
+  merge_drops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/check-merge-dropped-symbols.py
+
   # parity lock: the CLAUDE.md DoD block must reproduce this file's checks (see the script's
   # docstring — hand comparison failed five rounds in a row). One runner, not the matrix.
   dod_parity:
