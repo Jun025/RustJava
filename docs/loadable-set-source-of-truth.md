@@ -32,9 +32,12 @@ The check compares two sets. Reading the loader replaces one of them:
   way to learn it except by reading the source, short of executing all 846 call sites.
 
 Defect 4 was in `named`, and that half keeps every hazard that made it: 846 call sites, rustfmt
-splitting calls across lines, and — found the next day by
-`2026-09-18-nonliteral-exception-call-sites` — the same anchor matching its own token inside a
-**comment**. Reading the loader removes three defects' worth of parsing and leaves the parser.
+splitting calls across lines, and — found **4 h 31 min later** by
+`2026-09-18-nonliteral-exception-call-sites` (`89c2e83c` 19:49 → `128e0fe5` 00:21, which is "the next
+day" only by the calendar) — the same anchor matching **eight other function names**: `exception(` is
+a substring of `assert_exception(`, `suppress_io_exception(` and six more, **41 sites** whose first
+argument is `jvm` rather than a class name. Counting them would have answered **33** instead of the
+correct **0**. Reading the loader removes three defects' worth of parsing and leaves the parser.
 
 ## What it would cost
 
@@ -46,9 +49,11 @@ from `rustjava-runtime`, or writing a test that restates the list, which re-crea
 problem the proposal is trying to remove.
 
 **A build dependency on a check that has none.** Measured: the checker runs in **0.75–0.96 s** on
-nothing but source text. Its CI job is five lines — checkout, `python3 script`. Four of the five jobs
-in `rust.yml` are that shape (`worklog_json`, `merge_drops`, `dod_parity`,
-`named_exception_classes`); only `rust_ci` needs a toolchain. Reading from the loader moves this
+nothing but source text. Its own job, `named_exception_classes`, is five lines — checkout, `python3
+script`. Four of the five jobs in `rust.yml` need **no toolchain** (`worklog_json`, `merge_drops`,
+`dod_parity`, `named_exception_classes`); only `rust_ci` does. (Line counts differ among those four —
+`merge_drops` is seven, carrying `fetch-depth: 0` — which is why the shared property named here is the
+toolchain, not the length.) Reading from the loader moves this
 check across that line, in CI and in the local DoD both.
 
 The proposal names the drift risk itself: a generated list goes stale when the emitter is not re-run.
@@ -77,8 +82,12 @@ independence, the 0.8 s, and the zero build steps. That is not built here — th
 asked for a decision, not a third mechanism — and is filed as a follow-up.
 
 *Not claimed*: that this invariant catches every mis-attribution. A registration mapped to a wrong
-but still distinct name can keep the count at 268. It catches the undercount class, which is what
-both measured false greens were.
+but still distinct name can keep the count at 268. And it catches an undercount only on the
+**loadable** side: all three of its terms — registration lines, parsed registrations, resolved names —
+are read from `loader.rs` and `classes/`, so it never sees the `named` count at all. Of the two
+measured false greens it therefore catches **one** (defect 3, the colliding bare-name key) and misses
+defect 4, whose undercount was on the `named` side (812 against 846). What it does catch is one false
+green and one false red.
 
 ## What would reopen this
 

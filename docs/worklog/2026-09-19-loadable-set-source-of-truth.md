@@ -29,9 +29,12 @@ re-derivation"* — so it was verified against the fix commit `89c2e83c` rather 
 
 1. **It removes one of the two parsers, not the parsing.** `named` — which class names the Rust code
    passes to `Jvm::exception` — cannot come from the loader; there is no way to know it but to read
-   the source. Defect 4 lived there, and so did the next one found: the sibling round
-   (`2026-09-18-nonliteral-exception-call-sites`) hit the same anchor matching its own token **inside
-   a comment** a day later.
+   the source. Defect 4 lived there, and so did the next one found **4 h 31 min later** (`89c2e83c`
+   19:49 → `128e0fe5` 00:21 — "a day later" only by the calendar): the sibling round
+   (`2026-09-18-nonliteral-exception-call-sites`) hit the same anchor matching **eight other function
+   names** — `exception(` is a substring of `assert_exception(`, `suppress_io_exception(` and six
+   more, **41 sites** whose first argument is `jvm`, not a class name. Counting them would have
+   answered **33** where the correct answer is **0**.
 2. **It needs a production API that only the check would use.** `get_runtime_class_proto` builds its
    268 registrations as a **local array inside the function** and consumes them with
    `.find(|proto| proto.name == name)`. Measured: **zero** public functions enumerate the protos. So
@@ -56,8 +59,20 @@ Defects 1 and 3 were visible without giving up independence, the 0.8 s, or the z
 Filed as a follow-up rather than built here, because the adopted proposal asked for a decision.
 
 *Not claimed*: that the invariant catches every mis-attribution — a registration mapped to a wrong
-but distinct name keeps the count at 268. It catches the undercount class, which is what both
-measured false greens were.
+but distinct name keeps the count at 268. And it sees an undercount only on the **loadable** side: all
+three of its terms come from `loader.rs` and `classes/`, never from the `named` count. So of the two
+measured false greens it catches **one** (defect 3) and misses defect 4, whose undercount was on the
+`named` side (812 against 846) — what it catches is one false green and one false red.
+
+## Where this round's own rule slipped (gate 2, F1)
+
+The rule this round applied to the "3 of 4" claim — *read it from the commit, not from the prose
+about it* — was not applied to the sibling citation. The sibling's worklog says comments were a
+measured **zero** ("0 on a commented-out line"); the trap it actually hit was the anchor matching
+eight other function names. Worse, the same commit's `STATE.md` described that sibling correctly six
+lines further down, so **one commit stated the same fact two ways**. Corrected above and in three
+other places. The lesson is not "cite more carefully" but the rule that was already written here:
+apply it to *every* claim, including the ones that merely set the scene.
 
 ## A premise in the brief that does not hold for this repo
 
