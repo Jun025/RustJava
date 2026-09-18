@@ -61,7 +61,13 @@ Usage:
 
 Exit: 0 nothing dropped, or everything dropped is accounted for by a trailer
       1 something was dropped and not accounted for
-      2 could not run (bad range, no git)
+      2 could not measure -- a git call failed, or the clone is shallow
+
+★ 2 is not a softer 0. Every git call here raises rather than returning nothing, because the one
+failure this check must never produce is a green one: in a shallow clone the second parent's objects
+are absent, every read of it comes back empty, and the old code printed `✓ (0 file(s) examined)` and
+exited 0. Measured on this repository at depth 10: merges that examine 20 files in a full clone
+examined 0 and the whole run was green. A check for a silent loss had a silent pass in it.
 
 `-s ours` merges -- "record these upstream cuts as ancestors" -- drop the whole other side on
 purpose, and one trailer per name would mean hundreds. They use the wildcard form instead:
@@ -102,9 +108,44 @@ PATTERNS = {
 }
 
 
-def run(*args):
+class CannotMeasure(RuntimeError):
+    """git could not answer, so this run knows nothing -- as opposed to knowing there is nothing."""
+
+
+def run(*args, absence_is_an_answer=False):
+    """git's stdout.
+
+    ★ A failing git raises. It used to return None, and every caller wrote `run(...) or ""`, which
+    turned "git could not tell me" into "git told me nothing": an empty diff, no parents, no
+    symbols -- and then `✓ (0 file(s) examined)` with rc 0. A check that exists to catch a silent
+    loss had a silent pass in it, in the one environment (an incomplete clone) where it matters.
+
+    `absence_is_an_answer=True` is for the one call where a non-zero exit is a real answer:
+    `git show <rev>:<path>` fails when the path is simply not in that tree, which is ordinary. The
+    preflight in main() rules out the other reason that call can fail, so once it has run, a
+    failure there means absence and nothing else. Every other call site raises.
+    """
     result = subprocess.run(["git", *args], capture_output=True, text=True)
-    return result.stdout if result.returncode == 0 else None
+    if result.returncode == 0:
+        return result.stdout
+    if absence_is_an_answer:
+        return None
+    raise CannotMeasure(f"git {' '.join(args)} exited {result.returncode}: {result.stderr.strip() or '(no stderr)'}")
+
+
+def preflight():
+    """What has to be true before a failing `git show` can be read as "the path is not there".
+
+    Only one thing, and it is the environment this check is blind in: a shallow clone does not hold
+    the objects a merge's second parent needs, so every read of it fails and every failure used to
+    read as "empty". Measured on this repository at depth 10: merges that examine 20 files in a full
+    clone examined 0 and the run was green.
+    """
+    if (run("rev-parse", "--is-shallow-repository") or "").strip() == "true":
+        raise CannotMeasure(
+            "shallow clone: a merge's second parent is not here, so every read of it would look empty. "
+            "Fetch the full history (git fetch --unshallow) and run again."
+        )
 
 
 def symbols(rev, path):
@@ -114,7 +155,9 @@ def symbols(rev, path):
             break
     else:
         return None
-    blob = run("show", f"{rev}:{path}")
+    # The only tolerated failure in the file: a path that is not in this tree is a real answer,
+    # and it means "no definitions here". preflight() has already ruled out the other reason.
+    blob = run("show", f"{rev}:{path}", absence_is_an_answer=True)
     if blob is None:
         return set()
     found = set()
@@ -129,7 +172,7 @@ def symbols(rev, path):
 
 def excused(merge):
     """Names the merge commit itself says were dropped on purpose, with a reason."""
-    message = run("log", "-1", "--format=%B", merge) or ""
+    message = run("log", "-1", "--format=%B", merge)
     names = set()
     for line in message.split("\n"):
         match = re.match(r"^Dropped-from-theirs:\s*(.+?)\s+--\s+(\S.*)$", line.strip())
@@ -145,13 +188,15 @@ def excuses_everything(accounted):
 
 def check(merge):
     """(findings, files_examined) for one merge commit. findings is a list of (path, name)."""
-    parents = (run("rev-list", "--parents", "-n", "1", merge) or "").split()
+    parents = run("rev-list", "--parents", "-n", "1", merge).split()
     if len(parents) < 3:
         return [], 0  # not a merge: a squash or an ordinary commit has nothing to compare
     ours, theirs = parents[1], parents[2]
-    base = (run("merge-base", ours, theirs) or "").strip()
+    base = run("merge-base", ours, theirs).strip()
     if not base:
-        return [], 0
+        # git succeeded and still named no base: unrelated histories. That is a fact, not a failure,
+        # but there is nothing to compare against, so say so rather than pass.
+        raise CannotMeasure(f"{merge[:8]}: its parents share no merge base, so there is nothing to diff")
     # Both what the merged-in branch touched and what the merge itself touched. Restricting this to
     # the first set was the original shape and it was wrong: a resolution can revert a file the other
     # branch never touched -- "fixed the conflict in A and put B back" -- and that is this check's
@@ -160,8 +205,8 @@ def check(merge):
     # examines 13 and names the same four definitions the first incident dropped. The narrow filter
     # was not blind -- it read four files and still missed it, because none of the four was where
     # the loss landed. The cost is real and is recorded in Scope above.
-    changed = set((run("diff", "--name-only", base, theirs) or "").split("\n")) | set(
-        (run("diff", "--name-only", base, merge) or "").split("\n")
+    changed = set(run("diff", "--name-only", base, theirs).split("\n")) | set(
+        run("diff", "--name-only", base, merge).split("\n")
     )
     findings = []
     examined = 0
@@ -181,16 +226,24 @@ def check(merge):
 
 def main():
     rev_range = sys.argv[1] if len(sys.argv) > 1 else "origin/main..HEAD"
-    merges = run("rev-list", "--merges", rev_range)
-    if merges is None:
-        print(f"cannot read {rev_range}", file=sys.stderr)
+    try:
+        preflight()
+        merges = run("rev-list", "--merges", rev_range)
+    except CannotMeasure as failure:
+        # ★ Not `✓`, and not rc 0. "I could not look" is its own outcome, and the whole point of
+        # this file is that it must not be spelled the same way as "I looked and it was clean".
+        print(f"cannot measure: {failure}", file=sys.stderr)
         return 2
 
     merges = [m for m in merges.split("\n") if m]
     total = 0
     for merge in merges:
-        findings, examined = check(merge)
-        subject = (run("log", "-1", "--format=%s", merge) or "").strip()
+        try:
+            findings, examined = check(merge)
+            subject = run("log", "-1", "--format=%s", merge).strip()
+        except CannotMeasure as failure:
+            print(f"cannot measure: {failure}", file=sys.stderr)
+            return 2
         if findings:
             print(f"✗ {merge[:8]} {subject[:60]}")
             for path, name in findings:
