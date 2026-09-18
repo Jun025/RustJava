@@ -1,4 +1,28 @@
 # REPORT
+## [2026-09-18] 검사기의 «거짓 초록» 둘과 «거짓 빨강» 하나 — 게이트² 반려 승계 (rustjava-lock-every-named-exception-class-is-loadable-fix)
+- 무엇을: PR #72 의 검사기 결함 **3건** 정정. ★**베이스라인 0 인 검사기라 «거짓 초록 = 검사기 부재»** 다. ★런타임 클래스 추가 **0** · `loader.rs` `protos` **무접촉** · `jvm.rs` **무접촉**.
+- ★**F1(거짓 초록)** 짧은 이름 충돌 — `Formatter`(`java/util` ↔ `java/util/logging`) · `JarURLConnection`(`java/net` ↔ `org/rustjava/net`) **2쌍 실재**. ★재현: 한쪽 등재를 지우고 그 이름을 `exception(` 에 넣으면 **전 `✓ … 263 loadable` rc=0**(거짓 초록) → **후 rc=1**. 둘째 쌍도 동일. ★처방 = 키를 **(모듈, 타입, 함수)** 로.
+- ★**F2(거짓 초록)** 줄 단위 스캔이 다중 줄 `exception(` 을 못 봤다(rustfmt 가 쪼갠다). ★재현: 다중 줄 호출에 미등재 이름 → **전 rc=0(안 보임) → 후 rc=1**. ★**`.exception(` 846 − 다중 줄 34 = 812** ⇒ 검수자의 846 과 초판의 812 차이가 **F2 그 자체**였다.
+- ★**F3(거짓 빨강 + 사실오류)** `as_proto` 전용 정규식이 `list_proto` **3건**을 놓쳤고, 한 `impl` 에 생성자가 둘일 때 첫 `name:` 만 집어 엉뚱한 클래스를 귀속시켰다. ⇒ ★**초판의 「정의됐지만 미등재 5건」은 «틀렸다» — 실제 미등재 «0»**(`name:` 268 = 등재 268). 그 기록을 5곳에서 정정했다.
+- ★**수의 전/후와 «왜»**: 이름 **41→43** · 호출부 **812→846**(F2) · loadable **263→268**(F3 +3 · F1 충돌쌍 +2). ★**loadable 이 는 것은 느슨해진 것이 아니라** 종전에 265 등재를 263 으로밖에 해석 못 했다는 뜻이다.
+- ★**ⓒ 새 red 위험을 «편집 전»에 쟀다** — F2 로 늘어나는 이름 2개(`InstantiationError`·`UnsupportedClassVersionError`)가 **둘 다 등재** ⇒ **새 red 0 · rc=0 유지**(미등재였으면 멈추고 회신할 자리였다).
+- ★**시간**: `real` ×3 전 **1.42/1.67/1.46** ↔ 후 **2.01/1.69/1.19** — ★**구간이 겹친다** ⇒ 「늘지 않았다」가 아니라 **「유의하게 늘지 않았다」**.
+- ★**잃는 것**: 검사 대상이 늘어 **앞으로 더 자주 red 가 날 수 있다**(★실패가 아니라 «보이게 된 것») · 해석 로직이 3튜플 키로 **복잡해졌다**(결함 3건이 전부 그 자리였다 — 후속 카드) · ★여전히 **바닥**(런타임 조립 이름·`new_class(` 경로는 그대로 안 보인다).
+- 검증: 검사기 `✓ 43 named … all 268 loadable` rc=0 · `check-worklog-json` rc=0 · `check-dod-ci-parity` rc=0(명령 7개) · `cargo fmt` rc=0 · `mbvar-guard` rc=0(위반 0).
+- ★후속 추천: **loadable 집합을 «파싱으로 재유도»하지 말고 loader 쪽에서 «내보낼» 것인가**(M — 이번 결함 3건이 전부 그 재유도 자리였다). 상세 = `docs/worklog/2026-09-18-named-exception-classes-are-loadable.md`.
+
+## [2026-09-18] 이름으로 부르는 예외 클래스가 «실을 수 있는» 것인가 — 한 자리에서 대조한다 (rustjava-lock-every-named-exception-class-is-loadable)
+- 무엇을: 채택 제안 `2026-09-17-string-concat-recipe-arity#p0`(worklog json `adoptedProposals` 기록). 산출물 = `scripts/check-named-exception-classes-are-loadable.py` **한 자리** + CI job + DoD 한 줄. ★**런타임 클래스 추가 0 · `.unwrap()` 무접촉.**
+- ★**전제를 코드로 확인했다**(총괄 선실측 없음): `jvm/src/jvm.rs:943-950` 의 `new_class(...).await.`★**`unwrap()`** ⇒ 부트스트랩 로더가 이름을 못 풀면 **Java 예외가 아니라 프로세스가 죽는다**. ★**자기 참조다** — `:842` 가 클래스 부재를 `exception("java/lang/NoClassDefFoundError", …)` 로 보고하므로 **오류 경로 자신의 클래스**가 실려야 한다.
+- ★**베이스라인 실측**(★게이트² 가 결함 3건을 잡아 **정정된 수**다): `exception(` 리터럴 클래스명 **43 고유 / 호출부 846** ↔ `loader.rs` 등재 **268항목**(`as_proto` 265 + `list_proto` 3) ⇒ ★**못 싣는 이름 «0»**(제안의 「baseline is now 0」 재현). ★**초판의 41/812/263 은 전부 «과소»였다** — 줄 단위 스캔이 다중 줄 호출 34건을, `as_proto` 전용 정규식이 `list_proto` 3건을, 짧은 이름 키잉이 충돌쌍을 각각 잃었다.
+  ★**제안의 「72」는 재현되지 않았다** — 내 술어는 「`exception(` 첫 인자 리터럴·고유」로 **41**이다. ★**재현 못 한 수는 인용하지 않았다.**
+- ★**실을 수 있는 집합 = «등재분»이다** — 그리고 ★**초판이 적은 「정의됐지만 미등재 5건」은 «틀렸다»**: 그 5건은 전부 등재돼 있고(3건은 `list_proto` 로, 2건은 충돌쌍의 다른 쪽으로) ★**실제 미등재는 «0»** 이다. `name:` 리터럴 **268** = 등재 **268**.
+- ★**양방향 4축**: ⒜현 상태 **rc=0** ⒝★**⑶ 실제 사례 재현** — `BootstrapMethodError` 등재 1줄 제거 → **rc=1**(`interpreter.rs:1109` 지목) ⒞프로토 이름 오타 → **rc=1**(321 호출부) ⒟★**fail-closed** — 해석 불가 등재 → **rc=2 «못 쟀다»**(집합을 조용히 줄여 false red 를 내지 않는다). 배선도 양방향 — CI step 제거 시 `dod_parity` **rc=1**.
+- ★**못 보는 것**(바닥이지 증명이 아니다): ★**런타임 조립 이름**(`format!`·상수·변수)은 **안 보인다** · `exception(` 만 훑는다(`new_class(`·`find_class(` 는 `Result` 를 돌려주므로 축이 다르다) · 초기화 실패는 통과 · 다른 실재 클래스와 겹치는 오타는 통과.
+- ★**잃는 것**: DoD 명령 **6 → 7**(실측 **~1초**/회차 · 초판 32.7초를 `target/` 가지치기로 없앴다) · ★**「green 이니 패닉 없다」는 거짓**(위 구멍) · ★**`.unwrap()` 은 그대로**라 새는 이름이 생기면 여전히 패닉한다(전환은 범위 밖).
+- 검증: `cargo test --all` **rc=0** · `check-dod-ci-parity` **「명령 7개 · toolchain 2개」 rc=0** · `check-worklog-json` rc=0.
+- ★후속 추천: ⑴**리터럴이 «아닌» `exception(` 호출부를 세라**(S — 구멍의 크기를 아직 모른다) ⑵**`.unwrap()` → throw 전환**(M · 이 회차가 명시적으로 범위 밖으로 둔 것). 상세 = `docs/worklog/2026-09-18-named-exception-classes-are-loadable.md`.
+
 ## [2026-09-18] 「어느 bootstrap argument 가 왜 나빴나」 — ★**대전제 ⓒ 에서 끝난다: 그 일을 하는 축이 이미 떠 있다**(rustjava-adopt-loadable-bootstrap-arguments-diagnostic)
 - 무엇을: 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0` 의 처분(worklog json `adoptedProposals` 기록). ★**코드 0행** — `classfile/src/{error,validation}.rs` **무접촉**.
 - ★**제안의 전제는 참이다 — CLI 로 돌려서 봤다**(`main` @ `8c7b473f`): 서로 다른 세 규칙(`LdcDynamicBSMArgPastEnd` 나쁜 argument · `LdcDynamicDuplicateBSM` 중복 속성 · `LdcDynamicOldMajor` 버전 게이트)이 ★**글자 하나 다르지 않은 `java.lang.ClassFormatError: Invalid class file`** 를 낸다.
