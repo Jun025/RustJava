@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-18] 「어느 bootstrap argument 가 왜 나빴나」 — ★**대전제 ⓒ 에서 끝난다: 그 일을 하는 축이 이미 떠 있다**(rustjava-adopt-loadable-bootstrap-arguments-diagnostic)
+- 무엇을: 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0` 의 처분(worklog json `adoptedProposals` 기록). ★**코드 0행** — `classfile/src/{error,validation}.rs` **무접촉**.
+- ★**제안의 전제는 참이다 — CLI 로 돌려서 봤다**(`main` @ `8c7b473f`): 서로 다른 세 규칙(`LdcDynamicBSMArgPastEnd` 나쁜 argument · `LdcDynamicDuplicateBSM` 중복 속성 · `LdcDynamicOldMajor` 버전 게이트)이 ★**글자 하나 다르지 않은 `java.lang.ClassFormatError: Invalid class file`** 를 낸다.
+- ★★**겹침을 «두 축»으로 갈라야 한다**(초판은 「전부」로 뭉쳤고 ★그 낱말이 카드의 과소 산정을 낳았다): ★**편집 영역은 전부 겹친다** — **PR #67** 이 제안의 `target` **바로 그 두 파일**을 고치고(merge-base 대비 `error.rs` **10/1** · `validation.rs` **61/27**), ★**이 술어에 이미 사유를 준다**(`"a bootstrap method argument names nothing or is not a loadable constant"`), ★밋밋한 문면이 박힌 **두 경계 자리**(`src/runtime.rs:189`·`test-utils/src/lib.rs:334`)도 **둘 다** 고쳤다. ⇒ main 에서 시작하면 **같은 enum 을 세 번째로 고치고** 같은 커버리지 구멍을 다시 발견한다.
+  ★**제안 자신이 그렇게 적어 두었다** — `tradeoff`: 「the two should be done together rather than twice」.
+- ★**남는 것은 있다 · 다만 좁다**: `#67` 의 payload 는 **`&'static str`** 이라 ★**런타임 인덱스를 구조적으로 못 담는다** ⇒ 「기대」는 **달성**, 「인덱스」·「실제」는 **미달**. ⇒ ★**새 카드를 좁혀 냈다**(effort **S**) — 원 제안은 처분하고 잔여만 정확한 범위로 다시 세운다(안 그러면 카드와 함께 잔여도 사라진다).
+- ★**제안이 적지 않은 설계 제약**: `ClassFileError` 는 **`Copy`** 이고 ★**파일 4 · 크레이트 «2»**(`classfile` 3 + `jvm-bytecode` 1)가 그것을 쓴다 — ★초판의 「네 크레이트」는 **명사가 틀렸다**(수는 맞다 · 루트 2건은 **주석**이다)(`tests/test.rs` 13 · `validation.rs` 8 · `class.rs` 7 · `jvm-bytecode/src/error.rs` 5). ★**깨지 않고도 된다** — 정적 사유 + `u16` 인덱스 + `u8` 태그면 셋 다 `Copy`. 후속이 다시 발견하지 않도록 새 카드에 적었다.
+- ★**#67 위에 쌓지 않은 이유**(선택이지 누락 아님): ⑴아직 approve 아님(게이트② 재검 중) ⑵head 가 회차마다 움직임 ⑶**자식 PR** 이 되어 base 소멸 시 자동으로 닫힌다(게이트③ 계약 5).
+- ★**잃는 것**: ★**main 은 #67 착지까지 밋밋한 채로 남는다**(오늘 사용자는 **규칙 이름조차** 못 받는다) · 이 회차는 제안의 값을 **전혀 전달하지 않았고** 전달한 것은 **순서**다 · #67 이 폐기되면 이 판단은 **한 회차를 버린 것**이 된다.
+- 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · base `8c7b473f`) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천: 새 카드 「**구조화된 variant 로** bootstrap argument 의 인덱스와 태그를 말한다」(★**M** · ★초판은 `S` 였다 — **실측 후 올렸다**: 잔여도 #67 과 **같은 3층**을 건넌다(중간층 `jvm-bytecode` 도 `&'static str` · 경계는 `&str`) ⇒ `target` **5파일 / 4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★**층은 3인데 크레이트는 4다**: 경계 층 하나가 두 크레이트에 걸친다). ★`InvalidFormat` 을 넓히면 생성 **17**곳 + 값 매치 **11**곳이라 **새 variant** 를 고르되 ★**두 갈래가 생기는 대가**를 카드에 적었다) — ★**#67 «뒤»에** · 상세 = `docs/worklog/2026-09-18-bootstrap-argument-diagnostic-sequencing.md`.
 ## [2026-09-18] 루트 fixture 를 한 target 으로 모을 것인가 — ★**모으지 않는다**(rustjava-adopt-test-data-version-freeze-uniform-target-p0)
 - 무엇을: 채택 제안 `2026-09-17-test-data-version-freeze#p0` 의 **결정**(worklog json `adoptedProposals` 기록). ★**코드 0행 · 재컴파일 0 · `.class` 바이트 0 변경** — 산출물은 `docs/test-data-target-policy.md` 와 그 근거다.
 - ⑴**분포**(동결 파일이 아니라 fixture 자신에서 읽었다): 루트 **114**건 · major **52×40 · 65×62 · 66×8 · 68×1 · 70×3** — 동결 파일 머리주석과 일치.
