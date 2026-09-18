@@ -12,6 +12,17 @@
 - 검증: `cargo test --all` **583 passed / 0 failed / 1 ignored**(불변 — 코드 무접촉 · ★이 브랜치 base `8c7b473f` 기준이다. 같은 날 앞 회차들의 **579** 는 PR #61 착지 «전» base 의 수라 다르다) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
 - ★후속 추천(★**worklog `.json` `proposals[]` 에 카드 2장으로 «기계 채널»에 실었다** — 초판은 `REPORT` 에만 적어 cockpit 에 **0장**이었다): ⑴**신규 fixture 의 target 규칙**을 세울 것인가(M) ⑵**되돌릴 조건에 «관측자»를 붙인다**(S · 넷 중 셋은 문서를 열어야만 발화한다 — 게이트② 실측). ★초판이 ⑴로 적은 「`NativeMethod` 제3 축 여부」는 ★**검수자가 규명해 닫혔다**(축 2 의 다른 얼굴) ⇒ 카드로 내지 않는다. 상세 = `docs/worklog/2026-09-18-root-fixture-target-decision.md`.
 
+## [2026-09-18] 루트 픽스처 다섯이 재빌드되지 않는 이유 — ★**`-g` 다. 제안이 댄 두 설명은 «둘 다» 틀렸다** (rustjava-adopt-javac-fixture-provenance-verified-p0)
+- 무엇을: 채택 제안 `2026-09-17-javac-fixture-provenance-verified#p0`(worklog json `adoptedProposals` 기록). ★**제품 Rust 0줄 · 커밋된 `.class` 바이트 «0 변경»** — 고친 것은 검증 스크립트 한 자리다.
+- ★**답**: 커밋본은 **디버그 정보를 달고**(`-g`) 컴파일됐고 스크립트는 **그것 없이** 재빌드했다. javac 기본은 `-g:lines,source` 라 `LocalVariableTable` 이 안 나온다. 단서는 `javap -v -p` 대조(커밋본 902B 에만 `LocalVariableTable` 과 `this`·`args`·`oe`…).
+- ★★**제안의 두 설명을 측정으로 반증했다**: ⒜**다른 컴파일러 아니다** — 같은 다섯이 **26.0.1 과 26.0.2.1 에서 똑같이** 다르고 둘 다 `-g` 면 **똑같이 동일**하다(두 판본 각각 직접 실행 · 26.0.1 keg 잔존) ⒝**소스 발산 아니다** — `-g` 만 주면 **지금 소스가 커밋 바이트를 정확히 낸다**.
+  ⇒ ★★**제안이 가장 걱정한 대가가 사라진다** — `tradeoff` 의 「재컴파일이 동작 변경이 될 수 있다」는 ★**재컴파일 자체가 불요**라 성립하지 않는다.
+- ★**고친 한 자리**: 스크립트가 이미 `--release` 를 픽스처에서 읽으므로 **`-g` 도 같은 자리에서** 읽게 했다(상수풀의 `LocalVariableTable` 유무). ★**배선 전에 판별력을 쟀다** — 보유 **5** · 미보유 **107** · ★**5/5 · 오탐 0**.
+- ★**양방향**: 정상 **109 rebuilt / 109 reproduced / 0 differed** ↔ ★개악(`-g` 파생 한 줄 no-op) **104 / 5 differed**(✗ 목록이 원래 다섯과 동일) · 복원 0.
+- ★**잃는 것**: ⒜스크립트는 **여전히 `rc=1`** — 재빌드 불가 **3건**(형제 참조 소스 · `-sourcepath` 미사용)은 제안이 미해결로 적은 **별 축**이라 넓히지 않았다 ⒝판정이 **한 속성의 유무**에 걸린다(`-g:none` 재생성은 조용히 드리프트로 읽힌다).
+- 검증: `cargo test --all` **579 passed / 0 failed / 1 ignored**(불변 — Rust 무접촉) · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**.
+- ★후속 추천: 재빌드 불가 3건의 컴파일 방법 결정(M) — 상세 = `docs/worklog/2026-09-18-five-fixtures-were-built-with-g.md`.
+
 ## [2026-09-18] 거부된 클래스 파일이 «왜»를 말한다 — 세 층을 관통하는 사유 (rustjava-adopt-classfile-error-cause-decision-p0)
 - 무엇을: 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음** — `ClassFormatError` 메시지가 **모든 거부에 같던 「Invalid class file」** 에서 **사유별 문장**으로 바뀐다.
 - ★**제안이 스스로 all-or-nothing 이라 못박았다** — 타입만 고치면 **관측되는 것이 없고**, `||` 사슬을 안 쪼개면 **평평함이 사라지는 게 아니라 옮겨갈 뿐**이다. 넷 다 했다:
