@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-18",
+  "taskId": "rustjava-merge-dropped-symbols-checker-swallows-git-failures",
+  "summary": "The check that exists to catch a silent loss had a silent pass in it: run() returned None on a failing git, every caller wrote `run(...) or \"\"`, and the result was `✓ (0 file(s) examined)` with rc 0. git calls now raise, main() reports `cannot measure: …` with rc 2, and the one call where a non-zero exit is a real answer keeps tolerating it behind a preflight. The predicate for what counts as a dropped symbol is untouched.",
+  "changes": [
+    "scripts/check-merge-dropped-symbols.py — new CannotMeasure exception; run() raises unless absence_is_an_answer=True; preflight() rejects a shallow clone; main() catches in two places and returns 2; the exit-code docstring says 'could not measure' rather than 'could not run'.",
+    "Six call sites lost their `or \"\"` fallback (parents, merge-base, two diffs, the trailer message, the display subject). symbols()'s `git show` is the single tolerated failure."
+  ],
+  "verification": [
+    "REPRODUCED IN A REAL ENVIRONMENT, not a mock: cloning this repository at --depth 10 and running the pre-change script over one merge range printed `✓ 97660921 (0 file(s) examined)` and `✓ 56bb54fa (0 file(s) examined)` and exited 0. In a full clone the same merges examine 0 and 20 files respectively — so a merge that reads 20 files collapsed to 0 and the run stayed green.",
+    "AFTER, same shallow clone, same range: rc=2 with `cannot measure: shallow clone: a merge's second parent is not here, so every read of it would look empty. Fetch the full history (git fetch --unshallow) and run again.`",
+    "THE RAISE PATH WAS CHECKED SEPARATELY FROM THE PREFLIGHT, all rc=2, all carrying git's own stderr: a bad range (rev-list exits 128), a failure inside the per-merge loop (diff forced to fail), and running outside a git repository.",
+    "CALL-SITE CENSUS: 8 uses of run(). Seven must raise. One must not — `git show <rev>:<path>` also exits non-zero when the path is simply not in that tree, which is ordinary and means 'no definitions here'. rc alone cannot separate that from a missing object, so the ambiguity is removed by ruling out the environment in preflight() rather than by reading stderr text.",
+    "CI ALREADY FETCHES FULL HISTORY: the merge_drops job pins fetch-depth: 0 with a comment saying why. rc!=0 fails that job because the script is its last step. So raising on failure does not red existing PRs — the frequency of a shallow checkout in that job is 0. That measurement is what decided the prescription (raise) over the alternative the ticket named (fetch the objects first): CI already fetches them.",
+    "BIDIRECTIONAL: (a) failure -> rc=2 and a 'cannot measure' line, never ✓. (b) a genuinely empty merge, 97660921, whose changed files are all .md/.json so nothing is readable by the patterns — still `✓ (0 file(s) examined)` rc=0. (c) detection unchanged: e53b2142 findings 6, 514d5b08 findings 6, 56bb54fa examined 20, 430fef8a examined 11, all identical to before.",
+    "cargo untouched: git diff --numstat is one file, scripts/check-merge-dropped-symbols.py 68/15, and .rs files changed = 0. check-worklog-json rc=0, check-dod-ci-parity rc=0 (7 commands), cargo fmt rc=0, and the checker's own run over origin/main..HEAD is `✓ 430fef8a (11 file(s) examined)` rc=0."
+  ],
+  "issues": [
+    "Anyone who ran this by hand in a shallow tree now sees red where they saw green. The green was false, and the message says how to fix it, but it looks like a new breakage to whoever meets it first.",
+    "Display-only and exemption-only calls (the subject line, the trailer message) were raised too, so the check can now stop for reasons that used to degrade quietly. That was chosen over per-site judgement because such judgement goes stale; the one safe exception is pinned in a table in the worklog.",
+    "preflight() only rules out shallowness. A partial clone (--filter=blob:none) or a corrupt object can still make `git show` fail in a way that reads as absence. The other call sites raise, so the remaining hole is show-only — narrower than before but not closed.",
+    "Whether F8's original '0' really came through this path is not proven; there is no execution record from that round. The behaviour is consistent with it, which is all that can be said.",
+    "THIS PR IS STACKED ON PR #71. scripts/check-merge-dropped-symbols.py does not exist on origin/main yet — it only exists on PR #71's branch — so this work cannot be cut from main. The base is feat/rustjava-merge-drop-check, which makes this a child PR: gate3 contract 5 requires the round that merges #71 to re-parent it to main first, or GitHub closes it when the base branch is deleted."
+  ],
+  "adoptedProposals": [],
+  "proposals": [
+    {
+      "title": "Decide whether a partial clone should also be refused up front",
+      "plainSummary": "The check now refuses to run in a shallow clone, but a clone fetched without file contents can still make it look like nothing is there.",
+      "userBenefit": "The same false green this round removed can still happen in a clone made with --filter, which is the shape CI systems increasingly default to.",
+      "why": "preflight() tests one thing: is the repository shallow. That covers the common case and was measured. A partial clone is different — the commits are all present, so every other git call succeeds, but `git show <rev>:<path>` cannot fetch the blob and fails in exactly the way that now means 'the path is not in this tree'. The remaining hole is that one call, and it is the one call this round deliberately left tolerant.",
+      "tradeoff": "Refusing partial clones outright would block a legitimate and cheap way to run CI, and the check may work fine there if the blobs get fetched on demand — which depends on the remote's configuration rather than ours. Detecting it properly means asking git about promisor remotes, which is a smaller, quieter API than --is-shallow-repository and one more thing to keep working.",
+      "effort": "S",
+      "target": "scripts/check-merge-dropped-symbols.py"
+    }
+  ]
+}

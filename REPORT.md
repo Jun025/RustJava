@@ -1,4 +1,17 @@
 # REPORT
+## [2026-09-18] 「조용한 실패」를 잡는 검사기에 «조용히 통과하는 길»이 있었다 (rustjava-merge-dropped-symbols-checker-swallows-git-failures)
+- 무엇을: `scripts/check-merge-dropped-symbols.py` 의 `run()` 이 git 실패를 `None` 으로 삼키고 호출부가 전부 `(… or "")` 로 받아 ★**「git 이 못 답했다」가 「없다고 답했다」로 접혔다** ⇒ `✓ (0 file(s) examined)` · **rc=0**.
+- ★**재현은 합성이 아니라 «진짜 얕은 클론»이다**(`--depth 10`): **전 rc=0** 에 `✓ 97660921 (0 …)` · `✓ 56bb54fa (0 …)` ↔ ★**완전 클론에서 `56bb54fa` 는 examined «20»** 이다. ⇒ 20개를 보던 머지가 0으로 접히고 run 전체가 green 이었다. **후 rc=2** `cannot measure: shallow clone: …(git fetch --unshallow)`.
+- ★**preflight 만이 아니라 raise 경로도 쟀다** — 범위 오류 · 루프 «안» diff 실패 · 비-git 디렉터리 **전부 rc=2** 이고 문면에 git stderr 를 그대로 싣는다.
+- ★★**급소 = «실패»와 «빈 결과»를 가르는 것**: `run()` 호출부 **8곳** 중 ★**`git show <rev>:<path>` 한 자리만 «실패가 답»**이다(경로가 그 트리에 없는 것은 **정상**). ⇒ rc 로는 못 가르므로 ★**환경 자체를 preflight 로 배제**하고 그 뒤의 `show` 실패는 **부재로만** 읽는다(전제를 주석에 명기).
+- ★**ⓒ CI 는 이미 `fetch-depth: 0`** 이다(`merge_drops` job · 주석에 이유까지) ⇒ ★**이 변경이 전 PR 을 막지 않는다**(해당 job 의 얕은 클론 빈도 **0**). ★그래서 처방이 「객체를 먼저 받는 것」이 아니라 **「rc 를 올리는 것」**으로 정해졌다.
+- ★**양방향**: ⒜실패 → **rc=2 「못 쟀다」**(`✓` 금지) ⒝★**정상인데 0** — `97660921`(`.md`/`.json` 만 바뀐 머지 · 완전 클론에서도 진짜 0) → **여전히 `✓` rc=0** ⒞**탐지 회귀 0** — `e53b2142` **6** · `514d5b08` **6** · `56bb54fa` examined **20** 불변.
+- ★**잃는 것**: 손으로 얕은 트리에서 돌리던 사람은 **이제 빨강**을 본다(그 초록이 거짓이었다) · 표시용·면제용 호출까지 일괄 raise 라 ★**더 자주 멈춘다**(안전한 예외가 `show` 하나뿐임을 표로 못박은 대가) · ★**preflight 는 «얕음»만 본다** — 부분 클론·손상 객체는 **여전히 `show` 의 부재로 읽힐 수 있다**(닫은 것은 가장 흔한 한 갈래) · F8 의 「0」이 정말 이 경로였는지는 **증명 못 한다**(가설과 정합할 뿐).
+- ★**범위**: 판정 술어·필터 폭·`PATTERNS` **무접촉** · **`.rs` 0건** · 새 검사기·새 워크플로 **0** · 종료코드는 **이미 있던 `2`** 를 쓴다.
+- 검증: 검사기 자기 실행 `✓ 430fef8a (11 file(s) examined)` rc=0 · `check-worklog-json` rc=0 · `check-dod-ci-parity` rc=0(명령 7개) · `cargo fmt` rc=0.
+- ★**이 PR 은 #71 에 «쌓여» 있다** — 검사기가 `origin/main` 에 **아직 없다**(PR #71 브랜치에만 있다) ⇒ base = `feat/rustjava-merge-drop-check`. ★게이트③ 계약 5 대로 **#71 머지 회차가 먼저 base 를 `main` 으로 재지정**해야 한다.
+- ★후속 추천: ⑴**부분 클론도 preflight 로 막을 것인가**(S · 남은 한 갈래) ⑵`show` 의 두 실패를 **stderr 문면으로 가를 것인가**(S · git 판올림에 약해 이번엔 환경 배제를 골랐다). 상세 = `docs/worklog/2026-09-18-merge-drops-no-silent-git-failure.md`.
+
 ## [2026-09-18] 충돌 해소가 «한쪽 부모의 정의»를 떨어뜨렸는지 센다 — ★**개악 시험이 내 검사기의 구멍을 잡았다**(rustjava-count-symbols-dropped-from-second-parent-on-resolution)
 - 무엇을: 채택 제안 `2026-09-17-union-restores-silently-dropped-makeconcat#p0`(worklog json 기록). ★**제품 코드 0줄** — 검사기 1개 + 의도 규약 + 기존 `rust.yml` 에 잡 하나(**새 워크플로 파일 0**).
 - ★**ⓑ 를 먼저 쟀다**(이 게이트가 티켓을 끝낼 수 있었다): `origin/main` 에 손실을 **재구성**해 기존 축 전수 → 생성기 **rc=0** · 단일결함 감사 **rc=0**(23) · `test_class_format` **21** · `test_fixture_pins` **3** · 파리티 **rc=0** · `git status` **0줄** · 충돌 마커 **0** ⇒ ★**아무것도 못 잡는다.**
