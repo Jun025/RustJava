@@ -7,6 +7,14 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-partial-clone-refusal-decision] ★★**부분 클론을 «거절하지 않는다» — 모호했던 것은 환경이 아니라 «호출 하나»였다.** 채택 제안 `2026-09-18-merge-drops-no-silent-git-failure#p0`.
+  ★**진짜 blobless 클론으로 쟀다**: promisor **도달 가능**이면 답이 **완전 클론과 동일**(rc 1 · 6 dropped · 15.7s vs 2.5s) ⇒ ★거절은 «돌아가는 설정»을 막는 것.
+  ★**그러나 조용한 green 은 실재**: 신선한 blobless + promisor **도달 불가** → `0 dropped` · ★**rc 0**(완전 클론은 6건).
+  ★**처방**: `symbols()` 가 실패한 `show` 를 부재로 읽기 전에 **`ls-tree`** 로 트리 존재를 묻는다(부분 클론도 **트리는 갖는다**) ⇒ 문면 대조 없이 갈린다.
+  ★**양방향**: 전 rc 0(거짓 green) ↔ 후 ★**rc 2 «못 쟀다»** · ★과차단 0(도달 가능 blobless 는 여전히 rc 1) · 완전 클론 불변 · **비용 유의차 없음**(구간 겹침).
+  ★**위험 실현 0**: `.github` 에 `filter:` **0건**(`merge_drops` 는 `fetch-depth: 0`) — 그것이 «거절 안 함»의 근거이지 «모호함을 남길» 근거는 아니다.
+  ★**선행 결함 발견(미수정)**: 출력 순서가 실행마다 다르다(set) — `origin/main` 판본 5회에 순서 2종. rc·집합 불변(후속 카드).
+  ★결정을 `preflight()` docstring 에 못박았다 — 다음 회차가 같은 질문을 다시 하지 않도록.
 - [rustjava-count-nonliteral-exception-call-sites] ★★**사각의 «크기»를 쟀다 — 비리터럴 exception() 호출부는 «0» 이다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p0`. ★**순수 측정 · `.rs` 0줄 · `scripts/` 0줄.**
   ★**수**: bare `exception(` **847** = 정의 1 + **리터럴 846** + 그 밖 리터럴 **0** + ★**비리터럴 0** ⇒ 검사기가 보는 집합 = 실제 호출부 집합(지금은 일치).
   ★★**술어를 갈라야 답이 맞는다** — `exception(` 부분일치가 `assert_exception(` 등 **다른 함수 8종 41자리**(첫 인자가 `jvm`)를 쓸어담는다. 안 갈랐으면 ★**M=33 이라는 틀린 답**이었다.
