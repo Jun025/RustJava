@@ -100,12 +100,12 @@ impl ClassInfo {
     }
 
     pub fn parse(file: &[u8]) -> Result<Self, ClassFileError> {
-        let (remaining, result) = Self::parse_info(file).map_err(|_| ClassFileError::InvalidFormat)?;
+        let (remaining, result) = Self::parse_info(file).map_err(|_| ClassFileError::InvalidFormat("truncated or unparsable class file"))?;
         if !remaining.is_empty() {
-            return Err(ClassFileError::InvalidFormat);
+            return Err(ClassFileError::InvalidFormat("extra bytes after the end of the class file"));
         }
         if result.major_version < 45 {
-            return Err(ClassFileError::InvalidFormat);
+            return Err(ClassFileError::InvalidFormat("class file version predates 45.0"));
         }
         if result.major_version > 70 {
             return Err(ClassFileError::UnsupportedVersion(result.major_version));

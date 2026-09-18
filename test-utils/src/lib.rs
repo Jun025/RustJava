@@ -331,7 +331,7 @@ impl Runtime for TestRuntime {
     async fn define_class(&self, jvm: &Jvm, data: &[u8]) -> jvm::Result<Box<dyn ClassDefinition>> {
         match ClassDefinitionImpl::from_classfile(data) {
             Ok(class) => Ok(Box::new(class)),
-            Err(ClassDefinitionError::InvalidClassFile) => Err(jvm.exception("java/lang/ClassFormatError", "Invalid class file").await),
+            Err(ClassDefinitionError::InvalidClassFile(cause)) => Err(jvm.exception("java/lang/ClassFormatError", cause).await),
             Err(ClassDefinitionError::UnsupportedClassVersion(version)) => Err(jvm
                 .exception(
                     "java/lang/UnsupportedClassVersionError",

@@ -1,0 +1,22 @@
+{
+ "date": "2026-09-18",
+ "taskId": "rustjava-adopt-javac-fixture-provenance-verified-p0",
+ "summary": "The five root fixtures that would not rebuild to their committed bytes were compiled with -g and rebuilt without it. Both explanations the proposal offered — a different compiler, or a source edited after the fixture was built — are refuted by measurement. No fixture was recompiled and no committed byte changed; verify-javac-fixtures.sh now derives -g from the fixture the same way it already derived --release, and all 109 rebuildable fixtures reproduce exactly.",
+ "changes": [
+  "test-data/src/verify-javac-fixtures.sh: per-fixture `debug=-g` derived from the presence of LocalVariableTable in the committed class, passed to the rebuild and echoed in the per-fixture line; header comment records the measurement"
+ ],
+ "verification": [
+  "before: `sh test-data/src/verify-javac-fixtures.sh test-data` reported 109 rebuilt: 104 reproduced, 5 differed — the same counts the proposal reported, and under javac 26.0.2.1 rather than the 26.0.1 it was measured on",
+  "after: 109 rebuilt: 109 reproduced, 0 differed",
+  "MUTATION, kill the one line that derives -g (`debug=-g` becomes a no-op) in the script's own call path: 109 rebuilt: 104 reproduced, 5 differed — and the five named are exactly the original five. Restored: back to 0 differed",
+  "the discriminator was measured before it was wired: over all of test-data, exactly 5 fixtures carry LocalVariableTable and 107 do not, and those 5 are precisely the ones that differed — 5/5 with zero false positives",
+  "compiler axis ruled out by hand: rebuilding the five under javac 26.0.1 (the version the proposal measured) gives differ-without-g and byte-identical-with-g, the same as 26.0.2.1",
+  "cargo test --all: 579 passed / 0 failed / 1 ignored, unchanged — this round touches no Rust",
+  "no committed .class byte changed: the only file modified under test-data/ is the script"
+ ],
+ "issues": [
+  "The script still exits 1, because 3 fixtures (ConstantsReader, IncompatibleStatic, VirtualDispatchSemantics) cannot be rebuilt alone — they reference siblings, and the script deliberately omits -sourcepath so that test-data/src/Exception.java does not shadow java.lang.Exception. That is a separate axis the proposal named as unresolved, and this round did not widen into it.",
+  "The -g axis is now derived, so a fixture rebuilt by hand without -g and committed would be reported as drift on the next run — which is the intended reading, but it means the script's answer depends on an attribute that a future `-g:none` build would remove silently."
+ ],
+ "adoptedProposals": ["2026-09-17-javac-fixture-provenance-verified#p0"]
+}

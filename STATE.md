@@ -15,6 +15,32 @@
   ★★**[게이트② 승계] 필터가 좁아 «둘째 사고»(`514d5b08`)를 놓쳤다** — 근거 문장이 거짓이었다(`0 file(s) examined` rc=0) ⇒ **「theirs 가 바꾼 파일 ∪ 머지가 바꾼 파일」**로 넓혀 ★**둘 다 rc=1**. ★docstring 의 유일한 예시가 **면제되지 않는 형식**이었다 ⇒ 고치고 「출력에서 복사하라」를 계약에 박았다(당시 trailer 0건).
   ★**오탐 실측** 83머지 중 초판 **8건/19정의** → 확장본 **10건/45정의**(게이트② 실측) · **4.4초/머지** ⇒ PR 당 **0~9초**. ★**잃는 것**: 본문만 빈 경우·리네임을 **못 가른다** · trailer 는 **우회로**이고 **이름이 글자 그대로 대조**된다.
   ★`--all` **583/0/1**(불변) · 파리티 **명령 7개 일치**(DoD 블록 동기).
+- [rustjava-adopt-loadable-bootstrap-arguments-diagnostic] ★★**대전제 ⓒ 에서 끝났다 — 그 일을 하는 축(PR #67)이 이미 떠 있다.** 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0`(worklog json 기록). ★**코드 0행.**
+  ★**전제는 참**(CLI 실행: 세 규칙이 전부 `ClassFormatError: Invalid class file` 동일 문면) — 그러나 ★**편집 영역은 전부 겹친다**(전달된 값은 **3 중 1** — 아래): #67 이 제안 `target` 두 파일을 고치고, 이 술어에 **이미 사유를 주며**, 밋밋한 문면 **두 자리**를 둘 다 고쳤다. ★제안 `tradeoff` 자신이 「두 번 하지 말고 함께 하라」고 적었다.
+  ★**남는 잔여는 좁다** — `&'static str` 이라 **인덱스를 못 담는다** ⇒ 「기대」 달성 · 「인덱스·실제」 미달 ⇒ ★**새 카드를 냈다**(★**M** — 초판 `S` 에서 **실측 후 올렸다**: 잔여도 **같은 3층**을 건너 `target` **5파일/4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★층 3 ↔ 크레이트 4: 경계 층이 두 크레이트에 걸친다) · `InvalidFormat` 을 넓히면 생성 17 + 매치 11 이라 **새 variant** 를 고르고 **두 갈래의 대가**를 적었다).
+  ★**설계 제약 기록** — `ClassFileError` 는 `Copy`(파일 4 · 크레이트 2 의존) · 정적사유+`u16`+`u8` 로 **깨지 않고 된다**.
+  ★**잃는 것**: main 은 #67 착지까지 **밋밋한 채**(규칙 이름조차 없다) · 이 회차가 전달한 것은 **값이 아니라 순서**다.
+  ★`--all` **583/0/1**(불변 · base `8c7b473f`).
+- [rustjava-adopt-test-data-version-freeze-uniform-target-p0] ★★**루트 fixture 를 한 target 으로 모을 것인가 — «모으지 않는다».** 채택 제안 `2026-09-17-test-data-version-freeze#p0`(worklog json 기록). ★**코드 0행 · 재컴파일 0 · `.class` 0 변경** — 산출물 = `docs/test-data-target-policy.md`.
+  ★분포 **114**건 · **52×40 · 65×62 · 66×8 · 68×1 · 70×3**(fixture 자신에서 읽음).
+  ★★**양방향**: ⒜**버전이 답** — `StringBuilder` 3건을 21 로 재컴파일 → ★indy 생기고 StringBuilder 사라짐(★`StringConcat` 이 루트의 **유일한** indy) · `ThreadInterruption` `access$`×10 → **0 + NestMembers**(JEP 181) ⒝**아무 버전이나** — 20건 중 ★**16건 명령 시퀀스 완전 동일**.
+  ★**그 커버리지는 다른 데 없다** — 생성기 산출 64건에서 `StringBuilder` 0 · `access$` 0.
+  ★**이유**: 제안의 이득(「숫자 하나로 예측」)이 뒤집힌다 — 52 는 「전-indy·전-nestmate」라는 뜻을 **실제로 갖고**, 펴면 그 구분이 사라지며 유일한 커버리지가 지워진다.
+  ★**잃는 것**: 비균일 잔존(신규 target 규칙 **미수립**) · 16건은 그대로 · ★**본 것은 40 중 20** · `NativeMethod` 차이는 **미규명**.
+  ★`--all` **583/0/1**(불변 · base `8c7b473f` — 앞 회차의 579 는 #61 착지 전 base 다) · 되돌릴 조건 4개를 결정 문서에 명시.
+- [rustjava-adopt-javac-fixture-provenance-verified-p0] ★★**루트 픽스처 다섯이 재빌드되지 않는 이유 = `-g`.** 채택 제안 `2026-09-17-javac-fixture-provenance-verified#p0`(worklog json 기록). ★**제품 Rust 0줄 · 커밋 `.class` 바이트 0 변경.**
+  ★**제안이 댄 두 설명이 둘 다 틀렸다** — 컴파일러 아니다(**26.0.1·26.0.2.1 에서 같은 다섯이 같게 행동**) · 소스 발산 아니다(`-g` 면 **지금 소스가 커밋 바이트를 낸다**).
+  ⇒ ★**제안 `tradeoff` 의 「재컴파일이 동작 변경이 될 수 있다」가 «성립하지 않는다»** — 재컴파일이 불요다.
+  ★고친 한 자리: 스크립트가 `--release` 를 픽스처에서 읽듯 **`-g` 도 픽스처에서**(상수풀 `LocalVariableTable`). ★배선 전 판별력 실측 **5/5 · 오탐 0**(보유 5 · 미보유 107).
+  ★양방향: 정상 **109/109/0 differed** ↔ 개악(파생 한 줄 no-op) **104/5 differed**(원래 다섯과 동일).
+  ★**잃는 것**: 스크립트는 **여전히 rc=1**(재빌드 불가 3건 = 제안이 미해결로 적은 별 축 · 넓히지 않았다) · 판정이 한 속성 유무에 걸린다.
+  ★`--all` **579/0/1**(불변) · `check-dod-ci-parity` OK.
+- [rustjava-adopt-classfile-error-cause-decision-p0] ★★**거부 사유를 세 층에 꿴다 — 「Invalid class file」 하나가 **14개** 문장이 된다(클래스 8 · 필드 3 · 메서드 3).** 채택 제안 `2026-09-17-classfile-error-cause-decision#p0`. ★**제품 동작 변경 있음**(사용자가 보는 `ClassFormatError` 메시지).
+  ★제안이 **all-or-nothing** 이라 못박은 넷을 다 했다: `InvalidFormat(&'static str)` · `InvalidClassFile(&'static str)`(★`From` 이 **버리던** 자리) · 경계 2자리 · ★**`validate_class` 8항 `||` → 규칙마다 `if`**.
+  ★★**사유를 꿰자 «평평한 오류가 가리던 것 둘»이 나왔다**: ⑴테스트가 **어느 층이 거부하는지를 틀리게 믿었다**(검증 아닌 **파서**) ⇒ ★단언을 실측에 맞췄다 ⑵술어 **이름이 낡아 있었다**(「in_the_pool」인데 **적재 가능성까지** 본다) ⇒ 사유는 규칙대로, ★**이름은 안 바꿨다**(리팩터 금지).
+  ★**양방향 — 세 층 전부 개악**: M1 경계 · M2 `From` 이 사유 버림 · M3 두 사유를 한 문자열로 접음(★잡는 것은 `contains` `:450`(dedup 제거로 452→450) — 초판이 귀속한 dedup 단언은 **상수 대 상수라 공허**했고 **걷어냈다**) · 복원 17/0.
+  ★★**대가**: ★**마지막 홉이 두 번 쓰여 있고 `test-utils` 사본은 «무검증»**(개악해도 579/0 · **합치지 않고 보고**) · 사유가 문자열이라 같은 문구 중복을 막는 것이 없다 · ★**PR #66 과 같은 함수**(충돌은 기계적).
+  ★`--all` **578 → 579/0/1** · `check-dod-ci-parity` → **「OK 두 축 모두 대칭차 0 — 명령 6개 · toolchain 2개로 «둘 다 일치»」**(rc=0).
 - [rustjava-adopt-link-stringconcatfactory-p2-fix2] ★★**#57 의 버전 표에 25행 등재 — 「착지 순서」가 만든 부채를 갚는다(PR #61).**
   ★**막힌 것은 CI 도 충돌도 아니었다**: 핀 `85cf0fba` 에서 rc=0 CI_GREEN · `git merge origin/main` **코드 충돌 0** 인데
   ★**합친 결과**가 #57 이 세운 「미등재 픽스처는 핀을 실패시킨다」를 어겼다(미등재 **25건** 재현).
@@ -80,6 +106,15 @@
   게이트② **approve** · 핀 **`c0413f81`** ↔ 착수 시 PR head **동일**(불이동) · ★**`MERGEABLE/CLEAN` · base 뒤처짐 «0»** ⇒ 충돌 해소·base 당김 **둘 다 불요**.
   ★핀에서 `ci-presence` **rc=0 CI_GREEN** · 자식 PR **0건** · 배포 **0**(배포 워크플로 없음) · 주기 자동 커밋 **0건** · 라이브 실행 주체 **없음**.
   ★★**착지시킨 것은 «기각 기록»이다** — 제품 코드 **0줄**이 정상이고, 착지 diff 는 원장 4파일뿐이다.
+- [rustjava-adopt-ldc-tags-real-world-generator-survey-p1] ★★**kotlinc·scalac 타깃 형상 조사 — 0. 그러나 «다른 0».** 채택 제안 `…-survey#p1`(worklog json `adoptedProposals` 기록) · ★**제품 Rust 0줄**.
+  ★조사 회차가 **「못 쟀다」로 비워 둔 칸**을 채웠다 — 종전 축은 stdlib(호환성용 컴파일)이라 「이 코퍼스에서 0」과 「이 기능들에서 0」이 달랐다.
+  ★**kotlinc 2.4.20 → 0 · scalac 3.9.0 → 0**. ★★**풀 수치가 그 0 을 읽을 값으로 만든다**(Kotlin `MH 7·MT 6` · Scala `11·6` = **indy 가 실제로 돌았다**) ⇒ 「안 썼다」가 아니라 **「썼는데 `ldc` 자리에 안 온다」**.
+  ★**태그 17 은 풀에도 0** ⇒ ★**이 형상들에서는** 두 컴파일러 다 **condy 를 안 낸다**(한정은 나머지 수와 같다 — 컴파일러당 프로그램 1개).
+  ★**양방향**: 양성 대조군 `test-data/ldc` → `{MH 1, MT 2, Dynamic 7}` ⇒ 「스캐너가 못 본다」 배제 · 오차막대 **0.00%**.
+  ★**제안의 값 전제가 부분적으로 거짓**이었다 — openjdk 26 은 **2026-07-22 부터** 설치돼 있었다(`INSTALL_RECEIPT` **`time`** = `1784711495` · ★`source_modified_time` 아님) — 조사(09-16)보다 **56일** 전.
+  ★★**대가**: 머신에 `kotlin`·`scala` **설치됨**(재측정 위해 남겼다) · ★**추가 신고 — `openjdk` 기본 링크 26.0.1 → 26.0.2.1 승격**(의존성 · `/opt/homebrew/opt/openjdk`).
+  ★`brew uninstall kotlin scala` 로는 **안 돌아온다**(Homebrew 7 은 `brew switch` 없음) ⇒ 처방은 **26.0.1 keg 경로 핀**(`JAVA_HOME=/opt/homebrew/Cellar/openjdk/26.0.1` · 실행 확인). ★keg-only 라 `PATH` 의 `java`(=`/usr/bin/java`)는 **불변** — 영향은 opt 경로를 명시적으로 쓰는 소비자뿐.
+  ★컴파일러당 프로그램 1개 · **CI 불가**.
 - [rustjava-adopt-link-stringconcatfactory-p1-fix2] ★★**base 당김 — 그런데 막고 있던 코드 충돌은 «이미 없었다»(PR #60).**
   ★**전제 반증**: 「`make_indy_fixtures.py` 4구역 충돌」은 `-p1-fix` 가 **14:10 `0f06b93f`** 로 합집합 해소했고 게이트②가 **15:43 그 head 를 approve** 했다.
   발권 근거(12:12 blocked 회신)가 그 사이 낡은 것이다. ★**재발 불가**도 확인 — 뒤진 9커밋 중 그 파일을 만진 것 **0건**.

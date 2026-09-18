@@ -11,6 +11,14 @@
 # `javac 26.0.1 --release 21`, and five sampled root fixtures reproduce under the --release their
 # recorded major version implies (65->21, 66->22, 70->26).
 #
+# "flags" in that sentence is not decoration. Measured 2026-09-18 over all of test-data with javac
+# 26.0.2.1: five fixtures rebuilt to different bytes -- MonitorSemantics and its two named inner
+# classes, NativeMethod, OddEven -- and all five reproduce exactly once -g is passed. They were
+# built with debug info; the rebuild was not. Neither a different compiler nor a source edited
+# after the fact was involved, which were the two explanations on offer: the same five differ under
+# 26.0.1 and 26.0.2.1 alike, and the sources are in step with the committed bytes. So the -g is
+# derived per fixture below, from the fixture, exactly as --release already was.
+#
 # It is *not* wired into CI, and that is deliberate rather than an oversight: there is no JDK in
 # .github/workflows/rust.yml and none on PATH here, so a test that needed one would either fail
 # everywhere or skip everywhere. This is the manual check you run when you regenerate a fixture.
@@ -63,23 +71,31 @@ for class in "$DIR"/*.class; do
     major=$(od -An -tu1 -j6 -N2 "$class" | tr -s ' \n' ' ' | awk '{ print $1 * 256 + $2 }')
     release=$((major - 44))
 
+    # ...and its own debug attributes say which -g it was built with, read the same way and for the
+    # same reason: nothing external to keep in sync. javac's default is -g:lines,source, which emits
+    # LineNumberTable but not LocalVariableTable, so the presence of that attribute name in the pool
+    # is what separates a `-g` build from a default one. Measured 2026-09-18 over test-data: exactly
+    # the five fixtures that did not reproduce carry it, and none of the other 107 do.
+    debug=
+    if LC_ALL=C grep -aq LocalVariableTable "$class"; then debug=-g; fi
+
     # Deliberately no -sourcepath: test-data/src holds Exception.java, Array.java, Method.java and
     # friends, so putting it on the source path makes javac resolve `Exception` to the fixture
     # rather than java.lang.Exception. Measured — it turns clean rebuilds into type errors. The
     # cost is that a source needing a sibling cannot be rebuilt alone, which is reported as
     # "could not be rebuilt" rather than as drift.
     rm -rf "$work/out" && mkdir -p "$work/out"
-    if ! "$JAVAC" --release "$release" -d "$work/out" "$source" 2>"$work/err"; then
-        echo "  ? $base: could not rebuild at --release $release: $(grep -m1 error "$work/err" || head -1 "$work/err")" >&2
+    if ! "$JAVAC" ${debug:+"$debug"} --release "$release" -d "$work/out" "$source" 2>"$work/err"; then
+        echo "  ? $base: could not rebuild at --release $release${debug:+ $debug}: $(grep -m1 error "$work/err" || head -1 "$work/err")" >&2
         unbuildable=$((unbuildable + 1))
         continue
     fi
 
     checked=$((checked + 1))
     if cmp -s "$work/out/$base.class" "$class"; then
-        echo "  ✓ $base (--release $release)"
+        echo "  ✓ $base (--release $release${debug:+ $debug})"
     else
-        echo "  ✗ $base (--release $release): rebuilt bytes differ from the committed fixture" >&2
+        echo "  ✗ $base (--release $release${debug:+ $debug}): rebuilt bytes differ from the committed fixture" >&2
         differed=$((differed + 1))
     fi
 done
