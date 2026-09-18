@@ -641,7 +641,9 @@ async fn test_a_rejected_class_says_why() {
         (
             "test-data/ldc/LdcDynamicBSMArgPastEnd.class",
             "./test-data/ldc/",
-            "a bootstrap method argument names nothing or is not a loadable constant",
+            // Was: "a bootstrap method argument names nothing or is not a loadable constant" — the
+            // rule now says which argument, so the fixture's own numbers appear here.
+            "bootstrap method #0 argument #0 names no constant pool entry",
         ),
     ] {
         let err = run_class(Path::new(fixture), &[Path::new(directory)], &[]).await.unwrap_err().to_string();

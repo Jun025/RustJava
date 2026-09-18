@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-18",
+  "taskId": "rustjava-bootstrap-argument-diagnostic-names-index-and-tag",
+  "summary": "The bootstrap-argument rule refused with a &'static str and threw away the two things it already knew: which argument, and what the argument named. It now carries both through all three layers as a structured variant, copying the shape UnsupportedVersion already used rather than inventing a diagnostic scheme. The &'static str variant and its other fourteen rules are untouched.",
+  "changes": [
+    "classfile/src/error.rs — ClassFileError::InvalidBootstrapArgument { method_index, argument_index, actual }. Stays Copy; a docstring says which of the two variants to use.",
+    "classfile/src/validation.rs — the predicate returns Result<(), ClassFileError> instead of bool, and a constant_kind_name() derives the kind name from the ConstantPoolItem variant.",
+    "jvm-bytecode/src/error.rs — the matching ClassDefinitionError variant, a From arm, and bootstrap_argument_message() so the two boundaries share one format string instead of two copies.",
+    "src/runtime.rs, test-utils/src/lib.rs — one match arm each, formatting through that shared function.",
+    "classfile/tests/test.rs, tests/test_class_format.rs — the two assertions on this rule's message, plus three new tests."
+  ],
+  "verification": [
+    "PREMISE CONFIRMED IN CODE: the predicate was `method.arguments.iter().all(|index| class.constant_pool.get(index).is_some_and(...))`. The index is in hand and the found entry is in hand at the moment the closure returns false; bool discarded both.",
+    "THE ALTERNATIVE ALREADY EXISTED, so none was invented: ClassFileError::UnsupportedVersion(u16) -> ClassDefinitionError::UnsupportedClassVersion(u16) -> format!() at the boundary is the same three-layer carry. This round copies it.",
+    "CONSUMERS COUNTED: 34 uses of InvalidFormat across six files, but exactly one structural consumer — the From<ClassFileError> match in jvm-bytecode/src/error.rs. An arm was added, none changed. The two tests that asserted this rule's message do change, which is the deliverable rather than a regression.",
+    "BEFORE/AFTER on test-data/ldc/LdcDynamicBSMArgPastEnd.class via the CLI. AFTER, measured on this branch: 'java.lang.ClassFormatError: bootstrap method #0 argument #0 names no constant pool entry'. BEFORE is what origin/main's own test asserts: 'java.lang.ClassFormatError: a bootstrap method argument names nothing or is not a loadable constant'.",
+    "THREE ASKS: 3/3. expected — 'is not a loadable constant' / 'names no constant pool entry'. index — argument_index, and method_index as well because OpenJDK's message omits it and is ambiguous when a class has several bootstrap methods. actual — the kind name of what the argument named.",
+    "BIDIRECTIONAL, the one that matters: StringConcat has a single bootstrap argument, so its argument_index is 0 whether the code computes it or hardcodes it. Lambda.class carries three, and breaking #0 versus #2 moves the reported index 0 -> 2. A second test covers actual: None for an index that names nothing.",
+    "COST MEASURED, NOT ASSERTED: ClassFileError is still Copy and still the same size — a test asserts size_of::<ClassFileError>() == size_of::<&'static str>() + size_of::<usize>(). Two u16s and a &'static str fit where InvalidFormat's string already sat, so there is no allocation and no hot-path growth.",
+    "cargo test -p classfile: 16 passed / 0 failed (13 before). cargo test --test test_class_format: 22 passed / 0 failed."
+  ],
+  "issues": [
+    "The message wording for this rule changed, so anyone grepping for the old sentence loses it; two committed assertions were updated for the same reason.",
+    "method_index is more than OpenJDK prints ('argument_index N has bad constant type'), so a consumer diffing against OpenJDK output would see a difference. Nothing in this repository does.",
+    "The tag is carried as a kind name rather than the JVMS tag number, because the tag byte is not retained after parsing and a number nothing branches on would need a second table to maintain.",
+    "Only this one rule was converted. The other fourteen InvalidFormat rules were not audited for whether they too discard a number they hold — that count does not exist yet.",
+    "ClassDefinitionError::InvalidClassFile and ::UnsupportedFeature are still &'static str. This round sidestepped that by adding a variant beside them rather than restructuring the layer."
+  ],
+  "adoptedProposals": ["2026-09-18-bootstrap-argument-diagnostic-sequencing#p0"],
+  "proposals": [
+    {
+      "title": "Count the other validation rules that discard a number they already hold",
+      "plainSummary": "One rejection message now says exactly which item was wrong; nobody has checked how many of the other fourteen could do the same.",
+      "userBenefit": "Every rule that refuses with a sentence instead of a position makes someone open the file in a hex editor to find out what it meant.",
+      "why": "validate_class runs fifteen rules and fourteen still return bool into a fixed sentence. Some of them genuinely have nothing to point at — 'truncated or unparsable class file' has no index — but some walk a collection and know where they stopped, exactly like the bootstrap-argument rule did. The conversion is now a worked example, so the expensive part is knowing which rules qualify, and that is a read rather than a design.",
+      "tradeoff": "The count may come back small, and each conversion changes a message that some test asserts, so the work is not free even when it is easy. Doing them one at a time also means the error enum grows a variant per rule, which is the thing the original &'static str design was avoiding — so the count should come with a judgement about where to stop.",
+      "effort": "S",
+      "target": "classfile/src/validation.rs, classfile/src/error.rs"
+    }
+  ]
+}

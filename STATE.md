@@ -7,6 +7,14 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-bootstrap-argument-diagnostic-names-index-and-tag] ★★**부트스트랩 인자 거부가 «어느 인자·무엇을» 말한다.** 채택 제안 `2026-09-18-bootstrap-argument-diagnostic-sequencing#p0`.
+  ★**전제 확인(코드)**: 술어가 `false` 를 내는 자리에 `index` 와 `constant_pool.get(index)` 가 **손에 있었다** — `bool` 이 둘을 버렸다.
+  ★**새 체계 0** — 같은 enum 의 `UnsupportedVersion(u16)` 이 이미 3층을 관통하는 패턴이라 **복제**했다.
+  ★**전/후**: `ClassFormatError: a bootstrap method argument names nothing or is not a loadable constant` → ★`ClassFormatError: bootstrap method #0 argument #0 names no constant pool entry`(CLI 실측).
+  ★**세 요구 3/3**(expected·index+method_index·actual) · 태그는 **이름**으로(번호는 표가 하나 더 는다).
+  ★**양방향 급소**: `StringConcat` 은 인자 1개라 index 0 이 하드코딩이어도 통과 ⇒ **인자 3개 `Lambda.class` 의 #0↔#2** 로 **index 가 따라가는 것**을 잠갔다.
+  ★**소비자 1개**(`jvm-bytecode` `From`) — arm 추가뿐, 14규칙 무변. ★**타입 «안 커졌다»**(`Copy`·크기 불변 시험) · ★메시지 문면이 바뀌어 단언 2곳이 바뀐다.
+  ★`-p classfile` **16 passed**(전 13) · `test_class_format` **22** · `--all` rc=0.
 - [rustjava-adopt-loadable-bootstrap-arguments-diagnostic] ★★**대전제 ⓒ 에서 끝났다 — 그 일을 하는 축(PR #67)이 이미 떠 있다.** 채택 제안 `2026-09-17-loadable-bootstrap-arguments#p0`(worklog json 기록). ★**코드 0행.**
   ★**전제는 참**(CLI 실행: 세 규칙이 전부 `ClassFormatError: Invalid class file` 동일 문면) — 그러나 ★**편집 영역은 전부 겹친다**(전달된 값은 **3 중 1** — 아래): #67 이 제안 `target` 두 파일을 고치고, 이 술어에 **이미 사유를 주며**, 밋밋한 문면 **두 자리**를 둘 다 고쳤다. ★제안 `tradeoff` 자신이 「두 번 하지 말고 함께 하라」고 적었다.
   ★**남는 잔여는 좁다** — `&'static str` 이라 **인덱스를 못 담는다** ⇒ 「기대」 달성 · 「인덱스·실제」 미달 ⇒ ★**새 카드를 냈다**(★**M** — 초판 `S` 에서 **실측 후 올렸다**: 잔여도 **같은 3층**을 건너 `target` **5파일/4크레이트**(`classfile`·`jvm-bytecode`·`RustJava`·`test-utils` — ★층 3 ↔ 크레이트 4: 경계 층이 두 크레이트에 걸친다) · `InvalidFormat` 을 넓히면 생성 17 + 매치 11 이라 **새 variant** 를 고르고 **두 갈래의 대가**를 적었다).
