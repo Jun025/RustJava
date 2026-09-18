@@ -9,10 +9,10 @@
   ],
   "verification": [
     "PREMISE CONFIRMED BY READING THE CODE, not by quoting the proposal: jvm/src/jvm.rs:943-950 is `let instance = self.new_class(r#type, \"(Ljava/lang/String;)V\", (message_str,)).await.unwrap();`. new_class returns Result, so an unresolvable name aborts. The axis is self-referential: jvm.rs:842 reports a missing class by calling exception(\"java/lang/NoClassDefFoundError\", ...), so the error path's own class must be loadable or the report panics.",
-    "BASELINE, measured this round: 41 distinct literal names across 812 exception( call sites; loader.rs registers 265 ::as_proto() entries (263 distinct types), all 265 resolved back to a name: literal; names named but not loadable = 0. The proposal's 'baseline is now 0' reproduces.",
+    "BASELINE, corrected by the gate-2 round that found three defects in the first draft: 43 distinct literal names across 846 exception( call sites; loader.rs registers 268 entries (as_proto 265 + list_proto 3), all resolved; names named but not loadable = 0. The first draft read 41 / 812 / 263 and every one was an undercount — a line-by-line scan lost 34 calls rustfmt had broken across a newline, an as_proto-only regex lost three list_proto registrations, and keying types by bare name let one of a colliding pair answer for the other. The proposal's 'baseline is now 0' still reproduces.",
     "THE PROPOSAL'S 72 DID NOT REPRODUCE. This round counts 41, using 'distinct literal first argument of exception('. 72 is presumably a different predicate (call sites, or new_class included); it was not reproduced, so this round writes its own number rather than quoting one it cannot stand behind.",
-    "LOADABLE SET IS THE REGISTERED ONE, NOT EVERY name: LITERAL. Five names exist under classes/ but are absent from loader.rs — java/util/AbstractList$ListItr, java/util/ArrayList$ListItr, java/util/Vector$ListItr, java/util/logging/Formatter, org/rustjava/net/JarURLConnection — so using every literal would overstate what the loader can return. None of the five is named in exception(, so the baseline is 0 either way.",
-    "BIDIRECTIONAL: current tree rc=0 (41 named, 263 loadable). Removing the BootstrapMethodError registration from loader.rs — the case that actually panicked — gives rc=1 naming java/lang/BootstrapMethodError at jvm-bytecode/src/interpreter.rs:1109. Renaming the NullPointerException proto while leaving it registered gives rc=1 with 321 call sites. Adding a registered entry whose type cannot be resolved gives rc=2 'cannot measure', not a false red. Restoring gives rc=0.",
+    "CORRECTION — the first draft's record of 'five names exist under classes/ but are absent from loader.rs' was wrong, and all five are registered. Three (AbstractList$ListItr, ArrayList$ListItr, Vector$ListItr) register through list_proto(), which the old regex did not match; two (java/util/logging/Formatter, org/rustjava/net/JarURLConnection) are the second half of a bare-name collision and were hidden by the other half. Measured with (module, type, function) keying: 268 name: literals, 268 registered, 0 unregistered.",
+    "BIDIRECTIONAL: current tree rc=0 (43 named, 268 loadable). Removing the BootstrapMethodError registration from loader.rs — the case that actually panicked — gives rc=1 naming java/lang/BootstrapMethodError at jvm-bytecode/src/interpreter.rs:1109. Renaming the NullPointerException proto while leaving it registered gives rc=1 with 321 call sites. Adding a registered entry whose type cannot be resolved gives rc=2 'cannot measure', not a false red. Restoring gives rc=0.",
     "WIRING MEASURED BOTH WAYS: deleting the new CI step makes check-dod-ci-parity.py rc=1 (FAIL 대칭차 있음: 축 A); restoring gives rc=0 with 'commands 7, toolchains 2'.",
     "COST: 0.80s / 0.98s / 0.91s over three runs on a loaded machine. The first draft took 32.7s because rglob walked target/; pruning target and .git at the top level removed that, and the reason is in a comment so it does not get re-introduced."
   ],
@@ -24,13 +24,15 @@
     "DoD grows from 6 commands to 7, and check-dod-ci-parity.py now carries that symmetry too. Measured cost is ~1s per local round.",
     "OPEN PR INTERACTION: PR #71 also adds a DoD command and a CI job, touching the same CLAUDE.md block and the same region of rust.yml. Whichever lands second will conflict there, and the resolution must be a union of both commands or dod_parity goes red."
   ],
-  "adoptedProposals": ["2026-09-17-string-concat-recipe-arity#p0"],
+  "adoptedProposals": [
+    "2026-09-17-string-concat-recipe-arity#p0"
+  ],
   "proposals": [
     {
       "title": "Count the exception() call sites whose class name is not a literal",
       "plainSummary": "The new check only sees class names written out in full; nobody knows yet how many are built at run time instead, so we cannot say how big the blind spot is.",
       "userBenefit": "A name assembled at run time can still name a class the runtime cannot load, and that still ends as a crash rather than a Java exception — exactly the failure the new check was meant to close.",
-      "why": "The check landed this round reads the first argument of exception( only when it is a string literal, and 41 distinct names across 812 call sites pass that filter. What is not known is the denominator: how many call sites pass something else. Until that number exists, 'the check is a floor' is a statement without a size, and nobody can judge whether closing the gap is worth anything.",
+      "why": "The check landed this round reads the first argument of exception( only when it is a string literal, and 43 distinct names across 846 call sites pass that filter. What is not known is the denominator: how many call sites pass something else. Until that number exists, 'the check is a floor' is a statement without a size, and nobody can judge whether closing the gap is worth anything.",
       "tradeoff": "Counting is cheap, but acting on the count is not: forcing literals would mean a constant table and touching every non-literal call site, and some of those names genuinely depend on runtime state. The count may also show the gap is tiny, in which case the right answer is to write the number down and stop — which is still worth the measurement.",
       "effort": "S",
       "target": "scripts/check-named-exception-classes-are-loadable.py, jvm/src/jvm.rs"
@@ -43,6 +45,15 @@
       "tradeoff": "exception() currently returns JavaError, not Result<JavaError>, so every caller changes — 812 call sites reference it. There is also a genuine question of what to throw when the class you wanted to throw is itself unavailable, which is the self-referential case at jvm.rs:842; picking a wrong answer there turns one crash into an infinite recursion.",
       "effort": "M",
       "target": "jvm/src/jvm.rs, jvm-bytecode/src/interpreter.rs, rustjava-runtime/src/classes/"
+    },
+    {
+      "title": "Decide whether the loadable set should be read from the loader instead of re-derived",
+      "plainSummary": "The check works out which classes the runtime can load by re-reading the Rust source; three of this round's four defects came from that re-derivation being subtly wrong.",
+      "userBenefit": "Every mistake in the re-derivation is a false green or a false red on a check whose whole job is to be trusted when it says nothing is wrong.",
+      "why": "All three defects gate 2 found were in the mapping from a loader registration back to the class name it produces: bare-name keying let a colliding type answer for its twin, only as_proto() was matched so three list_proto() registrations read as absent, and taking the first name: in an impl block attributed the wrong class when a type holds two constructors. Each fix was small, and each was only found by someone reading the source alongside the script. The alternative is to stop re-deriving: have the Rust side emit the registered names once (a test that prints them, or a generated file) and let the check compare two lists instead of parsing one.",
+      "tradeoff": "Emitting the list means the check depends on a build step, which is slower and adds a way for the two to drift when the emitter is not re-run; the current version needs nothing but the source text and runs in about a second. It also moves a correctness question into Rust, where it is harder to see. The count that would decide it is how many more re-derivation defects show up — if this round was the last one, the parsing version is cheaper.",
+      "effort": "M",
+      "target": "scripts/check-named-exception-classes-are-loadable.py, rustjava-runtime/src/loader.rs"
     }
   ]
 }
