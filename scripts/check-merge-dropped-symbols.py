@@ -243,7 +243,13 @@ def check(merge):
     accounted = excused(merge)
     if excuses_everything(accounted):
         return [], 0
-    for path in filter(None, changed):
+    # Sorted because `changed` is a set: without this the findings come out in whatever order the
+    # hash seed produced, and two runs of the *same* version disagree. Measured on `origin/main`
+    # before this line: eight runs under PYTHONHASHSEED=random gave two distinct orderings of the
+    # same six findings (6 + 2). That cost a real round -- a before/after diff of this check looked
+    # like a regression until the unchanged version was shown to disagree with itself. Names are
+    # already sorted within a path below; this makes the whole report comparable.
+    for path in sorted(filter(None, changed)):
         theirs_symbols = symbols(theirs, path)
         if theirs_symbols is None:
             continue

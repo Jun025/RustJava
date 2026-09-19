@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-19",
+  "taskId": "2026-09-19-partial-clone-blob-vs-absence-p0",
+  "summary": "The merge-dropped-symbols check emitted its findings in hash-seed order, so two runs of the same version disagreed. Re-measured on today's origin/main: eight runs produced two distinct orderings of the same six findings. Sorting the path loop makes the report comparable; content, rc and summary are unchanged.",
+  "measurements": {
+    "runs_per_direction": 8,
+    "orderings_before": 2,
+    "orderings_after": 1,
+    "findings": 6,
+    "rc_before": 1,
+    "rc_after": 1,
+    "files_changed": 1,
+    "lines_added": 7,
+    "lines_removed": 1,
+    "runtime_before_seconds": [2.09, 2.51, 2.41],
+    "runtime_after_seconds": [2.52, 1.90, 1.65]
+  },
+  "verification": [
+    "premise re-measured on origin/main @ ad9eb1a6: 8 runs under PYTHONHASHSEED=random over e53b2142^..e53b2142 gave 2 orderings (6 + 2) of the same 6 findings",
+    "axis, both directions on the product script: with the sort reverted 8 runs give 2 orderings; with it, 8/8 identical",
+    "content unchanged in both directions: 6 findings, rc=1, identical summary line",
+    "cost: before 2.09/2.51/2.41s vs after 2.52/1.90/1.65s, overlapping"
+  ],
+  "changes": [
+    "scripts/check-merge-dropped-symbols.py - the path loop iterates sorted(changed) instead of the set, with the measurement recorded in a comment",
+    "docs/worklog/2026-09-19-sorted-findings.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "The proposal located the problem at the print site ('accumulated in a set and printed in iteration order'); names were already sorted there. The unordered part was the outer path loop over a set built from two git diff --name-only results.",
+    "This makes the report comparable, not the check deterministic: examined counts and which merges appear still depend on repository state.",
+    "Only this checker was changed. The sibling check appeared safe on inspection (sorted missing list, sorted file walk) but was not measured."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-partial-clone-blob-vs-absence#p0"
+  ],
+  "proposals": []
+}
