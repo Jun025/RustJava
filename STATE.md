@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
+  ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
+  ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.
+  ★**자리**: 프로퍼티 루프 **앞**(기존 `NoClassDefFoundError` 확인은 그 **뒤**라 String 형상엔 **늦다**) · 관용은 동일(로더에 **직접** 질의 후 resolve — bare `resolve_class` 는 순환 자신에게 넘긴다).
+  ★**양방향**(제품 호출부): green ↔ 제거 시 ★**바이너리째 SIGABRT** ↔ 복원 green.
+  ★**시작 비용**: 로더 질의 **1 → 2회**(결정론 계수). ★**벽시계는 버렸다** — 형제 레인 부하로 같은 형상 p50 이 69ms~1690ms 고 교대 8회 중 3회는 확인 있는 쪽이 더 빨랐다 ⇒ 수를 주장하지 않는다.
+  ★**미측정**: 두 클래스의 생성자·정적 초기화가 닿는 나머지(후속 카드).
 - [2026-09-19-partial-clone-blob-vs-absence-p0] ★★**`check-merge-dropped-symbols.py` 의 출력 순서를 고정했다 — 두 회차를 diff 할 수 있다.** 채택 제안 `2026-09-19-partial-clone-blob-vs-absence#p0`. ★**코드 1줄**(+주석 8줄) · `.rs` 0줄.
   ★**재현**: `origin/main` 판본 · `PYTHONHASHSEED=random` **10회** → 순서 **2종**(같은 6건) ⇒ 없는 차이가 diff 에 보였다.
   ★★**제안 진단은 부정확**: `findings` 는 set 이 아니라 **list** 이고 이름은 이미 정렬돼 있었다 — set 4개 중 출력에 닿는 것은 ★**`changed`(경로) 하나**다. ⇒ 「print site」가 아니라 ★**출처에서** 정렬했다(`check()` 의 **반환값**도 결정적이어야 하므로).
