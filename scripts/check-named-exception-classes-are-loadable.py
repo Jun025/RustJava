@@ -78,6 +78,13 @@ PROTO_FN = re.compile(r"pub fn ([a-z_]+)\(\)\s*->\s*RuntimeClassProto\s*\{(.*?)\
 NAME_FIELD = re.compile(r'name:\s*"([^"]+)"')
 
 
+# The independent witness for "did the parse come up short". `REGISTERED` is the pattern under
+# suspicion, so counting its own matches proves nothing; this counts the same calls a second way,
+# by the one token a registration cannot be written without. Occurrences rather than lines, and no
+# trailing comma, so it does not care how the list is formatted -- measured on this file: `_proto()`
+# 268, `_proto(),` lines 268, `crate::classes::` 268, registrations parsed 268, all agreeing.
+PROTO_CALL = re.compile(r"_proto\(\)")
+
 def die(message):
     print(f"cannot measure: {message}", file=sys.stderr)
     raise SystemExit(2)
@@ -151,20 +158,49 @@ def loadable_classes():
                 if field:
                     name_of[(module, type_name, function.group(1))] = field.group(1)
 
-    registered = REGISTERED.findall(read(LOADER))
+    loader_text = read(LOADER)
+    registered = REGISTERED.findall(loader_text)
     if not registered:
         die(f"no proto registrations found in {LOADER.relative_to(ROOT)}")
 
-    names, unresolved = set(), []
+    # Did this parse come up short? The whole check rests on `registered` being every registration,
+    # and the failure mode is silent: a pattern that matches fewer entries yields a smaller loadable
+    # set, and a smaller loadable set makes missing classes look present. Measured on the first draft
+    # of this file: it matched only `as_proto`, parsed 265 of 268 and resolved 263 names, and said
+    # nothing. Counting the calls a second, independent way turns that into an exit 2.
+    witness = len(PROTO_CALL.findall(loader_text))
+    if len(registered) != witness:
+        die(
+            f"{len(registered)} registrations parsed but {witness} proto calls are in "
+            f"{LOADER.relative_to(ROOT)}. The pattern that reads them is missing some, so the loadable "
+            "set is short and every class it lost would read as 'not loadable'. Fix REGISTERED rather "
+            "than trusting this run."
+        )
+
+    names, unresolved, name_of_entry = set(), [], {}
     for path, function in registered:
         parts = path.split("::")
         key = ("::".join(parts[:-1]), parts[-1], function)
         if key in name_of:
             names.add(name_of[key])
+            name_of_entry.setdefault(name_of[key], []).append(f"{path}::{function}()")
         else:
             unresolved.append(f"{path}::{function}()")
     if unresolved:
         die("registered entries with no resolvable name: " + ", ".join(sorted(set(unresolved))))
+
+    # Two registrations that resolve to one name mean the resolution is wrong, not that the runtime
+    # has a duplicate: it is what the first draft did when it keyed types by bare name and let one of
+    # a colliding pair answer for its twin (265 parsed, 263 names). Named rather than counted, so the
+    # reader can tell a genuine duplicate registration from a mis-attribution at a glance.
+    collapsed = {name: entries for name, entries in name_of_entry.items() if len(entries) > 1}
+    if collapsed:
+        detail = "; ".join(f"{name} <- {', '.join(sorted(entries))}" for name, entries in sorted(collapsed.items()))
+        die(
+            f"{len(registered)} registrations resolved to only {len(names)} names. Two registrations "
+            f"naming one class means this file read them wrong, and a short loadable set reads as "
+            f"'not loadable': {detail}"
+        )
     return names
 
 
