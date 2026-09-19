@@ -123,6 +123,36 @@ impl Jvm {
         // load system class loader
         JavaLangClassLoader::get_system_class_loader(&jvm).await?;
 
+        // Resolve the class the error path reports *with*, so that path cannot eat its own tail.
+        // A class the loader cannot provide is reported by
+        // `Jvm::exception("java/lang/NoClassDefFoundError", …)`, and building that exception goes
+        // back through the loader. If the loader cannot provide *that* class either, the two call
+        // each other with no floor -- measured against a loader that hides it: 121 round trips
+        // survived and somewhere before 160 the process died of `stack overflow, aborting`
+        // (SIGABRT). Resolving it once here registers it, so afterwards the registry answers and the
+        // loader is never asked again: the cycle stops being reachable rather than being bounded.
+        //
+        // Here rather than in `bootstrap_classes` above because resolution runs class
+        // initialisation, which needs the thread attached below that list (measured: adding it there
+        // panicked on the missing thread frame).
+        // Asked of the loader directly first, because the reporting path cannot report *this*
+        // failure: building the report is what is missing. A bare `resolve_class` here would hand
+        // the question to `Jvm::exception`, which is the cycle itself -- measured, that is still
+        // `stack overflow, aborting`, only during construction instead of later. One direct question
+        // turns the same condition into an immediate, named failure.
+        assert!(
+            jvm.inner
+                .bootstrap_class_loader
+                .load_class(&jvm, "java/lang/NoClassDefFoundError")
+                .await?
+                .is_some(),
+            "the class set has no java/lang/NoClassDefFoundError, which is the class this runtime \
+             reports every other missing class with. Nothing can be raised without it: the reporter \
+             would be asked to report its own absence, and that recursion has no floor (measured: \
+             121 round trips, then the process aborts on a stack overflow). Add it to the class set."
+        );
+        jvm.resolve_class("java/lang/NoClassDefFoundError").await?;
+
         jvm.inner.bootstrapping.store(false, Ordering::Relaxed);
 
         let thread_id = (jvm.inner.get_current_thread_id)();

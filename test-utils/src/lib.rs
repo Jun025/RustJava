@@ -419,6 +419,54 @@ where
     Jvm::new(bootstrap_class_loader, move || runtime.current_task_id(), properties).await
 }
 
+/// A bootstrap loader that answers "no such class" for one name, and counts how often it is asked.
+///
+/// Exists for one question: what happens when the class the runtime uses to *report* a missing class
+/// is itself missing. `Jvm::exception` builds `java/lang/NoClassDefFoundError` to describe an
+/// unloadable name, and building it goes back through the loader -- so hiding that one class is the
+/// only way to reach the cycle from a test.
+///
+/// `give_up_after` is a measuring device, not a fix: after that many requests the real class is
+/// handed over, so a run that would otherwise recurse forever ends and the count can be asserted
+/// instead of crashing the test runner.
+pub struct HidesOneClass<C> {
+    inner: C,
+    hidden: String,
+    requests: Arc<AtomicU32>,
+    give_up_after: u32,
+}
+
+#[async_trait::async_trait]
+impl<C> jvm::BootstrapClassLoader for HidesOneClass<C>
+where
+    C: jvm::BootstrapClassLoader,
+{
+    async fn load_class(&self, jvm: &Jvm, name: &str) -> Result<Option<Box<dyn ClassDefinition>>> {
+        if name == self.hidden {
+            let seen = self.requests.fetch_add(1, Ordering::SeqCst) + 1;
+            if seen <= self.give_up_after {
+                return Ok(None);
+            }
+        }
+        self.inner.load_class(jvm, name).await
+    }
+}
+
+/// A JVM whose bootstrap loader cannot produce `hidden`, plus the counter of how often it was asked.
+pub async fn test_jvm_hiding(hidden: &str, give_up_after: u32) -> Result<(Jvm, Arc<AtomicU32>)> {
+    let runtime = TestRuntime::new(BTreeMap::new());
+    let requests = Arc::new(AtomicU32::new(0));
+    let loader = HidesOneClass {
+        inner: get_bootstrap_class_loader(Box::new(runtime.clone())),
+        hidden: hidden.to_owned(),
+        requests: requests.clone(),
+        give_up_after,
+    };
+    let properties = [("java.class.path", ".")].into_iter().collect();
+    let jvm = Jvm::new(loader, move || runtime.current_task_id(), properties).await?;
+    Ok((jvm, requests))
+}
+
 pub async fn test_jvm() -> Result<Jvm> {
     let runtime = TestRuntime::new(BTreeMap::new());
     create_test_jvm(runtime).await
