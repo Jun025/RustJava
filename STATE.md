@@ -7,6 +7,11 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [2026-09-19-partial-clone-blob-vs-absence-p0] ★★**`check-merge-dropped-symbols.py` 의 출력 순서를 고정했다 — 두 회차를 diff 할 수 있다.** 채택 제안 `2026-09-19-partial-clone-blob-vs-absence#p0`. ★**코드 1줄**(+주석 8줄) · `.rs` 0줄.
+  ★**재현**: `origin/main` 판본 · `PYTHONHASHSEED=random` **10회** → 순서 **2종**(같은 6건) ⇒ 없는 차이가 diff 에 보였다.
+  ★★**제안 진단은 부정확**: `findings` 는 set 이 아니라 **list** 이고 이름은 이미 정렬돼 있었다 — set 4개 중 출력에 닿는 것은 ★**`changed`(경로) 하나**다. ⇒ 「print site」가 아니라 ★**출처에서** 정렬했다(`check()` 의 **반환값**도 결정적이어야 하므로).
+  ★**양방향**: 2종 ↔ **1종** ↔ 되돌리면 2종. ★찾은 것 불변(15줄 · 집합 일치 · rc 1).
+  ★**대가**: 아무도 잠그지 않는다 — `scripts/` 테스트 하네스 **0** · 비결정성을 넣어도 파이썬 검사기 **4종 rc 0** · fmt **rc 0** ⇒ ★**그물 «0»**. 후속 제안으로 남겼다.
 - [rustjava-loadable-set-from-loader-vs-rederive-decision] ★★**적재 가능 집합은 «재유도»를 유지한다 — 로더에서 읽지 않는다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p2`. ★**순수 결정 · 코드 0줄** · 산출 = `docs/loadable-set-source-of-truth.md`.
   ★**전제 확인**: 「4중 3이 재유도」는 **참**(고침 커밋 `89c2e83c` 에서 갈랐다 — loadable 3 · named 1).
   ★★**그 1건이 결정한다**: `named`(코드가 무엇을 넘기는가)는 **로더가 답할 수 없다** ⇒ 로더 읽기는 **파서 하나를 없앨 뿐 파싱을 못 없앤다**(그 절반에서 형제 회차가 ★**4시간 31분** 뒤에 또 잡았다 — ★**「다른 함수 8종 41자리」**를 쓸어담는 앵커 함정이고, 세면 **33** · 맞는 답은 **0** 이다).

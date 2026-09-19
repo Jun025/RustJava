@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-19",
+  "taskId": "2026-09-19-partial-clone-blob-vs-absence-p0",
+  "summary": "check-merge-dropped-symbols.py printed the same findings in a different order on different runs, so diffing two runs showed differences that were not there. One line: iterate the changed-paths set in sorted order.",
+  "decision": "Sort at the source (the `changed` set iteration in check()) rather than at the print site in main(), so that what check() *returns* is ordered too, not only what main() happens to print.",
+  "measurements": {
+    "range_used": "e53b2142^..e53b2142 (8 merges, 6 dropped definitions, rc 1)",
+    "before_distinct_orderings_over_10_runs": 2,
+    "after_distinct_orderings_over_10_runs": 1,
+    "mutation_distinct_orderings_over_10_runs": 2,
+    "findings_unchanged": "15 output lines before and after; identical as a set; rc 1 both",
+    "nondeterminism_sources_audited": 4,
+    "nondeterminism_sources_reaching_output_order": 1,
+    "note_on_the_proposal_text": "The proposal said findings are 'accumulated in a set'. They are not -- `findings` is a list, and names within one path were already sorted(). The single real source is `changed`, a set of paths."
+  },
+  "verification": {
+    "bidirectional_mutation": "product call site, not a copy: removing sorted() from scripts/check-merge-dropped-symbols.py takes 10 runs from 1 distinct ordering to 2; restoring it returns to 1",
+    "existing_guard_measured_under_the_mutation": "zero: all 4 python checkers rc 0 and cargo fmt --check rc 0 with the nondeterminism present; clippy and cargo test were not re-run because they do not read this script's output",
+    "dod": "all 9 DoD commands rc 0"
+  },
+  "changes": [
+    "scripts/check-merge-dropped-symbols.py: `for path in filter(None, changed)` -> `for path in sorted(filter(None, changed))`, plus an 8-line comment recording why and the measurement"
+  ],
+  "issues": [
+    "Nothing locks the ordering. There is no test harness for the scripts/ checkers in this repo, so a future edit can reintroduce the same nondeterminism silently. Recorded as proposal p0 rather than built, because adding one would be a larger round than the fix."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-partial-clone-blob-vs-absence#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Lock the checkers' output determinism so it cannot silently come back",
+      "plainSummary": "The ordering was just fixed, but nothing checks that it stays fixed, so the same problem can return without anyone noticing.",
+      "userBenefit": "A future edit that reintroduces run-to-run variation fails in CI instead of costing the next round the same wasted comparison this one paid for.",
+      "why": "Measured this round: removing the one-word fix from scripts/check-merge-dropped-symbols.py takes the same range from 1 distinct ordering over 10 runs back to 2, and every repo axis stays green -- fmt, clippy, cargo test and all four python checkers pass with the nondeterminism present. So the guard that exists today is zero. The repo has no test harness for scripts/ at all (0 test*.py files), which is why this was not simply added here: it needs a harness decision, not a line.",
+      "tradeoff": "A harness for four standalone scripts is real weight -- a new CI job and a place for it to live -- and two runs under different PYTHONHASHSEED values is a slow way to assert an invariant a reader can see in one line. The cheaper variant is to assert sortedness directly rather than re-running, which does not catch a second source appearing elsewhere. Leaving it means the fix is a habit, not a rule.",
+      "effort": "M",
+      "target": "scripts/ (all four checkers), .github/workflows/rust.yml"
+    }
+  ]
+}

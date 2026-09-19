@@ -243,7 +243,15 @@ def check(merge):
     accounted = excused(merge)
     if excuses_everything(accounted):
         return [], 0
-    for path in filter(None, changed):
+    # `sorted` so that two runs can be diffed. `changed` is a set of paths, and iterating it takes
+    # Python's per-process randomised string hash order: measured on origin/main's version over
+    # `e53b2142^..e53b2142`, ten runs under PYTHONHASHSEED=random printed the same six findings in
+    # two different orders, differing only in which path's block came first. That cost the round
+    # that found it real time -- a before/after diff read as a regression until the unchanged
+    # version was shown to disagree with itself. Names *within* a path were already sorted below,
+    # so the path order was the only axis left. Sorting here rather than at the print site fixes
+    # the order of what `check()` returns, not just what main() happens to print.
+    for path in sorted(filter(None, changed)):
         theirs_symbols = symbols(theirs, path)
         if theirs_symbols is None:
             continue
