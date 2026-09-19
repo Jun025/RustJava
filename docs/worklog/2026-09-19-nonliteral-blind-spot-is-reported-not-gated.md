@@ -75,6 +75,14 @@ mean.
   scrolled past. That is the trade this round chose, and it is the strongest argument for the gate.
 - **The count is only as good as its predicate** — the 42 above is what a one-line mistake looks
   like. It is not tested by anything except the probes in this round.
+- **The gate's *input set* is now a thing this file can get wrong, and that is a cost the first
+  version of this round paid.** "Exit codes are untouched" was true of what 0/1/2 *mean*, and it hid
+  the axis that actually matters: merging the two scans put the report axis's prefix filter on the
+  gate axis too, so a call written `raise_exception("java/lang/X", …)` was dropped from **both** —
+  not gated, not reported. Measured by gate 2 and reproduced here: an injected
+  `raise_exception("java/lang/TotallyUnloadableProbe", …)` gave **rc 0** against that form where the
+  previous version gave **rc 1**. Fixed by keeping the gate axis unfiltered. The lesson is not the
+  bug, it is that "the exit codes are unchanged" says nothing about **what is fed into them**.
 - **Product versus test is not distinguished.** Today all non-literal sites are tests; the report
   does not say so, and a product site would read identically.
 - Runtime: **no significant change** — before 1.33 / 3.20 / 1.55 / 1.58 s, after 1.73 / 1.88 / 1.44 /

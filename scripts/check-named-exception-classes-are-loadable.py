@@ -148,8 +148,6 @@ def scan_call_sites():
         text = read(path)
         rel = path.relative_to(ROOT)
         for match in ANY_SITE.finditer(text):
-            if match.start() and text[match.start() - 1] in IDENT_CHARS:
-                continue  # assert_exception( and friends: a different function
             if IS_DEFINITION.search(text[max(0, match.start() - 12) : match.start()]):
                 continue
             # `count` rather than an index of newline offsets: there are ~850 matches in the whole
@@ -158,7 +156,18 @@ def scan_call_sites():
             line = text.count("\n", 0, match.start()) + 1
             literal = NAMED.match(text, match.start())
             if literal:
+                # ★ No prefix filter on this branch, and that is the point. This is the gate's input
+                # set, and `NAMED` already requires `("java…` right after the paren -- which the
+                # helper functions cannot satisfy, because their first argument is `jvm`. Filtering
+                # here buys nothing (measured: 43 / 846 / 268 either way) and costs coverage: a call
+                # written `raise_exception("java/lang/X", …)` would be dropped from the gate *and*
+                # from the blind-spot report, so a class the runtime cannot load would read as
+                # `✓ all loadable`. Measured on the form that filtered here: rc 0 against an injected
+                # `raise_exception("java/lang/TotallyUnloadableProbe", …)` that the previous version
+                # caught with rc 1.
                 named.setdefault(literal.group(1), []).append(f"{rel}:{line}")
+            elif match.start() and text[match.start() - 1] in IDENT_CHARS:
+                continue  # assert_exception( and friends: a different function, first argument `jvm`
             elif not FIRST_ARG_LITERAL.match(text[match.end() :]):
                 blind.append(f"{rel}:{line}")
     _SCAN_CACHE = (named, blind)
