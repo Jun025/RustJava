@@ -12,6 +12,15 @@
 - 검증: DoD 9명령 · 아래 절.
 - ★후속 추천: **오류 경로의 나머지 클래스 집합을 «한 번에» 측정으로 찾을 것인가**(M · 지금은 회차당 한 클래스씩 «누가 물어봐야» 찾는다). 상세 = `docs/worklog/2026-09-19-string-on-the-error-path.md`.
 
+## [2026-09-19] 두 회차를 비교할 수 있게 «순서»를 고정했다 (2026-09-19-partial-clone-blob-vs-absence-p0)
+- 무엇을: 채택 제안 `2026-09-19-partial-clone-blob-vs-absence#p0`. `scripts/check-merge-dropped-symbols.py` 가 **같은 결과를 회차마다 다른 순서로** 찍어, 두 회차를 diff 하면 ★**없는 차이가 보였다**. ★**코드 1줄**(+주석 8줄).
+- ★**재현**: `origin/main` 판본 · 범위 `e53b2142^..e53b2142`(8머지 · 6드롭 · rc 1) · `PYTHONHASHSEED=random` **10회** → ★**서로 다른 순서 «2종»**(6회/4회). 차이는 ★**경로 블록의 선후 하나뿐**이다.
+- ★★**제안의 «진단»은 정확하지 않았다 — 고치는 자리가 달라진다.** 제안은 「findings 가 set 에 모인다」고 했는데 ⑴`findings` 는 **list** 이고 ⑵한 경로 «안»의 이름은 **이미 `sorted()`** 였다. 파일의 set **4개**를 전수로 보면 출력 순서에 닿는 것은 ★**`changed`(경로 집합) 하나뿐**이다. ⇒ 「print site 에서 정렬」은 **우연히** 맞는 처방이었다.
+- ★**그래서 «출처»에서 정렬했다** — `for path in sorted(filter(None, changed))`. `findings` 는 `check()` 가 **반환**도 하므로, `main()` 에서 정렬하면 **찍는 것만** 결정적이고 **반환값은 여전히** 해시 순서다.
+- ★**양방향(제품 호출부 · 사본 아님)**: 전 **2종** ↔ 후 **1종** ↔ 되돌리면 **2종** ↔ 복원 **1종**. ★**찾은 것은 그대로다**: 출력 **15줄** 동일 · 집합으로 정렬하면 **완전 일치** · rc **1** 불변.
+- ★★**대가 — 「잃는 것이 없다」가 아니다**: ⒜순회 순서라는 성질을 **없앴다**(읽는 곳은 없다) ⒝★**아무도 잠그지 않는다.** 이 repo 엔 `scripts/` 용 **테스트 하네스가 없다**(`test*.py` **0개**) — 비결정성을 **되돌려 놓고 재니** 파이썬 검사기 **4종 전건 rc 0** · `cargo fmt` **rc 0**. ⇒ ★**이 계급에 대한 그물은 «0»이고, 이 수정은 규칙이 아니라 습관이다.** 후속 제안으로 남겼다(하네스는 1줄보다 큰 결정이다).
+- 후속 추천: `docs/worklog/2026-09-19-merge-drops-deterministic-order.{md,json}` — 「검사기 출력 결정성을 잠가라」(effort M).
+
 ## [2026-09-19] 적재 가능 집합을 «로더에서 읽을까» — ★**아니다, 재유도를 유지한다**(rustjava-loadable-set-from-loader-vs-rederive-decision)
 - 무엇을: 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p2`(worklog json 기록). ★**순수 결정 회차 — `.rs` 0줄 · `scripts/` 0줄.** 산출 = `docs/loadable-set-source-of-truth.md`(선례 = `docs/test-data-target-policy.md`).
 - ★★**전제부터 확인했다 — 「4결함 중 3이 재유도」는 «참»이다.** 산문이 아니라 **고침 커밋 `89c2e83c` 에서** 갈랐다: ⑴`as_proto` 전용 → `list_proto` 3건 누락 ⑵한 `impl` 의 첫 `name:` 오귀속 ⑶짧은 이름 키 충돌 = **재유도(loadable) 3건** · ⑷줄 단위 스캔이 rustfmt 가 쪼갠 34건 누락 = ★**호출부 스캔(named) 1건**.
