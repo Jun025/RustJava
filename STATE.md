@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
+  ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
+  ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.
+  ★**자리**: 프로퍼티 루프 **앞**(기존 `NoClassDefFoundError` 확인은 그 **뒤**라 String 형상엔 **늦다**) · 관용은 동일(로더에 **직접** 질의 후 resolve — bare `resolve_class` 는 순환 자신에게 넘긴다).
+  ★**양방향**(제품 호출부): green ↔ 제거 시 ★**바이너리째 SIGABRT** ↔ 복원 green.
+  ★**시작 비용**: 로더 질의 **1 → 2회**(결정론 계수). ★**벽시계는 버렸다** — 형제 레인 부하로 같은 형상 p50 이 69ms~1690ms 고 교대 8회 중 3회는 확인 있는 쪽이 더 빨랐다 ⇒ 수를 주장하지 않는다.
+  ★**미측정**: 두 클래스의 생성자·정적 초기화가 닿는 나머지(후속 카드).
 - [rustjava-loadable-set-from-loader-vs-rederive-decision] ★★**적재 가능 집합은 «재유도»를 유지한다 — 로더에서 읽지 않는다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p2`. ★**순수 결정 · 코드 0줄** · 산출 = `docs/loadable-set-source-of-truth.md`.
   ★**전제 확인**: 「4중 3이 재유도」는 **참**(고침 커밋 `89c2e83c` 에서 갈랐다 — loadable 3 · named 1).
   ★★**그 1건이 결정한다**: `named`(코드가 무엇을 넘기는가)는 **로더가 답할 수 없다** ⇒ 로더 읽기는 **파서 하나를 없앨 뿐 파싱을 못 없앤다**(그 절반에서 형제 회차가 ★**4시간 31분** 뒤에 또 잡았다 — ★**「다른 함수 8종 41자리」**를 쓸어담는 앵커 함정이고, 세면 **33** · 맞는 답은 **0** 이다).

@@ -105,6 +105,31 @@ impl Jvm {
             class.set_java_class(java_class);
         }
 
+        // Resolve the *other* class the error path needs, for the same reason and with the same
+        // shape as the `java/lang/NoClassDefFoundError` check below. `Jvm::exception` builds its
+        // message with `JavaLangString::from_rust_string` *before* it builds the exception instance,
+        // so a class set without `java/lang/String` cannot report anything either: reporting the
+        // missing String needs a String. Measured against a loader that hides it -- 116 round trips
+        // survived, 117 died of `stack overflow, aborting` (SIGABRT), and the boundary reproduced
+        // exactly across repeats. The cap is the harness giving the real class up, not a floor:
+        // raising it to 100000 aborts just the same, so there is no floor.
+        //
+        // Here rather than beside that check, because this one has to come *first*: the properties
+        // loop directly below is the first thing in construction that needs a String, and the check
+        // below it runs too late to be reached. Same reason it cannot go in `bootstrap_classes`
+        // above -- resolution runs class initialisation, which needs the thread attached above.
+        // Asked of the loader directly first, because the reporting path cannot report *this*
+        // failure: building the report is the thing that is missing.
+        assert!(
+            jvm.inner.bootstrap_class_loader.load_class(&jvm, "java/lang/String").await?.is_some(),
+            "the class set has no java/lang/String, which every raised error needs before it can \
+             exist: an exception carries a message, and building that message is the first thing \
+             the reporting path does. Nothing can be raised without it -- reporting the absent \
+             String would itself need a String, and that recursion has no floor (measured: 117 \
+             round trips, then the process aborts on a stack overflow). Add it to the class set."
+        );
+        jvm.resolve_class("java/lang/String").await?;
+
         // init properties
         for (key, value) in properties {
             let key = JavaLangString::from_rust_string(&jvm, key).await?;

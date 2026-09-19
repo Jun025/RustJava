@@ -1,4 +1,17 @@
 # REPORT
+## [2026-09-19] 오류 경로의 «또 하나»는 `java/lang/String` 이고 — ★**재귀한다**(rustjava-error-path-needs-java-lang-string-measure-first)
+- 무엇을: 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`(worklog json 기록). ★**제안의 조건이 「측정이 먼저」였고 그대로 했다** — 선행 회차가 String 에 대해 **아무것도 주장하지 않았고**(자기 worklog 에 「실측 아님」이라 적었다) 셋 중 무엇인지가 열려 있었다.
+- ★★**답 = ⒜ 재귀한다**(⒝ 깨끗한 실패도, ⒞ 이미 상주도 아니다). 하니스로 String 을 숨겨 이분법으로 경계를 찾았다: 상한 **116 생존 ↔ 117 `stack overflow, aborting`(SIGABRT · rc 134)** · ★**양쪽 2회씩 재현** · ★**상한 100000 도 abort** ⇒ 상한은 «하니스가 양보하는 지점»이지 **바닥이 아니다**.
+- ★**⒞가 아닌 이유를 «구조»로**: `bootstrap_classes` 는 **6개**(`Object`·`Runnable`·`Thread`·`[B`·`Serializable`·`Class`)이고 ★**String 은 없다** · `JavaLangClass::from_rust_class` 는 클래스 이름을 **바이트 배열**(`nameBytes` `[B`)로 넣지 **String 으로 넣지 않는다** ⇒ 구성 중 String 을 처음 필요로 하는 곳은 **프로퍼티 루프**이고 그때는 로더가 유일한 출처다.
+- ★**처방**: 기존 `NoClassDefFoundError` 확인과 **같은 관용**(로더에 **직접** 묻고 그 뒤 resolve) — ★**bare `resolve_class` 는 답이 안 된다**(실패를 `Jvm::exception` 에 넘기는데 그것이 곧 순환이다).
+  ★★**자리가 장식이 아니다 — 프로퍼티 루프 «앞»이다.** 기존 확인은 그 루프 **뒤**에 있어 String 형상은 **거기 닿기 전에** 재귀한다.
+- ★**양방향 축**(제품 호출부 `jvm/src/jvm.rs` · 사본 아님): 원형상 **green(2 passed)** ↔ 확인 제거 → ★**`stack overflow, aborting` SIGABRT signal 6 — 테스트 «바이너리째» 내려간다** ↔ 복원 **green**.
+- ★★**시작 비용 — 수로 적는다**(제안이 「every start-up」을 비용으로 지목했다). 결정론 계수(하니스 counter · `give_up_after=0` = 숨기지 않고 «세기만»): 로더가 String 을 묻는 횟수 ★**후 2회 ↔ 전 1회 = 추가 «1회»**. 곁의 `resolve_class` 는 **추가가 아니라 이동**이다(프로퍼티 루프가 하던 해석이 앞당겨지고, 루프는 등재된 것을 찾는다).
+  ★**벽시계 측정은 «버렸다»** — 형제 레인이 다른 repo 에서 cargo 를 돌고 있어 **같은 형상의 p50 이 69ms~1690ms** 로 흔들렸고 교대 8회 중 **3회는 «확인 있는 쪽»이 더 빨랐다**. ⇒ 그것은 비용이 아니라 «부하»를 잰다. ★**수를 주장하지 않는다**(노이즈 아래라고만 적는다).
+- ★**안 한 것**: 이 **두 클래스**만 덮는다 — 두 클래스의 생성자·정적 초기화가 닿는 것은 **미측정**이다(티켓 non-goal · 후속 카드).
+- 검증: DoD 9명령 · 아래 절.
+- ★후속 추천: **오류 경로의 나머지 클래스 집합을 «한 번에» 측정으로 찾을 것인가**(M · 지금은 회차당 한 클래스씩 «누가 물어봐야» 찾는다). 상세 = `docs/worklog/2026-09-19-string-on-the-error-path.md`.
+
 ## [2026-09-19] 적재 가능 집합을 «로더에서 읽을까» — ★**아니다, 재유도를 유지한다**(rustjava-loadable-set-from-loader-vs-rederive-decision)
 - 무엇을: 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p2`(worklog json 기록). ★**순수 결정 회차 — `.rs` 0줄 · `scripts/` 0줄.** 산출 = `docs/loadable-set-source-of-truth.md`(선례 = `docs/test-data-target-policy.md`).
 - ★★**전제부터 확인했다 — 「4결함 중 3이 재유도」는 «참»이다.** 산문이 아니라 **고침 커밋 `89c2e83c` 에서** 갈랐다: ⑴`as_proto` 전용 → `list_proto` 3건 누락 ⑵한 `impl` 의 첫 `name:` 오귀속 ⑶짧은 이름 키 충돌 = **재유도(loadable) 3건** · ⑷줄 단위 스캔이 rustfmt 가 쪼갠 34건 누락 = ★**호출부 스캔(named) 1건**.

@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-19",
+  "taskId": "rustjava-error-path-needs-java-lang-string-measure-first",
+  "summary": "Measured first, as the proposal required. Hiding java/lang/String from the bootstrap loader recurses with no floor, exactly like NoClassDefFoundError: caps up to 116 survive, 117 aborts with 'stack overflow, aborting' (SIGABRT), and raising the cap to 100000 aborts the same way, so the cap is the harness relenting and not a floor. The boundary reproduced exactly across repeats. That is outcome (a) of the three the proposal listed, so the check goes in - same idiom as the existing NoClassDefFoundError check, placed before the properties loop because that loop is the first thing in construction that needs a String and the existing check sits after it. Start-up cost measured deterministically rather than by wall clock: the loader is asked for String twice instead of once.",
+  "decision": "String recurses; add the pre-flight check in the NoClassDefFoundError idiom, before the properties loop",
+  "measurements": {
+    "cited_tree": "origin/main 64cc4f6440af5790685a633a3c13d4d32ea62ae5",
+    "outcome": "a-recurses",
+    "max_surviving_give_up_after": 116,
+    "min_aborting_give_up_after": 117,
+    "abort_signal": "SIGABRT (signal 6), rc 134",
+    "abort_at_cap_100000": true,
+    "boundary_repeats": 2,
+    "loader_questions_for_string_with_check": 2,
+    "loader_questions_for_string_without_check": 1,
+    "bootstrap_classes_count": 6,
+    "string_in_bootstrap_classes": false,
+    "nocdfe_lineage_measured_round_trips": 121
+  },
+  "verification": [
+    "premise (a) confirmed in code: Jvm::exception calls JavaLangString::from_rust_string at jvm/src/jvm.rs:990, before new_class at :995",
+    "premise (b) confirmed: test_utils::test_jvm_hiding(hidden, give_up_after) matches the hidden name exactly, so it takes java/lang/String",
+    "outcome measured by bisection on give_up_after between a surviving 60 and an aborting 120; 116 survives (construction ends in a plain NoClassDefFoundError), 117 aborts; both sides reproduced twice",
+    "not (c): java/lang/String is not in the 6-name bootstrap_classes list, and JavaLangClass::from_rust_class stores the class name as a byte array (nameBytes, [B) rather than a String, so nothing resident before the properties loop supplies it",
+    "bidirectional axis on the product call site jvm/src/jvm.rs (not a fixture copy): original green (2 passed) -> check deleted: 'fatal runtime error: stack overflow, aborting', SIGABRT signal 6 -> restored: green",
+    "start-up cost measured with the harness counter at give_up_after=0 (never hides, only counts), which is deterministic and immune to machine load: 2 questions with the check, 1 without; the two test binaries differed by sha256, so the two forms were genuinely different code"
+  ],
+  "changes": [
+    "jvm/src/jvm.rs - direct load_class question for java/lang/String plus resolve_class, before the properties loop; comment records the measured numbers and why it cannot sit beside the NoClassDefFoundError check",
+    "jvm/tests/test_exception_fallback_recursion.rs - second should_panic test for the String arm",
+    "docs/worklog/2026-09-19-string-on-the-error-path.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "Wall-clock start-up timing was attempted first and discarded as unusable: another lane was running cargo on a sibling repo and the same form's p50 swung between 69ms and 1690ms, with the with-check form faster than the without-check form in 3 of 8 interleaved rounds. The reported cost is the deterministic loader-question count instead. The wall-clock difference is below this host's noise floor and no number is claimed for it.",
+    "The check costs one loader question on every start-up and that cannot be avoided while keeping the property that makes it work: a bare resolve_class would hand the failure to Jvm::exception, which is the cycle itself. It is the same price the NoClassDefFoundError check already pays.",
+    "Only these two classes are covered. Nothing was measured about any other class the error path might reach - the proposal's non-goal, left as a follow-up."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-fallback-class-absence-fails-at-construction#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Find the rest of the error path's class set by measurement, not one class at a time",
+      "plainSummary": "Two classes are now known to be required before any error can be reported, and both were found the same way - one at a time, by a round that guessed the next name. Nothing lists what else the reporting path needs.",
+      "userBenefit": "A host with an incomplete class set would learn every missing name at start-up at once, instead of discovering them one crash and one round at a time.",
+      "why": "This round and the one before it each closed exactly one class, and each found the next by reading the code and guessing. The harness makes measuring any single name cheap, but nothing enumerates the candidates: Jvm::exception needs String and NoClassDefFoundError today, and the classes reached by their constructors and static initialisers are unmeasured. A sweep that hides each bootstrap-reachable name in turn and records which ones recurse would answer the whole question once.",
+      "tradeoff": "The sweep costs a test run per candidate name and the candidate list itself has to be derived, which is the work. If it turns out the answer is still just these two, the result is a recorded negative rather than a new check - worth knowing, but it does not change any code. Against that, the current pattern spends a whole round per class and only finds the class after someone thinks to ask.",
+      "effort": "M",
+      "target": "jvm/src/jvm.rs, jvm/tests/test_exception_fallback_recursion.rs, test-utils/src/lib.rs"
+    }
+  ]
+}
