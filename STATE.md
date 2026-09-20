@@ -7,6 +7,14 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-error-path-string-array-hiding-overflows-stack-p1] ★★**`[Ljava/lang/String;` 오버플로의 원인 — 지난 회차 기재가 «틀렸다».** 채택 제안 `2026-09-20-error-path-class-closure#p1` · ★**조사 회차 · 제품 코드 0줄**.
+  ★**재현**: cap 20 · 기본 스택 → `stack overflow, aborting` rc **134**.
+  ★★**반증**: 「로더로 안 돌아와 cap 이 못 끝낸다」는 **거짓** — 살아남은 전 실행에서 `asked = cap+1`(= `[C` 와 같은 모양). 원인은 ★**턴당 비용**.
+  ★**두 손잡이가 따로 움직인다**(가설 분리): cap **18↔19** · 스택 **2 MiB↔4 MiB**(cap 20 고정).
+  ★**순환을 백트레이스로**: `fillInStackTrace`→`instantiate_array`→`resolve_class`→`load_class`(None)→`exception`→`new_class`→`invoke_special`×4→`Throwable.<init>`→`fillInStackTrace` · ★**한 턴 ≈ 57 프레임**.
+  ★**대조**: `[C` 만 같이 돈다 · `[I`·`[Ljava/lang/Object;`·`java/lang/Integer` 등은 **asked=0** ⇒ **「배열이면 난다」가 아니다**.
+  ★**고침 = 스윕 헤더의 거짓 문장 하나** · 배열 제외는 유지(이유가 다르고 여전히 유효) · **개악 양방향 해당 없음**(동작 무변경).
+  ★**남긴 것**: 순환은 제품에 **바닥이 없다**(오늘 닿을 수 없을 뿐) ⇒ 후속 카드 「`Jvm::exception` 에 바닥을」(M).
 - [rustjava-string-on-the-error-path-p0] ★★**오류 경로의 클래스 집합을 한 번에 쟀다 — 답은 «둘»이 아니었다.** 채택 제안 `2026-09-19-string-on-the-error-path#p0`.
   ★**후보를 «유도»했다**(손 목록 아님): 기록 로더로 정상 구성 1회 → 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ 후보 **37**.
   ★★**5개가 더 재귀한다**: `Throwable`·`Error`·`LinkageError`·`CharSequence`·`Comparable` = 기존 두 이름의 **상위형·인터페이스 폐포**.

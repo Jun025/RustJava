@@ -1,4 +1,15 @@
 # REPORT
+## [2026-09-20] `[Ljava/lang/String;` 오버플로 — ★**원인을 찾았고, 지난 회차 기재가 «틀렸다»** (rustjava-error-path-string-array-hiding-overflows-stack-p1)
+- 무엇을: 채택 제안 `2026-09-20-error-path-class-closure#p1`(★**조사 회차** — 제품 코드 **0줄**). cap 20 에서 `stack overflow, aborting`(rc 134)을 **재현**하고 원인을 규명했다.
+- ★★**결론 — 지난 회차의 원인 기재 「its recursion does not come back through the loader, so the cap cannot end it」은 «반증»됐다.** 매 턴 로더로 **돌아오고**, cap 이 **끝낸다** — 살아남은 전 실행에서 `asked = cap + 1`(= `[C` 와 **같은 모양**). 넘치는 이유는 모양이 아니라 ★**턴당 비용**이다.
+- ★**두 손잡이가 «따로» 임계를 움직인다**(무한 재귀면 둘 다 안 움직인다 ⇒ 가설이 갈린다): ⒜cap(스택 2 MiB 고정) **18 생존 ↔ 19 오버플로** ⒝스택(cap 20 고정) **2 MiB 오버플로 ↔ 4 MiB 생존**(asked=21 · 8/32/128 MiB 도 생존).
+- ★**순환을 «백트레이스로» 보였다**(추측 아님 · 계측은 되돌렸다): `fillInStackTrace` → `instantiate_array("Ljava/lang/String;")` → `resolve_class` → `load_class`(None) → `exception` → `new_class` → **`invoke_special` ×4**(`NoClassDefFoundError`→`LinkageError`→`Error`→`Throwable.<init>`) → `init_with_message` → `invoke_virtual` → `fillInStackTrace`. ★**한 턴 ≈ 57 프레임** — `[C` 는 `from_rust_string` **안에서** 도는 짧은 경로라 같은 스택에 20턴이 들어간다.
+- ★**「이 타입이 특별한가」를 대조로 답했다**(cap 20): `[C` 재귀·생존 · `[B` 는 `bootstrap_classes` 소속이라 **형제 `#p0` 의 결함** · `[I`·`[Ljava/lang/Object;`·`[Ljava/lang/StackTraceElement;`·`java/lang/Integer`·`java/lang/StringBuilder` 는 **asked=0**(구성이 묻지도 않는다). ⇒ ★**「배열이면 난다」가 아니다** — 오류 경로가 실제로 필요로 하는 **두 배열**만 돈다.
+- ★**cap 20 의 출처**: `test_error_path_class_sweep.rs` 의 `const GIVE_UP_AFTER: u32 = 20` → `test_jvm_hiding` → `HidesOneClass`. ★**테스트 전용**이고 **제품에는 상한이 없다**.
+- ★**고친 것 = 스윕 헤더의 거짓 문장 하나.** 배열 제외는 **그대로** 둔다(이유는 원래부터 「로더가 **합성**하므로 어떤 클래스 집합도 배열을 못 빠뜨린다」였고 이번 측정과 무관하게 유효하다). ★**개악 양방향은 «해당 없음»** — 동작을 바꾸지 않았다.
+- ★**대가**: 새 잠금 0. 순환은 **제품에 바닥이 없는 채로 남는다**(오늘 닿을 수 없을 뿐) ⇒ 후속 **1건**: **`Jvm::exception` 에 바닥을 주라**(M). 상세 = `docs/worklog/2026-09-20-string-array-hiding-overflows-stack.{md,json}`.
+- 검증: DoD 9명령 rc 0 · 실행 31회(전부 1초 미만) · 빌드 1회(3m26s · 워밍된 target 재사용).
+
 ## [2026-09-20] 오류 경로의 클래스 집합을 «한 번에» 쟀다 — ★**답은 «둘»이 아니었다**(rustjava-string-on-the-error-path-p0)
 - 무엇을: 채택 제안 `2026-09-19-string-on-the-error-path#p0`. 후보를 **유도**해(기록 로더로 정상 구성 1회 — 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ **37**) 하나씩 숨겨 재구성하는 **스윕**을 만들고 돌렸다.
 - ★★**결과 — 제안이 「still just these two」면 «기록된 음성»이라 했던 그 가정이 «반증»됐다**: ★**5개가 더 재귀한다**(바닥 없음) — `java/lang/Throwable` · `Error` · `LinkageError` · `CharSequence` · `Comparable`. ★**우연이 아니다** — 기존 두 이름의 **상위형·인터페이스 폐포**다(클래스를 resolve 하면 상위형도 resolve 되고, 거기 결손은 «아직 resolve 중인 그 두 클래스»로 보고된다).
