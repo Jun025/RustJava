@@ -89,7 +89,25 @@ impl Jvm {
             "java/lang/Class",
         ];
         for class_name in bootstrap_classes.iter() {
-            let class_definition = jvm.inner.bootstrap_class_loader.load_class(&jvm, class_name).await?.unwrap();
+            // Panics like the closure walk below, and for the same reason -- nothing can be *raised*
+            // yet, this is what loads the classes an exception is made of -- but it has to say which
+            // name it was, which `unwrap` did not: a host with a gap in its class set read
+            // `called Option::unwrap() on a None value` and had to bisect this list to find out
+            // which of six. Measured by last round's sweep: 5 of the 12 named refusals were this
+            // line, and two of those names (`java/lang/Object`, `java/io/Serializable`) are also in
+            // the error path's closure, so the same gap got a good message or a useless one
+            // depending only on which loop reached it first.
+            let Some(class_definition) = jvm.inner.bootstrap_class_loader.load_class(&jvm, class_name).await? else {
+                panic!(
+                    "the class set has no {class_name}, which is one of the {} classes loaded before \
+                     anything else and before any error can be raised. Asked of the bootstrap class \
+                     loader passed to `Jvm::new`, which is the host's own -- not the class path: \
+                     `java.class.path` belongs to the system class loader, which is built later in \
+                     this same function and never runs if this fails. Add {class_name} to that \
+                     loader's class set.",
+                    bootstrap_classes.len()
+                )
+            };
             let class = Class::new(class_definition, None, None);
 
             jvm.register_class_internal(class, None).await?;
@@ -120,8 +138,7 @@ impl Jvm {
         // is reported with the very classes still being resolved. The closure is 9 names and the
         // account of it is complete: 2 were already checked, 5 recursed, and the remaining 2
         // (`java/lang/Object`, `java/io/Serializable`) are in `bootstrap_classes` above, so they fail
-        // before this runs -- on an `unwrap` that does not say which class, which is a smaller defect
-        // than this one and is left recorded rather than fixed here.
+        // before this runs -- naming themselves there, as of the round that closed that gap.
         //
         // So the closure is what is checked, not a list someone has to remember to extend. Asked of
         // the loader directly and never through `resolve_class`, because the reporting path cannot
