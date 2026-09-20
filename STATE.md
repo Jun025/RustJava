@@ -7,6 +7,12 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-checker-output-determinism-has-no-guard] ★★**검사기 출력 순서를 잠갔다 — 습관을 규칙으로.** 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0` · 신설 `scripts/check-script-output-order.py`(AST) + CI 잡 `script_output_order` + DoD 10번째 줄.
+  ★**불변식 한 줄**: `scripts/*.py` 의 어떤 `for`·컴프리헨션도 **`sorted(...)` 밖에서 set 을 순회하지 않는다**.
+  ★**「그물 0」 재현**: 비결정성을 되돌린 채 파이썬 검사기 **4종 rc 0** · `cargo fmt` **rc 0**. ★해소 여부 선행 확인 — `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신).
+  ★**정적을 고른 이유**: 두 `PYTHONHASHSEED` 재실행은 ★**회차당 약 절반 눈을 감고**(해시 순서 = 정렬 순서면 무증상), `assert sorted` 는 **다른 곳의 새 출처를 못 잡는다**(제안 자신의 약점 기술).
+  ★**양방향 2×2**(제품 호출부): M1 `check-merge-dropped-symbols.py:254` 제거 → rc 1 ↔ 복원 rc 0 · M2 ★**다른 파일** `check-dod-ci-parity.py:215` → rc 1 ↔ 복원 rc 0. 정상 `7 script(s): 0` · 0.06초.
+  ★**측정된 사각**: 튜플 언패킹 반환 set 은 못 본다 — `ci_runs, ci_tcs = parse_ci(...)` 에 정렬 없는 순회를 넣으니 ★**rc 0 통과**. 후속 제안 `#p0`.
 - [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
   ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
   ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.

@@ -1,4 +1,14 @@
 # REPORT
+## [2026-09-20] 검사기 출력 순서를 «잠갔다» — 습관을 규칙으로 (rustjava-checker-output-determinism-has-no-guard)
+- 무엇을: 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0`. `scripts/check-script-output-order.py` 신설 — ★**`scripts/*.py` 의 어떤 `for`·컴프리헨션도 `sorted(...)` 밖에서 set 을 순회하지 않는다**를 **AST 로** 단언한다. CI 잡 `script_output_order` 1개 + DoD 10번째 줄.
+- 왜: 전 회차가 한 단어로 고친 비결정성을 ★**아무도 잠그지 않았다**. ★**「그물 0」을 이 트리에서 재현했다** — 제품 호출부에 비결정성을 되돌려 놓고 재니 파이썬 검사기 **4종 전건 rc 0** · `cargo fmt` **rc 0**. ★해소 여부도 먼저 쟀다: `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신) · 추적 파일의 `PYTHONHASHSEED` 는 **산문과 주석뿐**이다.
+- ★**왜 «정적»인가 — 제안이 제시한 두 대안을 둘 다 쓰지 않았다.** ⒜**두 `PYTHONHASHSEED` 재실행**: set 은 해시 순서가 정렬 순서와 «다를 때만» 보이므로, 사고의 경로 2개에서 2회 비교는 ★**회차당 약 절반 눈을 감는다**(느린 것이 문제가 아니다). ⒝**`assert sorted`**: 제안 자신이 적은 약점 — 「다른 곳의 두 번째 출처를 못 잡는다」. ⇒ 정적 축은 **둘 다 갖지 않는다**(재실행 0 · 새 출처 포착을 M2 로 실증).
+- ★**양방향 2×2**(전부 **제품 호출부** · 사본 아님): **M1** `check-merge-dropped-symbols.py:254` 의 `sorted()` 제거 → **rc 1**(파일·줄 지목) ↔ 복원 **rc 0** · **M2** ★**다른 파일의 «새» 출처** `check-dod-ci-parity.py:215` `sorted(only_ci)` → `only_ci` → **rc 1** ↔ 복원 **rc 0**. 정상 = `7 script(s): 0 unordered iteration(s)` · **0.06초**.
+- ★**대가**: ⒜**새 CI 잡 하나** — 제안이 「real weight」라 부른 그것이고 값을 깎지 않았다(툴체인 없는 checkout + `python3` = 기존 doc 잡 4개와 같은 형상). ⒝★**측정된 사각 1건** — 튜플 언패킹으로 받은 set 은 못 본다. 오늘 실제로 하나 있다(`ci_runs, ci_tcs = parse_ci(...)`): 거기에 정렬 없는 `for t in ci_tcs:` 를 넣으니 잠금이 ★**rc 0 으로 통과**했다. 지금 틀린 곳은 없지만 **구멍은 진짜다**. ⒞dict 는 안 본다(삽입 순서 · set 이 먹이면 set 에서 잡힌다).
+- ★**제안보다 넓힌 곳 하나**: `target` 은 「scripts/ (all four checkers)」인데 glob 을 **`scripts/*.py`** 로 썼다 — 한 단어 차이이고 포함된 **7개 전건이 오늘 통과**한다.
+- 검증: DoD 10명령 rc 0 · `dod_parity` 「명령 9개 · toolchain 2개로 둘 다 일치」.
+- ★후속 추천: **튜플 언패킹 반환으로 오는 set 을 따라가라**(S · 위 ⒝의 그 구멍). 상세 = `docs/worklog/2026-09-20-lock-script-output-order.{md,json}`.
+
 ## [2026-09-19] 오류 경로의 «또 하나»는 `java/lang/String` 이고 — ★**재귀한다**(rustjava-error-path-needs-java-lang-string-measure-first)
 - 무엇을: 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`(worklog json 기록). ★**제안의 조건이 「측정이 먼저」였고 그대로 했다** — 선행 회차가 String 에 대해 **아무것도 주장하지 않았고**(자기 worklog 에 「실측 아님」이라 적었다) 셋 중 무엇인지가 열려 있었다.
 - ★★**답 = ⒜ 재귀한다**(⒝ 깨끗한 실패도, ⒞ 이미 상주도 아니다). 하니스로 String 을 숨겨 이분법으로 경계를 찾았다: 상한 **116 생존 ↔ 117 `stack overflow, aborting`(SIGABRT · rc 134)** · ★**양쪽 2회씩 재현** · ★**상한 100000 도 abort** ⇒ 상한은 «하니스가 양보하는 지점»이지 **바닥이 아니다**.
