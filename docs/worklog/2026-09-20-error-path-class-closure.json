@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-20",
+  "taskId": "rustjava-string-on-the-error-path-p0",
+  "summary": "Adopted 2026-09-19-string-on-the-error-path#p0. Swept every class name construction asks the bootstrap loader for, one hidden at a time. The answer to 'is it still just those two?' is no: five more recurse with no floor, and they are exactly the supertype/interface closure of the two known names. Jvm::new now walks that closure instead of naming classes one at a time, and the sweep stays as the lock.",
+  "decision": "Check the closure, not a list. The two hand-written asserts are replaced by a worklist that asks the bootstrap loader directly for java/lang/String, java/lang/NoClassDefFoundError and every supertype and interface they carry, so a class added to the error path later brings its own prerequisites with it.",
+  "measurements": {
+    "cited_tree": "origin/main 5d732b13",
+    "names_recorded_during_a_normal_construction": 51,
+    "distinct_names": 42,
+    "array_names_skipped": 5,
+    "candidates_swept": 37,
+    "before_fix": { "recursed": 5, "refused_by_name": 7, "failed_cleanly": 25, "built": 0 },
+    "after_fix": { "recursed": 0, "refused_by_name": 12, "failed_cleanly": 25, "built": 0 },
+    "recursing_names": ["java/lang/Throwable", "java/lang/Error", "java/lang/LinkageError", "java/lang/CharSequence", "java/lang/Comparable"],
+    "closure_size": 9,
+    "closure": ["java/lang/NoClassDefFoundError", "java/lang/LinkageError", "java/lang/Error", "java/lang/Throwable", "java/lang/Object", "java/io/Serializable", "java/lang/String", "java/lang/CharSequence", "java/lang/Comparable"],
+    "closure_account": "2 already checked + 5 recursing + 2 (Object, Serializable) already in bootstrap_classes, so the 9 are fully accounted for",
+    "loader_questions_per_startup": "44 -> 51: the walk asks 9 where the two asserts it replaces asked 2",
+    "sweep_runtime_s": "13.98 / 15.92 / 30.79 across runs on a loaded host",
+    "give_up_after": 20
+  },
+  "verification": {
+    "bidirectional": "product call site jvm/src/jvm.rs, not a copy: with the two `pending.extend(...)` lines removed (i.e. the pre-fix behaviour of checking only the two names) the sweep reports `5 recursed` and FAILS; restored, it reports `0 recursed` and passes",
+    "existing_locks_unchanged": "jvm/tests/test_exception_fallback_recursion.rs passes untouched -- the new panic message still contains `has no java/lang/String` and `has no java/lang/NoClassDefFoundError`, which is what those two should_panic tests match",
+    "arrays_excluded_with_a_measurement_not_an_opinion": "the bootstrap loader synthesises array classes (define_array_class), so no class set can lack one. Measured anyway: hiding `[C` recurses (21 questions at a cap of 20) and hiding `[Ljava/lang/String;` overflows the stack at that same cap -- its recursion does not come back through the loader, so the cap cannot end it. That last one is the only candidate this sweep cannot run in-process.",
+    "dod": "all 9 DoD commands rc 0"
+  },
+  "changes": [
+    "jvm/src/jvm.rs: the two hand-written asserts become one worklist over the supertype/interface closure, asked of the loader directly; the NoClassDefFoundError resolve_class stays where it was",
+    "test-utils/src/lib.rs: RecordsRequests + test_jvm_recording (the candidate list has to come from what the loader is actually asked); test_jvm_hiding returns (Result<Jvm>, count) so the count survives a failing run -- the failing runs are the interesting ones",
+    "jvm/tests/test_error_path_class_sweep.rs: the sweep, kept as the lock"
+  ],
+  "issues": [
+    "Hiding one of the six bootstrap_classes fails on `called Option::unwrap() on a None value`, which does not say which class. Bounded, so not this round's defect, but it is 5 of the 12 named refusals and the message is useless. Recorded as proposal p0.",
+    "Why `[Ljava/lang/String;` overflows at a cap of 20 was not chased: it is out of reach of the class-set axis. Recorded as proposal p1.",
+    "The sweep costs ~15s of `cargo test --all`. That is the price of the generalisation and it was not hidden."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-string-on-the-error-path#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Say which bootstrap class is missing instead of unwrapping on None",
+      "plainSummary": "If a host's class set is missing one of the six classes loaded first, the runtime dies with a message that does not name it.",
+      "userBenefit": "A host with a gap in its class set reads the name of the missing class instead of a bare unwrap panic, which is the same thing the error path's own check already gives for the other names.",
+      "why": "Measured by the sweep this round: of 37 candidates, 12 refuse by name and 5 of those 12 are `called Option::unwrap() on a None value` -- java/lang/Object, java/lang/Runnable, java/lang/Thread, java/io/Serializable and java/lang/Class, from the `bootstrap_classes` loop in Jvm::new. They fail at construction, which is correct, but the panic says nothing. Two of them (Object, Serializable) are also in the error path's closure, so the same gap gets a good message or a useless one depending only on which loop reaches it first.",
+      "tradeoff": "It is a one-line change to an `unwrap` and cannot go wrong, which is also the argument against doing it at all -- nothing is broken, only unhelpful. Against that: the round that has to debug it pays the whole cost, and this round has just demonstrated that reading a class-set failure without a name is exactly the expensive kind.",
+      "effort": "S",
+      "target": "jvm/src/jvm.rs"
+    },
+    {
+      "title": "Find out why hiding [Ljava/lang/String; overflows the stack at a cap of 20",
+      "plainSummary": "One array class, when the loader refuses it, loops in a way that the test harness's escape hatch cannot stop.",
+      "userBenefit": "Nothing directly -- it is a bound on how much the sweep can see, and knowing it is what stops the next round from trusting a green sweep more than it should.",
+      "why": "Measured: hiding `[C` recurses and stops at the cap (21 questions at a cap of 20), but hiding `[Ljava/lang/String;` aborts with `stack overflow, aborting` at that same cap. The cap only ends a loop that comes back through the loader, so this one does not -- there is a second cycle shape here that the sweep's instrument cannot observe. It is out of reach of the class-set axis (array classes are synthesised, not supplied), so the sweep skips arrays and says so, but 'cannot be reached today' is a weaker claim than 'cannot exist'.",
+      "tradeoff": "This is curiosity about a path no host can take, and the honest expected result is a recorded explanation rather than a fix. The cost of not doing it is that the sweep's array exclusion rests on one sentence that nobody has checked against the second cycle.",
+      "effort": "M",
+      "target": "jvm/src/jvm.rs, jvm/tests/test_error_path_class_sweep.rs"
+    }
+  ]
+}

@@ -453,7 +453,12 @@ where
 }
 
 /// A JVM whose bootstrap loader cannot produce `hidden`, plus the counter of how often it was asked.
-pub async fn test_jvm_hiding(hidden: &str, give_up_after: u32) -> Result<(Jvm, Arc<AtomicU32>)> {
+///
+/// The count is returned *beside* the result rather than inside it, because the interesting runs are
+/// the failing ones: a class the error path needs makes construction come back for it over and over,
+/// and then end in an error. Returning `Result<(Jvm, count)>` threw the count away on exactly those
+/// runs, which are the ones the sweep in `jvm/tests/test_error_path_class_sweep.rs` reads.
+pub async fn test_jvm_hiding(hidden: &str, give_up_after: u32) -> (Result<Jvm>, Arc<AtomicU32>) {
     let runtime = TestRuntime::new(BTreeMap::new());
     let requests = Arc::new(AtomicU32::new(0));
     let loader = HidesOneClass {
@@ -463,8 +468,44 @@ pub async fn test_jvm_hiding(hidden: &str, give_up_after: u32) -> Result<(Jvm, A
         give_up_after,
     };
     let properties = [("java.class.path", ".")].into_iter().collect();
+    let jvm = Jvm::new(loader, move || runtime.current_task_id(), properties).await;
+    (jvm, requests)
+}
+
+/// A bootstrap loader that answers normally and records every name it is asked for, in order.
+///
+/// `HidesOneClass` above can measure any single name cheaply, but nothing enumerated the names worth
+/// measuring -- the two classes the error path is known to need were each found by a round reading
+/// the code and guessing the next one. This is the other half: the candidate list has to come from
+/// what the loader is *actually* asked for while a JVM is built, because a hand-written list goes
+/// stale the first time construction reaches for one more class, and silently.
+pub struct RecordsRequests<C> {
+    inner: C,
+    names: Arc<Mutex<Vec<String>>>,
+}
+
+#[async_trait::async_trait]
+impl<C> jvm::BootstrapClassLoader for RecordsRequests<C>
+where
+    C: jvm::BootstrapClassLoader,
+{
+    async fn load_class(&self, jvm: &Jvm, name: &str) -> Result<Option<Box<dyn ClassDefinition>>> {
+        self.names.lock().unwrap().push(name.to_owned());
+        self.inner.load_class(jvm, name).await
+    }
+}
+
+/// A JVM built normally, plus every class name its bootstrap loader was asked for, in order.
+pub async fn test_jvm_recording() -> Result<(Jvm, Arc<Mutex<Vec<String>>>)> {
+    let runtime = TestRuntime::new(BTreeMap::new());
+    let names = Arc::new(Mutex::new(Vec::new()));
+    let loader = RecordsRequests {
+        inner: get_bootstrap_class_loader(Box::new(runtime.clone())),
+        names: names.clone(),
+    };
+    let properties = [("java.class.path", ".")].into_iter().collect();
     let jvm = Jvm::new(loader, move || runtime.current_task_id(), properties).await?;
-    Ok((jvm, requests))
+    Ok((jvm, names))
 }
 
 pub async fn test_jvm() -> Result<Jvm> {
