@@ -81,6 +81,15 @@ jobs:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-dod-ci-parity.py
 
+  # a checker that iterates a set prints its findings in a different order on different runs, so two
+  # rounds cannot diff their output — and every other axis stays green while it does. This reads the
+  # checkers' AST rather than re-running them. One runner, not the matrix.
+  script_output_order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-script-output-order.py
+
   # Jvm::exception unwraps new_class(), so naming a class the loader cannot resolve panics instead
   # of throwing. This compares the names against the registered protos (see the script's docstring
   # for what it cannot see). One runner, not the matrix.

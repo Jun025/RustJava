@@ -14,6 +14,16 @@
   ★**양방향**: `0 recursed` ok ↔ `extend` 2줄 제거 → **5 recursed FAILED** ↔ 복원 ok. 기존 잠금 2건 **무수정 통과**.
   ★**대가**: 로더 질문 **44→51** · 스윕 **~15초** · ★배열 5개 제외(로더가 **합성**하므로 클래스 집합이 못 빠뜨린다 — 단 `[Ljava/lang/String;` 는 상한 20에서도 오버플로 = in-process 불가).
   ★**후속 2건**: 부트스트랩 unwrap 이 **이름을 말하지 않는다**(S) · `[Ljava/lang/String;` 의 두 번째 순환(M).
+- [rustjava-checker-output-determinism-has-no-guard] ★★**검사기 출력 순서를 잠갔다 — 습관을 규칙으로.** 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0` · 신설 `scripts/check-script-output-order.py`(AST) + CI 잡 `script_output_order` + DoD 10번째 줄.
+  ★**불변식 한 줄**: `scripts/*.py` 의 어떤 `for`·컴프리헨션도 **`sorted(...)` 밖에서 set 을 순회하지 않는다**.
+  ★**「그물 0」 재현**: 비결정성을 되돌린 채 파이썬 검사기 **4종 rc 0** · `cargo fmt` **rc 0**. ★해소 여부 선행 확인 — `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신).
+  ★**정적을 고른 이유**: 두 `PYTHONHASHSEED` 재실행은 ★**회차당 약 절반 눈을 감고**(해시 순서 = 정렬 순서면 무증상), `assert sorted` 는 **다른 곳의 새 출처를 못 잡는다**(제안 자신의 약점 기술).
+  ★**양방향 2×2**(제품 호출부): M1 `check-merge-dropped-symbols.py:254` 제거 → rc 1 ↔ 복원 rc 0 · M2 ★**다른 파일** `check-dod-ci-parity.py:215` → rc 1 ↔ 복원 rc 0. 정상 `7 script(s): 0` · 0.06초.
+  ★**측정된 사각**: 튜플 언패킹 반환 set 은 못 본다 — `ci_runs, ci_tcs = parse_ci(...)` 에 정렬 없는 순회를 넣으니 ★**rc 0 통과**. 후속 제안 `#p0`.
+  ★★**게이트² 반려 승계(`-fix`)**: **R1** `", ".join(myset)`·`print(*myset)` 이 통과했다(사고와 **같은 계급** · 미기재) ⇒ `str.join` 첫 인자 + `Starred`(Load) 를 검사에 더하고 약속 문구를 ★**«for/컴프리헨션 · str.join · \*-언팩» 세 위치로 명시** ·
+  **R2** 「set→dict 는 set 에서 잡힌다」가 **거짓**(`dict.fromkeys`)이라 **삭제**. ★`fromkeys` 만 반쪽으로 잡지 «않았다» — 진짜 계급은 «컨테이너 순서 오염»이고 하나만 잡으면 **없는 프로그램을 있는 것처럼 보이게 한다**(오늘 0건 ⇒ 문안 결함) ·
+  **R3** ★**python 린터·포매터·테스트 0**(추적 파일 0건 · `rust.yml` 은 검사기 5회 실행뿐) ⇒ **이 파일을 보는 기계는 CI 잡 «하나»**임을 빚으로 적었다(하네스는 만들지 «않았다»).
+  ★승계 양방향: `join`·`*` 반례 **rc 1** ↔ `sorted()` 씌우면 **무검출**(오탐 0) ↔ 반례 제거 **rc 0** · 원 M1·M2 **회귀 재확인**.
 - [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
   ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
   ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.

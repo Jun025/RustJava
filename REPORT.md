@@ -8,6 +8,18 @@
 - 검증: DoD 9명령 rc 0.
 - ★후속 추천 **2건**: ⒜**부트스트랩 클래스의 이름 없는 unwrap 패닉**(S) ⒝**`[Ljava/lang/String;` 의 «상한이 못 끝내는» 두 번째 순환**(M). 상세 = `docs/worklog/2026-09-20-error-path-class-closure.{md,json}`.
 
+## [2026-09-20] 검사기 출력 순서를 «잠갔다» — 습관을 규칙으로 (rustjava-checker-output-determinism-has-no-guard)
+- 무엇을: 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0`. `scripts/check-script-output-order.py` 신설 — ★**`scripts/*.py` 의 어떤 `for`·컴프리헨션도 `sorted(...)` 밖에서 set 을 순회하지 않는다**를 **AST 로** 단언한다. CI 잡 `script_output_order` 1개 + DoD 10번째 줄.
+- 왜: 전 회차가 한 단어로 고친 비결정성을 ★**아무도 잠그지 않았다**. ★**「그물 0」을 이 트리에서 재현했다** — 제품 호출부에 비결정성을 되돌려 놓고 재니 파이썬 검사기 **4종 전건 rc 0** · `cargo fmt` **rc 0**. ★해소 여부도 먼저 쟀다: `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신) · 추적 파일의 `PYTHONHASHSEED` 는 **산문과 주석뿐**이다.
+- ★**왜 «정적»인가 — 제안이 제시한 두 대안을 둘 다 쓰지 않았다.** ⒜**두 `PYTHONHASHSEED` 재실행**: set 은 해시 순서가 정렬 순서와 «다를 때만» 보이므로, 사고의 경로 2개에서 2회 비교는 ★**회차당 약 절반 눈을 감는다**(느린 것이 문제가 아니다). ⒝**`assert sorted`**: 제안 자신이 적은 약점 — 「다른 곳의 두 번째 출처를 못 잡는다」. ⇒ 정적 축은 **둘 다 갖지 않는다**(재실행 0 · 새 출처 포착을 M2 로 실증).
+- ★**양방향 2×2**(전부 **제품 호출부** · 사본 아님): **M1** `check-merge-dropped-symbols.py:254` 의 `sorted()` 제거 → **rc 1**(파일·줄 지목) ↔ 복원 **rc 0** · **M2** ★**다른 파일의 «새» 출처** `check-dod-ci-parity.py:215` `sorted(only_ci)` → `only_ci` → **rc 1** ↔ 복원 **rc 0**. 정상 = `7 script(s): 0 unordered iteration(s)` · **0.06초**.
+- ★**대가**: ⒜**새 CI 잡 하나** — 제안이 「real weight」라 부른 그것이고 값을 깎지 않았다(툴체인 없는 checkout + `python3` = 기존 doc 잡 4개와 같은 형상). ⒝★**측정된 사각 1건** — 튜플 언패킹으로 받은 set 은 못 본다. 오늘 실제로 하나 있다(`ci_runs, ci_tcs = parse_ci(...)`): 거기에 정렬 없는 `for t in ci_tcs:` 를 넣으니 잠금이 ★**rc 0 으로 통과**했다. 지금 틀린 곳은 없지만 **구멍은 진짜다**. ⒞dict 는 안 본다(삽입 순서 · set 이 먹이면 set 에서 잡힌다).
+- ★**제안보다 넓힌 곳 하나**: `target` 은 「scripts/ (all four checkers)」인데 glob 을 **`scripts/*.py`** 로 썼다 — 한 단어 차이이고 포함된 **7개 전건이 오늘 통과**한다.
+- ★★**게이트² 반려 승계**(PR #85 `8a633bc8` · request-changes · 검수자가 반례 12개를 **직접 만들어** 쟀다): ⒜**R1 — 넓은 약속·좁은 검사**. `", ".join(myset)`·`print(*myset)` 이 **rc 0 으로 통과**했다(사고와 **같은 계급**인데 blind spot 에도 없었다) ⇒ `str.join` **첫 인자**와 `ast.Starred`(Load) **value** 를 검사에 더하고(순증 ~10줄) ★약속 문구를 「iteration」 → **「`for`/컴프리헨션 · `str.join` · `*`-언팩 «이 셋»」**으로 바꿨다(출력 줄도 동일). ⒝**R2 — dict 단언이 «거짓»**(`dict.fromkeys` 뒤 `for k in d` 는 통과) ⇒ 그 줄을 **지웠다**. ★**`fromkeys` 만 두 줄로 잡지 않았다** — 진짜 계급은 «컨테이너를 통한 순서 오염»이고 가족 중 하나만 잡으면 **없는 프로그램을 있는 것처럼 보이게 한다**(오늘 `fromkeys` **0건** ⇒ 문안 결함이지 live 오검 아님). ⒞**R3 — 빚 한 줄**: ★이 repo 는 **python 린터·포매터·테스트가 0**(추적 파일 중 `pyproject|setup.cfg|.pre-commit|tox.ini|ruff|flake8|requirements` **0건** · `rust.yml` 의 python 은 검사기 **5회 실행뿐, lint step 없음**) ⇒ **이 파일을 기계로 보는 것은 CI 잡 «하나»**다(+자기 글롭에 자기가 들어가 한 축으로 자신을 읽는 것). ★하네스는 **만들지 않았다 — 적었다.**
+  ★**승계 양방향**(제품 호출부 글롭 그대로): `join`·`*` 반례 **rc 1 · 줄 지목** ↔ `sorted()` 씌운 둘은 **무검출**(오탐 0) ↔ 반례 제거 시 **rc 0**. 원 M1·M2 **회귀 재확인**(각 rc 1 ↔ 복원 rc 0).
+- 검증: DoD 10명령 rc 0 · `dod_parity` 「명령 9개 · toolchain 2개로 둘 다 일치」.
+- ★후속 추천: **튜플 언패킹 반환으로 오는 set 을 따라가라**(S · 위 ⒝의 그 구멍). 상세 = `docs/worklog/2026-09-20-lock-script-output-order.{md,json}`.
+
 ## [2026-09-19] 오류 경로의 «또 하나»는 `java/lang/String` 이고 — ★**재귀한다**(rustjava-error-path-needs-java-lang-string-measure-first)
 - 무엇을: 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`(worklog json 기록). ★**제안의 조건이 「측정이 먼저」였고 그대로 했다** — 선행 회차가 String 에 대해 **아무것도 주장하지 않았고**(자기 worklog 에 「실측 아님」이라 적었다) 셋 중 무엇인지가 열려 있었다.
 - ★★**답 = ⒜ 재귀한다**(⒝ 깨끗한 실패도, ⒞ 이미 상주도 아니다). 하니스로 String 을 숨겨 이분법으로 경계를 찾았다: 상한 **116 생존 ↔ 117 `stack overflow, aborting`(SIGABRT · rc 134)** · ★**양쪽 2회씩 재현** · ★**상한 100000 도 abort** ⇒ 상한은 «하니스가 양보하는 지점»이지 **바닥이 아니다**.
