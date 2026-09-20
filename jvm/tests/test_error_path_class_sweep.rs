@@ -15,6 +15,12 @@
 //! the error path later brings its own supertypes with it, and they land here without anyone
 //! thinking to ask.
 //!
+//! The second axis is *what the refusal says*. `refused by name` used to mean only that construction
+//! had panicked; five of the twelve panicked on `called Option::unwrap() on a None value` from the
+//! `bootstrap_classes` loop, which is a refusal a host cannot act on, and this sweep reported them
+//! among the good ones. The panic message is now read and matched against the hidden name, so a
+//! refusal that does not name its class is its own failure: `0 · 12 · 0 · 25`.
+//!
 //! Array names are skipped, and the reason is not squeamishness: the bootstrap loader *synthesises*
 //! them (`define_array_class`), so no class set can be missing one and hiding them measures a loader
 //! that refuses to build an array rather than a gap a host can have. It is not a free skip -- hiding
@@ -42,8 +48,14 @@ enum Outcome {
     /// that this class is missing. Without a check, the real loader never relents and the process
     /// aborts on a stack overflow.
     Recursed,
-    /// Construction refused, naming the class. What the check produces.
+    /// Construction refused *and the panic message contains the hidden name*. What the check
+    /// produces. The message is read rather than assumed: for five of the names below this outcome
+    /// used to be `called Option::unwrap() on a None value`, which is a refusal that tells the host
+    /// nothing, and this arm counted it as a good one. A dead process and a read message are two
+    /// facts, so they are measured separately.
     Panicked,
+    /// Construction refused without saying which class. The defect this file no longer accepts.
+    PanickedAnonymously,
     /// Construction returned an error after a single question. Also fine: nothing looped.
     Failed,
     /// Construction succeeded without the class. It is asked for but not needed.
@@ -60,7 +72,20 @@ fn block_on<F: Future>(future: F) -> F::Output {
 
 fn hide(name: &str) -> Outcome {
     match panic::catch_unwind(AssertUnwindSafe(|| block_on(test_jvm_hiding(name, GIVE_UP_AFTER)))) {
-        Err(_) => Outcome::Panicked,
+        Err(payload) => {
+            // `panic!("...")` with arguments carries a `String`; a bare literal carries a `&str`.
+            // Both shapes appear here, so both are read before concluding the name is absent.
+            let message = payload
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("");
+            if message.contains(name) {
+                Outcome::Panicked
+            } else {
+                Outcome::PanickedAnonymously
+            }
+        }
         Ok((result, requests)) => {
             if requests.load(Ordering::SeqCst) > GIVE_UP_AFTER {
                 Outcome::Recursed
@@ -98,12 +123,24 @@ fn no_class_construction_asks_for_can_only_be_reported_with_itself() {
     // told apart from a green run that looked at nothing.
     let count = |want| outcomes.iter().filter(|(_, outcome)| *outcome == want).count();
     println!(
-        "{} candidate(s): {} recursed · {} refused by name · {} failed cleanly · {} not needed",
+        "{} candidate(s): {} recursed · {} refused by name · {} refused anonymously · {} failed cleanly · {} not needed",
         outcomes.len(),
         count(Outcome::Recursed),
         count(Outcome::Panicked),
+        count(Outcome::PanickedAnonymously),
         count(Outcome::Failed),
         count(Outcome::Built)
+    );
+
+    let anonymous = outcomes
+        .iter()
+        .filter(|(_, outcome)| *outcome == Outcome::PanickedAnonymously)
+        .map(|(name, _)| name.as_str())
+        .collect::<Vec<_>>();
+    assert!(
+        anonymous.is_empty(),
+        "hiding {anonymous:?} takes construction down without the panic message saying which class is \
+         missing, so the host is left bisecting the class set. Name it where it is refused."
     );
 
     let recursed = outcomes

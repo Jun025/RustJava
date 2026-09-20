@@ -1,0 +1,51 @@
+{
+  "date": "2026-09-20",
+  "taskId": "rustjava-error-path-name-the-missing-bootstrap-class-p0",
+  "summary": "Adopted 2026-09-20-error-path-class-closure#p0. The `bootstrap_classes` loop in Jvm::new took the process down on `called Option::unwrap() on a None value`, so a host whose class set was missing one of the six had to bisect the list to learn which. It now names the class and says where the name was asked for. The sweep that found the defect could not have caught it -- it counted a panic as 'refused by name' without reading the message -- so the message is now read and matched against the hidden name, which is a second axis rather than a stricter version of the first.",
+  "decision": "Keep the panic, name the class. Returning an error instead was measured and rejected for this round: `JavaError` has one variant carrying a `Box<dyn ClassInstance>`, and at this point in construction the classes an exception instance is made of are exactly the ones missing, so a new variant would hand the caller an error nothing can render. Recorded as proposal p0 rather than done here.",
+  "measurements": {
+    "cited_tree": "origin/main 97707f26",
+    "sites_in_the_family": {
+      "load_class(...).unwrap() on the construction path": 1,
+      "class-registry get(name).unwrap() elsewhere": 4,
+      "reachable from a host's class set (measured by the sweep)": 1
+    },
+    "sibling_sites_left_alone": ["jvm/src/jvm.rs:995", "jvm/src/jvm.rs:1002", "jvm/src/jvm.rs:1335", "jvm/src/garbage_collector.rs:109"],
+    "bootstrap_classes": 6,
+    "reachable_bootstrap_names": 5,
+    "unreachable_bootstrap_name": "[B -- an array, synthesised by define_array_class, so no class set can lack it",
+    "sweep_before_fix": { "recursed": 0, "refused_by_name": 7, "refused_anonymously": 5, "failed_cleanly": 25, "built": 0 },
+    "sweep_after_fix": { "recursed": 0, "refused_by_name": 12, "refused_anonymously": 0, "failed_cleanly": 25, "built": 0 },
+    "error_variant_blast_radius": { "irrefutable_let_destructures_in_repo": 3, "JavaError_mentions_in_repo": 528, "downstream": "public enum, breaking for consumers outside this repo (wie)" },
+    "runtime_cost": "none -- the same single load_class call, an `unwrap` replaced by a `let ... else`"
+  },
+  "verification": {
+    "bidirectional": "product call site jvm/src/jvm.rs, not a copy. With `.unwrap()` restored: panic text is `called Option::unwrap() on a None value` for all 5 reachable names and the sweep reports `7 refused by name · 5 refused anonymously` and FAILS. Restored: the text names the class for all 5 and the sweep reports `12 · 0` and passes.",
+    "death_and_message_measured_separately": "rc alone would have passed the pre-fix code -- it panicked either way. The two facts are counted apart: process died (5/5 before, 5/5 after) and the hidden name appears in the panic text (0/5 before, 5/5 after).",
+    "quiet_when_nothing_is_hidden": "a normal construction never reaches the branch: `cargo test --all` green, the sweep's `0 not needed / 0 recursed` line unchanged",
+    "existing_locks_unchanged": "jvm/tests/test_exception_fallback_recursion.rs and the closure walk's own message are untouched",
+    "dod": "all 9 DoD commands rc 0"
+  },
+  "changes": [
+    "jvm/src/jvm.rs: the `bootstrap_classes` loop's `.unwrap()` becomes a `let ... else` naming the class, the count it is one of, and the loader it was asked of (the host's, not `java.class.path` -- the system class loader is built later in the same function); the stale comment in the closure walk below that called this defect 'left recorded rather than fixed' is corrected",
+    "jvm/tests/test_error_path_class_sweep.rs: the panic payload is downcast and matched against the hidden name, so `Outcome::Panicked` means what its doc comment already claimed; a refusal that does not name its class is the new `PanickedAnonymously` and fails the sweep"
+  ],
+  "issues": [
+    "Four sibling `unwrap`s die anonymously on a missing class the same way (jvm.rs:995, :1002, :1335, garbage_collector.rs:109), but they read the class *registry* mid-run, not the host's class set, and the sweep measures them as unreachable from that axis: 0 anonymous refusals across 37 candidates after this fix. Left alone rather than fixed blind -- there is no test that can reach them, so a change there would be unlockable in both directions.",
+    "The sweep's array exclusion is unchanged, so `[B` -- the sixth bootstrap class -- is still outside what this round could measure. It is synthesised by the loader, so no class set can lack it; that is the same argument last round made, not a new one."
+  ],
+  "adoptedProposals": [
+    "2026-09-20-error-path-class-closure#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Decide whether Jvm::new may panic at all, now that it does so twice",
+      "plainSummary": "Building a JVM kills the process when the class set is incomplete, instead of returning an error the host can handle.",
+      "userBenefit": "A host embedding the JVM could report a bad class set and carry on -- pick another runtime, show a message -- instead of having its process aborted by a library.",
+      "why": "AGENTS.md says library code never panics and returns `Result<T>`, and `Jvm::new` already returns one. There are now two panics in it: the closure walk and, as of this round, the `bootstrap_classes` loop. Both are deliberate and both are explained in place, which is why this is a decision rather than a bug. Measured cost of the alternative: `JavaError` has a single variant holding a `Box<dyn ClassInstance>`, so a non-Java variant is needed; that breaks 3 irrefutable `let JavaError::JavaException(..)` destructures in this repo and is a breaking change for consumers outside it. Measured obstacle: at both sites the classes an exception is made of are the missing ones, so the caller would receive an error that cannot be turned into a Java exception -- the variant would have to be honestly non-Java, which is the decision.",
+      "tradeoff": "The work is small and the benefit is real only for an embedder that can act on the failure; for a host that would abort anyway, a panic with a good message is as useful and nothing changes. Doing it also widens a public enum, which is the kind of change that is cheap now and expensive to reverse.",
+      "effort": "M",
+      "target": "jvm/src/error.rs, jvm/src/jvm.rs"
+    }
+  ]
+}
