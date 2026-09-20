@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-string-on-the-error-path-p0] ★★**오류 경로의 클래스 집합을 한 번에 쟀다 — 답은 «둘»이 아니었다.** 채택 제안 `2026-09-19-string-on-the-error-path#p0`.
+  ★**후보를 «유도»했다**(손 목록 아님): 기록 로더로 정상 구성 1회 → 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ 후보 **37**.
+  ★★**5개가 더 재귀한다**: `Throwable`·`Error`·`LinkageError`·`CharSequence`·`Comparable` = 기존 두 이름의 **상위형·인터페이스 폐포**.
+  ★**처방 = 폐포 walk**(assert 2 → 작업목록 1 · 로더에 **직접** 질의). ★**폐포 9로 계산이 닫힌다**(막힌 2 + 재귀 5 + bootstrap 2) ⇒ 미설명 **0**.
+  ★**양방향**: `0 recursed` ok ↔ `extend` 2줄 제거 → **5 recursed FAILED** ↔ 복원 ok. 기존 잠금 2건 **무수정 통과**.
+  ★**대가**: 로더 질문 **44→51** · 스윕 **~15초** · ★배열 5개 제외(로더가 **합성**하므로 클래스 집합이 못 빠뜨린다 — 단 `[Ljava/lang/String;` 는 상한 20에서도 오버플로 = in-process 불가).
+  ★**후속 2건**: 부트스트랩 unwrap 이 **이름을 말하지 않는다**(S) · `[Ljava/lang/String;` 의 두 번째 순환(M).
 - [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
   ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
   ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.

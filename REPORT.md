@@ -1,4 +1,13 @@
 # REPORT
+## [2026-09-20] 오류 경로의 클래스 집합을 «한 번에» 쟀다 — ★**답은 «둘»이 아니었다**(rustjava-string-on-the-error-path-p0)
+- 무엇을: 채택 제안 `2026-09-19-string-on-the-error-path#p0`. 후보를 **유도**해(기록 로더로 정상 구성 1회 — 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ **37**) 하나씩 숨겨 재구성하는 **스윕**을 만들고 돌렸다.
+- ★★**결과 — 제안이 「still just these two」면 «기록된 음성»이라 했던 그 가정이 «반증»됐다**: ★**5개가 더 재귀한다**(바닥 없음) — `java/lang/Throwable` · `Error` · `LinkageError` · `CharSequence` · `Comparable`. ★**우연이 아니다** — 기존 두 이름의 **상위형·인터페이스 폐포**다(클래스를 resolve 하면 상위형도 resolve 되고, 거기 결손은 «아직 resolve 중인 그 두 클래스»로 보고된다).
+- ★**처방은 목록이 아니라 «폐포»다**: 손으로 적은 assert 2개 → **작업목록 루프 1개**(씨앗 2 · `interface_names()`·`super_class_name()` 을 밀어 넣는다 · ★로더에 **직접** 묻는다 — `resolve_class` 는 질문을 `Jvm::exception` 에 넘기고 그것이 곧 순환이다). ★**폐포 9개로 계산이 닫힌다**: 이미 막힌 **2** + 재귀 **5** + `bootstrap_classes` 가 먼저 잡는 **2**(`Object`·`Serializable`) ⇒ 설명 안 되는 이름 **0**.
+- ★**양방향**(제품 호출부 · 사본 아님): 정상 `37 candidate(s): 0 recursed · 12 refused by name · 25 failed cleanly` **ok** ↔ `pending.extend(...)` 두 줄 제거(= 고침 전 동작) → ★**`5 recursed` FAILED** ↔ 복원 **ok**. ★기존 잠금 2건은 **손대지 않고 통과**한다(새 문안이 `has no java/lang/String`·`has no java/lang/NoClassDefFoundError` 를 그대로 담는다).
+- ★**대가**: ⒜시작 비용 **로더 질문 44 → 51**(폐포 9 ↔ 종전 2). ★**벽시계는 재지 않았다** — 전 회차가 같은 자리에서 재고 「노이즈 아래」로 버렸다. ⒝`cargo test --all` 에 스윕 **~15초**. ⒞★**배열 5개는 제외**했고 근거는 측정이다 — 로더가 배열을 **합성**하므로(`define_array_class`) 클래스 집합이 배열을 빠뜨릴 수 없다. 그래도 쟀다: `[C` **재귀**(상한 20에 21질문) · ★`[Ljava/lang/String;` 는 **그 상한에서도 스택 오버플로**(순환이 로더로 안 돌아와 상한이 못 끝낸다) ⇒ in-process 로 못 도는 유일한 후보. ⒟부트스트랩 6개를 숨기면 **`Option::unwrap()` 패닉**이라 **이름을 말하지 않는다**(12건 중 5건).
+- 검증: DoD 9명령 rc 0.
+- ★후속 추천 **2건**: ⒜**부트스트랩 클래스의 이름 없는 unwrap 패닉**(S) ⒝**`[Ljava/lang/String;` 의 «상한이 못 끝내는» 두 번째 순환**(M). 상세 = `docs/worklog/2026-09-20-error-path-class-closure.{md,json}`.
+
 ## [2026-09-19] 오류 경로의 «또 하나»는 `java/lang/String` 이고 — ★**재귀한다**(rustjava-error-path-needs-java-lang-string-measure-first)
 - 무엇을: 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`(worklog json 기록). ★**제안의 조건이 「측정이 먼저」였고 그대로 했다** — 선행 회차가 String 에 대해 **아무것도 주장하지 않았고**(자기 worklog 에 「실측 아님」이라 적었다) 셋 중 무엇인지가 열려 있었다.
 - ★★**답 = ⒜ 재귀한다**(⒝ 깨끗한 실패도, ⒞ 이미 상주도 아니다). 하니스로 String 을 숨겨 이분법으로 경계를 찾았다: 상한 **116 생존 ↔ 117 `stack overflow, aborting`(SIGABRT · rc 134)** · ★**양쪽 2회씩 재현** · ★**상한 100000 도 abort** ⇒ 상한은 «하니스가 양보하는 지점»이지 **바닥이 아니다**.
