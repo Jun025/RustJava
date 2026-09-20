@@ -23,11 +23,26 @@
 //!
 //! Array names are skipped, and the reason is not squeamishness: the bootstrap loader *synthesises*
 //! them (`define_array_class`), so no class set can be missing one and hiding them measures a loader
-//! that refuses to build an array rather than a gap a host can have. It is not a free skip -- hiding
-//! `[C` recurses (21 questions at a cap of 20) and hiding `[Ljava/lang/String;` overflows the stack
-//! *at that same cap*, i.e. its recursion does not come back through the loader at all, so the cap
-//! cannot end it. That is the one candidate class this sweep cannot run in-process, and it is out of
-//! reach of the class-set axis, so it is recorded here rather than guarded.
+//! that refuses to build an array rather than a gap a host can have. It is not a free skip -- two of
+//! them recurse. `[C` is reached through the message (`JavaLangString::from_rust_string`) and
+//! `[Ljava/lang/String;` through `Throwable`'s `stackTrace` field, which `fillInStackTrace` fills
+//! with `instantiate_array` while the exception reporting the *first* gap is still being built.
+//!
+//! Hiding `[Ljava/lang/String;` at this cap aborts with `stack overflow`, and the round that first
+//! saw that wrote down the wrong reason -- "its recursion does not come back through the loader, so
+//! the cap cannot end it". Measured since (`rustjava-error-path-string-array-hiding-overflows-stack-p1`):
+//! it does come back, every turn, and the cap ends it exactly like `[C`. Two knobs move the
+//! threshold independently, which is what tells bounded-but-deep apart from unbounded: at the
+//! default 2 MiB test-thread stack it survives a cap of 18 (19 questions) and overflows at 19, and
+//! at this cap of 20 it overflows on 2 MiB but survives on 4 MiB with `asked = 21` -- the same
+//! `cap + 1` shape `[C` shows. The difference between the two is cost per turn, not shape: one turn
+//! of the `[Ljava/lang/String;` cycle is ~57 stack frames because it runs the whole exception
+//! construction (`exception` -> `new_class` -> four nested `invoke_special` for
+//! `NoClassDefFoundError` -> `LinkageError` -> `Error` -> `Throwable.<init>` -> `fillInStackTrace`),
+//! where `[C` turns inside `from_rust_string`.
+//!
+//! So arrays stay skipped for the reason at the top of this paragraph -- no class set can lack one --
+//! and not because anything here is unmeasurable.
 
 use std::{
     future::Future,

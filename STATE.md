@@ -7,6 +7,14 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-error-path-string-array-hiding-overflows-stack-p1] ★★**`[Ljava/lang/String;` 오버플로의 원인 — 지난 회차 기재가 «틀렸다».** 채택 제안 `2026-09-20-error-path-class-closure#p1` · ★**조사 회차 · 제품 코드 0줄**.
+  ★**재현**: cap 20 · 기본 스택 → `stack overflow, aborting` rc **134**.
+  ★★**반증**: 「로더로 안 돌아와 cap 이 못 끝낸다」는 **거짓** — 살아남은 전 실행에서 `asked = cap+1`(= `[C` 와 같은 모양). 원인은 ★**턴당 비용**.
+  ★**두 손잡이가 따로 움직인다**(가설 분리): cap **18↔19** · 스택 **2 MiB↔4 MiB**(cap 20 고정).
+  ★**순환을 백트레이스로**: `fillInStackTrace`→`instantiate_array`→`resolve_class`→`load_class`(None)→`exception`→`new_class`→`invoke_special`×4→`Throwable.<init>`→`fillInStackTrace` · ★**한 턴 ≈ 57 프레임**.
+  ★**대조**: `[C` 만 같이 돈다 · `[I`·`[Ljava/lang/Object;`·`java/lang/Integer` 등은 **asked=0** ⇒ **「배열이면 난다」가 아니다**.
+  ★**고침 = 스윕 헤더의 거짓 문장 하나** · 배열 제외는 유지(이유가 다르고 여전히 유효) · **개악 양방향 해당 없음**(동작 무변경).
+  ★**남긴 것**: 순환은 제품에 **바닥이 없다**(오늘 닿을 수 없을 뿐) ⇒ 후속 카드 「`Jvm::exception` 에 바닥을」(M).
 - [rustjava-error-path-name-the-missing-bootstrap-class-p0] ★★**없는 부트스트랩 클래스의 «이름»을 말하게 했다.** 채택 제안 `2026-09-20-error-path-class-closure#p0`.
   ★`Jvm::new` 의 `bootstrap_classes` 루프 `.unwrap()` → `let … else` · 문면 = 이름 + 여섯 중 하나 + ★**어디에 물었는지**(호스트 로더이지 `java.class.path` 가 **아니다**).
   ★**가족을 세고 골랐다**: 이 축 **1곳 고침** ↔ 같은 «모양»의 레지스트리 조회 **4곳**은 다른 축(내부 불변식)이고 스윕이 **닿지 않음을 실측**(익명 거절 0/37) ⇒ **blind spot 으로 적고 두었다**.
