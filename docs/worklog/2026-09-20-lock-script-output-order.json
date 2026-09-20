@@ -24,7 +24,10 @@
     "CLAUDE.md: the DoD block gains the 10th command (dod_parity requires both sides to move together)"
   ],
   "issues": [
-    "Set-ness is inferred syntactically, so a set arriving by tuple-unpacked call return, import or parameter is invisible to the pass. One such name exists today and is named in the docstring."
+    "Set-ness is inferred syntactically, so a set arriving by tuple-unpacked call return, import or parameter is invisible to the pass. One such name exists today and is named in the docstring.",
+    "Nothing in this repo reads python except the CI jobs that execute it: git-tracked files matching pyproject/setup.cfg/.pre-commit/tox.ini/ruff/flake8/requirements number 0, and rust.yml runs python only as `python3 scripts/<checker>.py` (5 invocations, no lint step). So this file's own correctness rests on one CI job running it, plus the fact that it is inside its own scripts/*.py glob and therefore reads itself on one axis. A python test harness was deliberately not built -- the adopted proposal scoped that as a decision, not a line -- but the debt is recorded rather than implied.",
+    "Order laundered through a container is not followed (dict.fromkeys, list(<set>) bound to a name, bag['k']). An earlier docstring claimed the dict case was safe; a review disproved it and the claim is now removed rather than narrowed into a half-fix. dict.fromkeys appears 0 times in scripts/ today.",
+    "Names have no scope, so `found = set()` in one function and `found = [...]` in another would make the list read go red. No collision today; recorded because a false red invites a wrong sorted()."
   ],
   "adoptedProposals": [
     "2026-09-19-merge-drops-deterministic-order#p0"

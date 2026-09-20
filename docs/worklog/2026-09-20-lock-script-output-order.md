@@ -45,6 +45,37 @@
 - **dict 는 안 본다**: 삽입 순서를 지키므로 결정성은 그것을 만든 쪽에 달렸고, set 이 dict 를 먹이면
   set 에서 잡힌다.
 
+## ★게이트² 반려 승계(PR #85 `8a633bc8` · request-changes) — 세 가지를 고쳤다
+
+- **R1 — 넓은 약속, 좁은 검사**: `", ".join(myset)` 과 `print(*myset)` 이 **rc 0 으로 통과**했다(검수자 probe `p09`).
+  ★2026-09-19 사고와 **같은 계급**(경로 set 이 한 줄로 찍힌다)인데 blind spot 에도 없었다.
+  ⇒ 검수자의 ⑴을 골랐다 — `str.join` 의 **첫 인자**와 `ast.Starred`(Load)의 **value** 를 검사 대상에 더했다(순증 ~10줄).
+  ★**⑵(범위 축소)가 아니라 ⑴을 고른 이유**: 그 둘은 파이썬에서 set 이 `for` 없이 출력에 닿는 **가장 흔한 두 철자**이고,
+  더하는 값이 열 줄이라 **약속을 지키는 쪽이 더 싸다**. 약속 문구도 함께 고쳤다 — 이제 「iteration」이 아니라
+  ★**「`for`/컴프리헨션 · `str.join` · `*`-언팩 **이 셋**」**이라고 적는다(출력 줄도 같은 문면).
+- **R2 — docstring 의 dict 단언이 «거짓»이었다**: 「a set feeding a dict is caught at the set」 →
+  `d = dict.fromkeys(myset)` 뒤 `for k in d:` 는 **통과한다**(probe `p02`). ★그 줄을 **지웠다**.
+  ★**`fromkeys` 만 두 줄로 잡지 «않았다»** — 진짜 계급은 «컨테이너를 통한 순서 오염»(`list(myset)` 을 이름에 묶기,
+  `bag["k"]`)이고, 그 가족 중 하나만 잡으면 ★**없는 프로그램을 있는 것처럼 보이게 한다.** 그것이 R2 가 지적한 실패 그대로다.
+  ※오늘 `scripts/` 의 `dict.fromkeys` **0건** ⇒ **문안 결함이지 live 오검이 아니다.**
+- **R3 — 빚 한 줄**: ★**이 repo 는 python 린터·포매터·테스트가 «0»이다**(git 추적 파일 중
+  `pyproject|setup.cfg|.pre-commit|tox.ini|ruff|flake8|requirements` **0건** · `rust.yml` 의 python 은
+  `python3 scripts/<검사기>.py` **5회 실행뿐, lint step 없음**). ⇒ ★**이 파일을 기계로 보는 것은 CI 잡 «하나»**이고,
+  그 밖에는 자기 자신이 `scripts/*.py` 글롭에 들어가 **한 축으로 스스로를 읽는 것**이 전부다. 하네스는 **만들지 않았다**
+  (제안 자신이 「하네스는 «결정»이지 «한 줄»이 아니다」로 규모를 적었다) — **적었다.**
+- **그 밖(검수자 기록분)도 docstring 에 넣었다**: 이름에 **스코프가 없다**(`found` 충돌 시 리스트 순회가 **틀린 red**) ·
+  메서드형 집합연산(`a.difference(b)`)은 못 본다 · `while s: s.pop()` 드레인은 못 본다 · `growing = False` **죽은 줄** 제거.
+
+### 승계 회차 양방향 — ★**제품 호출부(`scripts/` 글롭) 그대로**
+| 반례 | 고침 전(검수자 실측) | 고침 후(내 실측) |
+|---|---|---|
+| `", ".join(myset)` | rc 0 **통과** | ★**rc 1 · 줄 지목** |
+| `print(*myset)` | rc 0 **통과** | ★**rc 1 · 줄 지목** |
+| `", ".join(sorted(myset))` · `print(*sorted(myset))` | — | ★**무검출**(오탐 0) |
+| `dict.fromkeys(myset)` → `for k in d` | rc 0 통과 | **여전히 통과**(★blind spot 으로 «적었다» · 숨기지 않았다) |
+| 반례 파일 제거 | — | **rc 0 · 7 script(s) · 0** |
+★원 M1(`check-merge-dropped-symbols.py:254`)·M2(`check-dod-ci-parity.py:215`) **회귀 재확인**: 각각 **rc 1** ↔ 복원 **rc 0**.
+
 ## 제안 문면보다 넓힌 곳 한 군데
 
 제안의 `target` 은 「scripts/ (all four checkers)」였는데 glob 을 `scripts/*.py` 로 썼다 —

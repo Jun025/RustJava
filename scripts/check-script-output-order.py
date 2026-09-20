@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse an unordered iteration that can reach a checker's output.
+"""Refuse a set read in a position whose order reaches a checker's output.
 
 Why: on 2026-09-19 `check-merge-dropped-symbols.py` iterated a set of paths, so two runs of the
 same command printed the same six findings in two different orders — Python's per-process string
@@ -8,8 +8,14 @@ to disagree with itself. The fix was one word, `sorted(...)`, and nothing locks 
 round, removing it again leaves `cargo fmt`, `cargo clippy`, `cargo test` and all four python
 checkers green. The guard was zero, which is why this file exists.
 
-What it asserts, in one line a reader can check: **no `for` loop or comprehension in
-`scripts/*.py` iterates a set unless it is inside `sorted(...)`.**
+What it asserts, in one line a reader can check: **in `scripts/*.py`, no set is read in one of the
+three positions whose order reaches output — the iterable of a `for` or a comprehension, the first
+argument of `str.join`, or a `*`-unpacking — unless it is inside `sorted(...)`.**
+
+The last two were added after a review wrote `", ".join(myset)` and `print(*myset)` and watched both
+pass. That is the 2026-09-19 incident exactly, minus the loop: a set of paths printed in hash order.
+Three positions is not "every position", and the sentence above says so rather than promising a
+coverage this does not have — the list below is the rest.
 
 Why static rather than re-running under two `PYTHONHASHSEED`s: an unordered set is only *visibly*
 unordered when the hash order happens to differ from the sorted one, so a two-run comparison is a
@@ -18,20 +24,31 @@ time. This axis has no such gap: it does not need the bug to be observable to se
 re-run, and it fires on a *new* set appearing anywhere in these files, not only on the one line the
 2026-09-19 round fixed.
 
-Blind spots, stated rather than implied:
-  * Dicts are not flagged. They iterate in insertion order, so their output order is as
-    deterministic as whatever built them — a set feeding a dict is caught at the set.
-  * The set-ness of a value is inferred syntactically (a `set()`/`{…}`/set comprehension, a set
-    operator, a name or a local function that carries one). A set arriving from something this
-    cannot see — a tuple-unpacked call return, an import, a parameter — is missed, and one such
-    name exists today: `ci_runs, ci_tcs = parse_ci(...)` in `check-dod-ci-parity.py` binds a set
-    this pass does not know about (it is only ever read through `sorted()` or a set operator, so
-    nothing is wrong there now, but an unsorted iteration of it would pass). It is a check for the
-    shape that actually bit us, not a type system.
+Blind spots — listed rather than implied, and none of them is a claim of safety:
+  * **Order laundered through a container is not followed.** `d = dict.fromkeys(myset)` and then
+    `for k in d` keeps the set's order and passes; so do `y = list(myset)` then `for x in y`, and
+    `bag["k"] = myset` then `for x in bag["k"]`. An earlier version of this file said "a set feeding
+    a dict is caught at the set" — that was **false**, shown by a review that ran it, and a wrong
+    blind-spot entry is worse than a missing one because a reader takes it as a guarantee. Measured
+    on this tree: `dict.fromkeys` appears **0 times**, so this is a hole in the promise and not a
+    live miss. Closing it properly means following order taint through containers, which is a
+    different program from this one; doing `fromkeys` alone would buy the *look* of that program for
+    two lines, which is the failure this paragraph is about.
+  * **Set-ness is inferred syntactically** — a `set()`/`{…}`/set comprehension, a set *operator*, or
+    a name or local function carrying one. So a set that arrives some other way is missed: a
+    tuple-unpacked call return, an import, a parameter. One such name exists today,
+    `ci_runs, ci_tcs = parse_ci(...)` in `check-dod-ci-parity.py` — read only through `sorted()` or a
+    set operator, so nothing is wrong there now, but an unsorted read of it would pass. Method-
+    spelled set operations (`a.difference(b)`) are not read either, only the operators (`a - b`).
+  * **Names have no scope.** `found = set()` in one function and `found = [...]` in another make the
+    *list* read go red. No such collision exists today, but `found` is one of the names from the
+    original incident, so the false red is reachable — and a false red invites a wrong `sorted()`,
+    which is a worse outcome than a miss.
+  * **Draining is not reading.** `while s: s.pop()` takes a set in hash order and passes (0 today).
   * Every `scripts/*.py`, not just the CI checkers: the surveys get diffed across rounds too, and
     they cost nothing to include — all of them pass today.
 
-Exit: 0 every iteration is ordered, 1 at least one is not, 2 the files it checks are not there.
+Exit: 0 nothing found, 1 at least one unordered read, 2 the files it checks are not there.
 """
 
 import ast
@@ -62,7 +79,6 @@ def set_values(tree):
     names, funcs = set(), set()
     growing = True
     while growing:
-        growing = False
         before = len(names) + len(funcs)
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
@@ -85,12 +101,29 @@ def set_values(tree):
     return names, funcs
 
 
-def unordered_iterations(tree, names, funcs):
-    """[(line, source)] for every iteration over a set that is not wrapped in sorted()."""
-    iterables = [node.iter for node in ast.walk(tree) if isinstance(node, (ast.For, ast.AsyncFor))]
-    iterables += [gen.iter for node in ast.walk(tree) for gen in getattr(node, "generators", [])]
+
+def order_reaching_output(tree):
+    """Every expression whose element order can end up in a printed line.
+
+    Three shapes, and the docstring's promise is exactly these three: what a `for` or comprehension
+    walks, what `str.join` is handed, and what a `*` spreads. A `Starred` in a target
+    (`a, *rest = ...`) is a Store and is not one of them.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.For, ast.AsyncFor)):
+            yield node.iter
+        for generator in getattr(node, "generators", []):
+            yield generator.iter
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join" and node.args:
+            yield node.args[0]
+        if isinstance(node, ast.Starred) and isinstance(node.ctx, ast.Load):
+            yield node.value
+
+
+def unordered_reads(tree, names, funcs):
+    """[(line, source)] for every set read in one of those positions without a sorted() over it."""
     found = []
-    for iterable in iterables:
+    for iterable in order_reaching_output(tree):
         pending = [iterable]
         while pending:
             node = pending.pop()
@@ -115,16 +148,18 @@ def main():
     for path in scripts:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         names, funcs = set_values(tree)
-        bad = unordered_iterations(tree, names, funcs)
+        bad = unordered_reads(tree, names, funcs)
         for line, source in bad:
-            print(f"✗ {path.relative_to(ROOT)}:{line}: iterates a set — two runs can print this in two orders")
+            print(f"✗ {path.relative_to(ROOT)}:{line}: reads a set — two runs can print this in two orders")
             print(f"    {source}")
-            print("    wrap the iterable in sorted(), as check-merge-dropped-symbols.py does")
+            print("    wrap it in sorted(), as check-merge-dropped-symbols.py does")
         total += len(bad)
         if not bad:
             print(f"  ✓ {path.relative_to(ROOT)}")
 
-    print(f"{len(scripts)} script(s): {total} unordered iteration(s) that could reach output")
+    # The count names the three positions it looked at rather than claiming "could reach output":
+    # those are not the same set, and the docstring's blind spots are the difference.
+    print(f"{len(scripts)} script(s): {total} set(s) read unordered in a for/comprehension, str.join or *unpacking")
     return 1 if total else 0
 
 
