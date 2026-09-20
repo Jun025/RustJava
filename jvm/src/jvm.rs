@@ -105,29 +105,59 @@ impl Jvm {
             class.set_java_class(java_class);
         }
 
-        // Resolve the *other* class the error path needs, for the same reason and with the same
-        // shape as the `java/lang/NoClassDefFoundError` check below. `Jvm::exception` builds its
-        // message with `JavaLangString::from_rust_string` *before* it builds the exception instance,
-        // so a class set without `java/lang/String` cannot report anything either: reporting the
-        // missing String needs a String. Measured against a loader that hides it -- 116 round trips
-        // survived, 117 died of `stack overflow, aborting` (SIGABRT), and the boundary reproduced
-        // exactly across repeats. The cap is the harness giving the real class up, not a floor:
-        // raising it to 100000 aborts just the same, so there is no floor.
+        // Everything the error path needs before anything at all can be raised.
         //
-        // Here rather than beside that check, because this one has to come *first*: the properties
-        // loop directly below is the first thing in construction that needs a String, and the check
-        // below it runs too late to be reached. Same reason it cannot go in `bootstrap_classes`
-        // above -- resolution runs class initialisation, which needs the thread attached above.
-        // Asked of the loader directly first, because the reporting path cannot report *this*
-        // failure: building the report is the thing that is missing.
-        assert!(
-            jvm.inner.bootstrap_class_loader.load_class(&jvm, "java/lang/String").await?.is_some(),
-            "the class set has no java/lang/String, which every raised error needs before it can \
-             exist: an exception carries a message, and building that message is the first thing \
-             the reporting path does. Nothing can be raised without it -- reporting the absent \
-             String would itself need a String, and that recursion has no floor (measured: 117 \
-             round trips, then the process aborts on a stack overflow). Add it to the class set."
-        );
+        // `Jvm::exception` builds a message with `java/lang/String` and then an instance of
+        // `java/lang/NoClassDefFoundError`, so a class set missing either cannot report even its own
+        // gap -- reporting the absent String needs a String, and reporting the absent reporter needs
+        // the reporter. Two earlier rounds each closed one of those names and each found the next by
+        // reading the code and guessing. Then the whole question was measured at once, by hiding every
+        // name construction asks the loader for, one at a time (`jvm/tests/test_error_path_class_sweep.rs`,
+        // 37 non-array names): five *more* recurse with no floor -- `java/lang/Throwable`,
+        // `java/lang/Error`, `java/lang/LinkageError`, `java/lang/CharSequence` and
+        // `java/lang/Comparable` -- and they are exactly the supertype and interface closure of those
+        // two. Of course they are: resolving a class resolves its supertypes, and a gap found *there*
+        // is reported with the very classes still being resolved. The closure is 9 names and the
+        // account of it is complete: 2 were already checked, 5 recursed, and the remaining 2
+        // (`java/lang/Object`, `java/io/Serializable`) are in `bootstrap_classes` above, so they fail
+        // before this runs -- on an `unwrap` that does not say which class, which is a smaller defect
+        // than this one and is left recorded rather than fixed here.
+        //
+        // So the closure is what is checked, not a list someone has to remember to extend. Asked of
+        // the loader directly and never through `resolve_class`, because the reporting path cannot
+        // report *this* failure: building the report is the thing that is missing. A bare
+        // `resolve_class` here would hand the question to `Jvm::exception`, which is the cycle itself
+        // -- measured, that is still `stack overflow, aborting`, only during construction instead of
+        // later.
+        //
+        // Start-up cost, counted rather than timed (the previous round measured wall clock here and
+        // discarded it as below this host's noise): the walk asks the loader 9 times where the two
+        // asserts it replaces asked twice, so construction goes from 44 loader questions to 51.
+        //
+        // Here rather than in `bootstrap_classes` above, and before the properties loop below: that
+        // loop is the first thing in construction that needs a String, and resolution runs class
+        // initialisation, which needs the thread attached above.
+        let mut pending = Vec::from(["java/lang/String".to_owned(), "java/lang/NoClassDefFoundError".to_owned()]);
+        let mut asked = HashSet::new();
+        while let Some(class_name) = pending.pop() {
+            if !asked.insert(class_name.clone()) {
+                continue;
+            }
+            let Some(definition) = jvm.inner.bootstrap_class_loader.load_class(&jvm, &class_name).await? else {
+                panic!(
+                    "the class set has no {class_name}, which the error path needs before anything can be \
+                     raised. Every raised error is an exception instance carrying a String message, so \
+                     building one resolves java/lang/String and java/lang/NoClassDefFoundError -- and with \
+                     them their supertypes and interfaces. A name missing from that closure cannot be \
+                     reported, because reporting it needs the same classes that are still being resolved, \
+                     and that recursion has no floor (measured: 117 round trips for String, 121 for \
+                     NoClassDefFoundError, then the process aborts on a stack overflow). Add it to the \
+                     class set."
+                )
+            };
+            pending.extend(definition.interface_names());
+            pending.extend(definition.super_class_name());
+        }
         jvm.resolve_class("java/lang/String").await?;
 
         // init properties
@@ -148,34 +178,14 @@ impl Jvm {
         // load system class loader
         JavaLangClassLoader::get_system_class_loader(&jvm).await?;
 
-        // Resolve the class the error path reports *with*, so that path cannot eat its own tail.
-        // A class the loader cannot provide is reported by
-        // `Jvm::exception("java/lang/NoClassDefFoundError", …)`, and building that exception goes
-        // back through the loader. If the loader cannot provide *that* class either, the two call
-        // each other with no floor -- measured against a loader that hides it: 121 round trips
-        // survived and somewhere before 160 the process died of `stack overflow, aborting`
-        // (SIGABRT). Resolving it once here registers it, so afterwards the registry answers and the
-        // loader is never asked again: the cycle stops being reachable rather than being bounded.
-        //
-        // Here rather than in `bootstrap_classes` above because resolution runs class
-        // initialisation, which needs the thread attached below that list (measured: adding it there
-        // panicked on the missing thread frame).
-        // Asked of the loader directly first, because the reporting path cannot report *this*
-        // failure: building the report is what is missing. A bare `resolve_class` here would hand
-        // the question to `Jvm::exception`, which is the cycle itself -- measured, that is still
-        // `stack overflow, aborting`, only during construction instead of later. One direct question
-        // turns the same condition into an immediate, named failure.
-        assert!(
-            jvm.inner
-                .bootstrap_class_loader
-                .load_class(&jvm, "java/lang/NoClassDefFoundError")
-                .await?
-                .is_some(),
-            "the class set has no java/lang/NoClassDefFoundError, which is the class this runtime \
-             reports every other missing class with. Nothing can be raised without it: the reporter \
-             would be asked to report its own absence, and that recursion has no floor (measured: \
-             121 round trips, then the process aborts on a stack overflow). Add it to the class set."
-        );
+        // Resolve the class the error path reports *with*, so that path cannot eat its own tail: a
+        // class the loader cannot provide is reported by
+        // `Jvm::exception("java/lang/NoClassDefFoundError", …)`, and building that exception goes back
+        // through the loader. Resolving it once here registers it, so afterwards the registry answers
+        // and the loader is never asked again -- the cycle stops being reachable rather than being
+        // bounded. Its *presence* was already established by the closure walk above; this is only the
+        // resolution, and it stays here because it runs class initialisation, which needs the system
+        // class loader above it.
         jvm.resolve_class("java/lang/NoClassDefFoundError").await?;
 
         jvm.inner.bootstrapping.store(false, Ordering::Relaxed);

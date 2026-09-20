@@ -7,6 +7,13 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-string-on-the-error-path-p0] ★★**오류 경로의 클래스 집합을 한 번에 쟀다 — 답은 «둘»이 아니었다.** 채택 제안 `2026-09-19-string-on-the-error-path#p0`.
+  ★**후보를 «유도»했다**(손 목록 아님): 기록 로더로 정상 구성 1회 → 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ 후보 **37**.
+  ★★**5개가 더 재귀한다**: `Throwable`·`Error`·`LinkageError`·`CharSequence`·`Comparable` = 기존 두 이름의 **상위형·인터페이스 폐포**.
+  ★**처방 = 폐포 walk**(assert 2 → 작업목록 1 · 로더에 **직접** 질의). ★**폐포 9로 계산이 닫힌다**(막힌 2 + 재귀 5 + bootstrap 2) ⇒ 미설명 **0**.
+  ★**양방향**: `0 recursed` ok ↔ `extend` 2줄 제거 → **5 recursed FAILED** ↔ 복원 ok. 기존 잠금 2건 **무수정 통과**.
+  ★**대가**: 로더 질문 **44→51** · 스윕 **~15초** · ★배열 5개 제외(로더가 **합성**하므로 클래스 집합이 못 빠뜨린다 — 단 `[Ljava/lang/String;` 는 상한 20에서도 오버플로 = in-process 불가).
+  ★**후속 2건**: 부트스트랩 unwrap 이 **이름을 말하지 않는다**(S) · `[Ljava/lang/String;` 의 두 번째 순환(M).
 - [rustjava-checker-output-determinism-has-no-guard] ★★**검사기 출력 순서를 잠갔다 — 습관을 규칙으로.** 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0` · 신설 `scripts/check-script-output-order.py`(AST) + CI 잡 `script_output_order` + DoD 10번째 줄.
   ★**불변식 한 줄**: `scripts/*.py` 의 어떤 `for`·컴프리헨션도 **`sorted(...)` 밖에서 set 을 순회하지 않는다**.
   ★**「그물 0」 재현**: 비결정성을 되돌린 채 파이썬 검사기 **4종 rc 0** · `cargo fmt` **rc 0**. ★해소 여부 선행 확인 — `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신).
