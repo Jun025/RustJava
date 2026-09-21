@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-19",
+  "taskId": "2026-09-18-nonliteral-exception-call-sites-p0",
+  "summary": "Decided not to gate the non-literal blind spot. Both premises of the adopted proposal had expired within a day: the baseline is 1 rather than 0 (a test must pass an unloadable name through a variable, because a literal there makes this very check red), and an unloadable name no longer crashes the runtime since the exception-throws round landed - it raises NoClassDefFoundError instead of the intended exception. Built the cheap half instead: the checker now counts and prints the blind spot and never fails on it.",
+  "decision": "report the blind spot, do not gate it",
+  "measurements": {
+    "baseline_claimed_by_proposal": 0,
+    "baseline_measured_now": 1,
+    "nonliteral_site": "jvm/tests/test_exception_construction.rs:19",
+    "files_changed": 1,
+    "lines_added": 90,
+    "lines_removed": 6,
+    "new_dod_commands": 0,
+    "new_ci_jobs": 0,
+    "blind_spot_with_helper_split_removed": 42,
+    "runtime_before_seconds": [1.33, 3.20, 1.55, 1.58],
+    "runtime_after_seconds": [1.73, 1.88, 1.44, 1.54],
+    "runtime_after_first_draft_seconds": [10.03, 13.27, 11.13],
+    "named_classes": 43,
+    "literal_call_sites": 846,
+    "loadable_classes": 268
+  },
+  "verification": [
+    "axis on product code: injecting a run-time-assembled self.exception(name, ...) into jvm/src/jvm.rs moves the report from 1 to 2 and names jvm/src/jvm.rs:1390; reverting returns it to 1 with a clean tree; rc stays 0 both ways, which is the decision",
+    "predicate sensitivity: removing the helper-name split makes the report say 42 (33 helper calls + 8 helper definitions + the 1 real site), so the number is not an artefact of a loose anchor",
+    "premise re-measured against origin/main @ e9910a7a: baseline 1, and the axis test for the exception-throws round passes, i.e. an unloadable name returns NoClassDefFoundError rather than aborting",
+    "cost: before 1.33/3.20/1.55/1.58s vs after 1.73/1.88/1.44/1.54s, overlapping ranges"
+  ],
+  "changes": [
+    "scripts/check-named-exception-classes-are-loadable.py - counts and prints run-time-assembled call sites, never fails on them; decision and its two dead premises recorded in the docstring; scan of the two axes merged into one pass",
+    "docs/worklog/2026-09-19-nonliteral-blind-spot-is-reported-not-gated.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "A printed number can be scrolled past; a gate cannot. That is the trade this round chose and it is the strongest argument for the other answer.",
+    "The count is only as good as its predicate - the 42 above is what a one-line mistake looks like - and nothing tests it except this round's probes.",
+    "The report does not distinguish product code from tests. Every non-literal site today is a test; a product one would read identically.",
+    "I introduced two runtime regressions while building this (a second full walk of every .rs, then a per-character newline index) and removed both; the first draft ran 10-13s against a 1.3-3.2s baseline."
+  ],
+  "adoptedProposals": [
+    "2026-09-18-nonliteral-exception-call-sites#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Say whether a run-time-assembled exception name is in product code or in a test",
+      "plainSummary": "The safety check now reports the places where an error class name is built while the program runs. It does not say whether those places are real product code or just test scaffolding, and only one of those is worth worrying about.",
+      "userBenefit": "A genuinely risky site in the runtime would stand out immediately instead of blending in with test helpers that are fine.",
+      "why": "This round decided against failing on the count, precisely because the only site today is a test that has to be written that way. That judgement depends entirely on the product/test split, and the report does not carry it - so the next reader has to re-derive it by opening each path. The repo already knows the split: the non-literal round measured 781 product versus 65 test call sites using nothing more than the path.",
+      "tradeoff": "It is a second classification to keep honest, and path-based heuristics are exactly the kind of thing that rots when a directory is renamed; an alternative is to leave the paths and trust the reader. It also risks implying that a test site is always acceptable, which is only true while it is deliberate.",
+      "effort": "S",
+      "target": "scripts/check-named-exception-classes-are-loadable.py"
+    }
+  ]
+}
