@@ -1,0 +1,56 @@
+{
+  "date": "2026-09-19",
+  "taskId": "rustjava-partial-clone-refusal-decision",
+  "summary": "Decided not to refuse partial clones. Measured on a real --filter=blob:none clone: with the promisor reachable the answer is identical to a full clone (rc 1, 6 dropped), so refusing would block a working setup. The silent green is real but needs the promisor to be unreachable - a fresh blobless clone with a broken remote printed 0 dropped and exited 0 where a full clone reports six. Fixed the ambiguity at the one call instead: symbols() asks ls-tree whether the path is in that tree before reading a failed git show as absence.",
+  "decision": "do not refuse partial clones; disambiguate missing-blob from absent-path via ls-tree",
+  "measurements": {
+    "range_measured": "e53b2142^..e53b2142",
+    "full_clone_rc": 1,
+    "full_clone_dropped": 6,
+    "blobless_promisor_reachable_rc": 1,
+    "blobless_promisor_reachable_dropped": 6,
+    "blobless_promisor_reachable_seconds": 15.66,
+    "full_clone_seconds": 2.46,
+    "blobless_promisor_unreachable_rc_before": 0,
+    "blobless_promisor_unreachable_dropped_before": 0,
+    "blobless_promisor_unreachable_rc_after": 2,
+    "blobless_clone_seconds": 1.91,
+    "blobless_git_dir_mb": 3.2,
+    "workflows_using_partial_clone": 0,
+    "timing_before_seconds": [7.78, 7.99, 7.05],
+    "timing_after_seconds": [6.39, 6.72, 8.06],
+    "dod_default_range_before_seconds": 0.46,
+    "dod_default_range_after_seconds": 0.33
+  },
+  "verification": [
+    "axis on the product script: fresh blobless clone with remote pointed at an invalid host, before = '0 definition(s) dropped' rc 0 (silent green), after = rc 2 'cannot measure: <rev>:jvm-bytecode/src/class_definition.rs is in that tree but its content could not be read'",
+    "no over-blocking: blobless clone with the promisor reachable still returns rc 1 / 6 dropped after the fix",
+    "full clone unchanged: rc 1 / 6 dropped before and after",
+    "discriminator checked by execution in both clones: git ls-tree <rev> -- <path> prints one entry for a present path and empty output for an absent one, rc 0 either way, identical in the partial clone which lacks the blob",
+    "detection axis for the refusal option (not taken): remote.origin.partialclonefilter = blob:none while rev-parse --is-shallow-repository = false, which is why the existing preflight misses it",
+    "risk realisation: no workflow in .github sets filter:, and merge_drops checks out with fetch-depth: 0"
+  ],
+  "changes": [
+    "scripts/check-merge-dropped-symbols.py - symbols() raises CannotMeasure when ls-tree says the path is in the tree but show could not read it; preflight() docstring records the decision and the numbers behind it",
+    "docs/worklog/2026-09-19-partial-clone-blob-vs-absence.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "The first offline measurement was contaminated: the earlier online run had cached the blobs, so it reported the correct answer. The recorded numbers come from a fresh clone with the remote broken before any read.",
+    "Pre-existing and not fixed here: the checker's finding order is not stable between runs (emitted from a set). Measured on origin/main's own version with PYTHONHASHSEED=random - five runs, two orderings. rc and the finding set are identical; only line order moves.",
+    "Message-based discrimination was available (fatal: path ... does not exist in vs fatal: could not fetch ... from promisor remote) but not used: both exit 128 and the round that added preflight already deferred message matching as version-fragile."
+  ],
+  "adoptedProposals": [
+    "2026-09-18-merge-drops-no-silent-git-failure#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Sort the checker's findings so two runs can be compared",
+      "plainSummary": "The report lists what it found in a different order each time it runs, so comparing two runs shows differences that are not really there.",
+      "userBenefit": "Anyone checking whether a change affected the result can diff two runs and trust the answer, instead of re-reading the list to see that the same items moved.",
+      "why": "Measured this round on origin/main's own version: five runs under PYTHONHASHSEED=random produced two distinct orderings of the same six findings. It cost this round real time - the before/after diff looked like a regression until the original version was shown to disagree with itself. Findings are accumulated in a set and printed in iteration order; sorting at the print site is a one-line change.",
+      "tradeoff": "Sorting fixes an order that no one has depended on, so the risk is close to zero; the only cost is that the output no longer reflects traversal order, which nothing reads. Leaving it means every future before/after comparison of this checker carries the same false signal.",
+      "effort": "S",
+      "target": "scripts/check-merge-dropped-symbols.py"
+    }
+  ]
+}

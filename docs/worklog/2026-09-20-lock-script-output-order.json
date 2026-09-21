@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-20",
+  "taskId": "rustjava-checker-output-determinism-has-no-guard",
+  "summary": "Adopted 2026-09-19-merge-drops-deterministic-order#p0. scripts/check-script-output-order.py refuses any `for`/comprehension in scripts/*.py that iterates a set outside sorted(). Static (AST), no re-runs, one new CI job.",
+  "decision": "Assert the invariant statically rather than re-running each checker under two PYTHONHASHSEED values. A set is only *visibly* unordered when its hash order differs from the sorted one, so a two-run comparison is a coin flip per run -- with the two paths of the 2026-09-19 incident it agrees with itself about half the time. The AST pass does not need the bug to be observable, costs no re-run, and fires on a new set anywhere in scripts/, which is the objection the proposal itself raised against the cheap `assert sorted` variant.",
+  "measurements": {
+    "guard_before": "zero, re-measured on this tree: with the nondeterminism restored at the product call site, check-worklog-json / check-dod-ci-parity / check-named-exception-classes-are-loadable / check-merge-dropped-symbols all rc 0 and `cargo fmt --all -- --check` rc 0",
+    "already_fixed_elsewhere": "no: last commit touching scripts/ or rust.yml is 35f34797, the one-word fix itself; PYTHONHASHSEED appears in no lock, only in prose and the fixed script's comment",
+    "scope_widened_from_proposal": "proposal said `scripts/ (all four checkers)`; the glob is scripts/*.py (7 files incl. the two surveys and this script) because the wider glob costs one word and all 7 pass today",
+    "unordered_iterations_today": 0,
+    "ci_cost": "one new job (script_output_order), checkout + python3, no toolchain -- same shape as the other four doc/script jobs",
+    "runtime": "0.06s over 7 files"
+  },
+  "verification": {
+    "bidirectional_M1": "product call site, not a copy: removing sorted() from scripts/check-merge-dropped-symbols.py:254 -> rc 1, names that file and line; restoring -> rc 0",
+    "bidirectional_M2": "a *new* source in a different file: `for c in sorted(only_ci)` -> `for c in only_ci` in check-dod-ci-parity.py:215 -> rc 1, names that file and line; restoring -> rc 0",
+    "green_baseline": "rc 0, `7 script(s): 0 unordered iteration(s) that could reach output`",
+    "blind_spot_measured": "a set bound by tuple-unpacking a call return is missed: injecting an unsorted `for t in ci_tcs:` into check-dod-ci-parity.py leaves the lock rc 0. Recorded as proposal p0, not papered over.",
+    "dod": "all 10 DoD commands rc 0; dod_parity reports 9 commands / 2 toolchains matching on both sides"
+  },
+  "changes": [
+    "scripts/check-script-output-order.py: new, ~60 lines of ast walk (set-valued names/functions to a fixpoint, then every For/comprehension iterable)",
+    ".github/workflows/rust.yml: new job script_output_order",
+    "CLAUDE.md: the DoD block gains the 10th command (dod_parity requires both sides to move together)"
+  ],
+  "issues": [
+    "Set-ness is inferred syntactically, so a set arriving by tuple-unpacked call return, import or parameter is invisible to the pass. One such name exists today and is named in the docstring.",
+    "Nothing in this repo reads python except the CI jobs that execute it: git-tracked files matching pyproject/setup.cfg/.pre-commit/tox.ini/ruff/flake8/requirements number 0, and rust.yml runs python only as `python3 scripts/<checker>.py` (5 invocations, no lint step). So this file's own correctness rests on one CI job running it, plus the fact that it is inside its own scripts/*.py glob and therefore reads itself on one axis. A python test harness was deliberately not built -- the adopted proposal scoped that as a decision, not a line -- but the debt is recorded rather than implied.",
+    "Order laundered through a container is not followed (dict.fromkeys, list(<set>) bound to a name, bag['k']). An earlier docstring claimed the dict case was safe; a review disproved it and the claim is now removed rather than narrowed into a half-fix. dict.fromkeys appears 0 times in scripts/ today.",
+    "Names have no scope, so `found = set()` in one function and `found = [...]` in another would make the list read go red. No collision today; recorded because a false red invites a wrong sorted()."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-merge-drops-deterministic-order#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Close the one measured hole in the output-order lock: sets that arrive by tuple-unpacked call return",
+      "plainSummary": "The new lock cannot see a set that was handed back from a function through a multiple assignment, so one kind of unordered output could still slip past it.",
+      "userBenefit": "The lock stops having a shape it is known to miss, so a round can rely on a green run meaning what it says instead of having to remember the exception.",
+      "why": "Measured this round, not assumed: `ci_runs, ci_tcs = parse_ci(...)` in check-dod-ci-parity.py binds a real set the pass does not recognise, and injecting an unsorted `for t in ci_tcs:` leaves the lock rc 0. Nothing is wrong there today -- every read of it goes through sorted() or a set operator -- but the hole is real and it is in the file the lock is meant to protect.",
+      "tradeoff": "Following a value out of a call return means either inferring one return shape per function (a second, smaller fixpoint over tuple returns) or annotating the two or three call sites, and both are more analysis than the incident that started this needed. Leaving it means the docstring carries a named exception, which is the thing that rots.",
+      "effort": "S",
+      "target": "scripts/check-script-output-order.py"
+    }
+  ]
+}
