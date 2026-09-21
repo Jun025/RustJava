@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-19",
+  "taskId": "2026-09-19-exception-reports-instead-of-aborting-p0",
+  "summary": "Measured the exception-construction cycle for the first time (the round that proposed it could not) and bounded it. With a loader that hides java/lang/NoClassDefFoundError the cycle survives 121 round trips and aborts on a stack overflow before 160. Jvm::new now asks the loader for that class directly - bypassing the exception machinery, which cannot report its own absence - and fails immediately with a named message instead.",
+  "measurements": {
+    "round_trips_survived_cap_5": 6,
+    "round_trips_survived_cap_20": 21,
+    "round_trips_survived_cap_60": 61,
+    "round_trips_survived_cap_120": 121,
+    "stack_overflow_between": "121 and 160",
+    "files_changed": 3,
+    "tests_added": 1,
+    "normal_startup_tests_before": 6,
+    "normal_startup_tests_after": 6,
+    "designs_rejected_by_measurement": 2
+  },
+  "verification": [
+    "cycle measured with a new harness (test_jvm_hiding in test-utils): caps 5/20/60/120 complete with 6/21/61/121 requests for the hidden class; caps 160 and 200 die with 'fatal runtime error: stack overflow, aborting' (SIGABRT)",
+    "rejected design 1 - adding the class to Jvm::new bootstrap_classes - failed 6 tests; the panic line mapped to threads.get_mut(&thread_id).unwrap(), i.e. resolution runs class initialisation which needs the thread attached after that list",
+    "rejected design 2 - resolving it after the system class loader - passed normal startup 6/6 but still overflowed the stack against the hiding loader, only during construction; the reporting path cannot report the reporter's absence",
+    "axis: before = SIGABRT stack overflow that takes the test binary down; after = should_panic test passes on the named message; test_string 6/6 unaffected in both"
+  ],
+  "changes": [
+    "jvm/src/jvm.rs - Jvm::new asks the bootstrap loader directly for java/lang/NoClassDefFoundError and fails with a named message, then resolves it so the registry answers later",
+    "test-utils/src/lib.rs - HidesOneClass loader wrapper and test_jvm_hiding(hidden, give_up_after)",
+    "jvm/tests/test_exception_fallback_recursion.rs - new regression test",
+    "docs/worklog/2026-09-19-fallback-class-absence-fails-at-construction.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "It is a panic, and AGENTS.md says library code should not panic. Returning Err is impossible - JavaError carries a ClassInstance and the missing class is what would have to be instantiated - and a non-exception variant was rejected by the round that landed Jvm::exception because it silently changes 460 let-else sites. Jvm::new already unwraps for the same class of failure on its six bootstrap classes.",
+    "A host whose class set lacks the reporter but which never takes an error path used to run; now it cannot construct a JVM at all. Deliberate: the alternative is that it runs until an error path aborts it.",
+    "One more class is resolved at every JVM startup, for a condition no complete class set will hit.",
+    "The bound covers this cycle only. java/lang/String is the obvious next candidate, since exception() builds the message string first. Not measured, not claimed."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-exception-reports-instead-of-aborting#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Check the other class the error path needs before it is needed: java/lang/String",
+      "plainSummary": "Raising an error also builds its message text, which needs the String class. If a host's class set lacked that one, the same kind of failure would happen and nothing checks for it yet.",
+      "userBenefit": "A host with an incomplete class set would learn at start-up, by name, rather than when the first error is raised.",
+      "why": "Jvm::exception calls JavaLangString::from_rust_string before it builds the exception instance, so String is on the error path exactly as NoClassDefFoundError is. This round measured and closed the NoClassDefFoundError cycle and deliberately did not claim anything about String: no harness run was done for it, and whether it recurses, fails cleanly, or is already resident by construction time is unknown. The harness added here (test_jvm_hiding) makes that a short measurement rather than a design question.",
+      "tradeoff": "If String turns out to be resident well before any error path can run, the check is dead weight on every start-up and one more line asserting something that cannot happen; the measurement has to come first, which is why this is a proposal and not a second assert.",
+      "effort": "S",
+      "target": "jvm/src/jvm.rs, jvm/tests/test_exception_fallback_recursion.rs"
+    }
+  ]
+}
