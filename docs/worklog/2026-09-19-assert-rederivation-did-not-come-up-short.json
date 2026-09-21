@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-19",
+  "taskId": "rustjava-assert-loadable-rederivation-did-not-come-up-short",
+  "summary": "The loadable re-derivation now proves itself instead of being trusted: registrations parsed are compared against an independent count of the proto calls in loader.rs, and registrations are compared against distinct resolved names. Both mismatches exit 2 (cannot measure). Starts green - all four counts are 268 today - and re-creating either of the two historical defects turns it red with a message naming what collapsed.",
+  "measurements": {
+    "proto_call_occurrences": 268,
+    "proto_comma_lines": 268,
+    "crate_classes_occurrences": 268,
+    "registrations_parsed": 268,
+    "distinct_names": 268,
+    "registrations_sharing_a_line": 0,
+    "proto_without_trailing_comma": 0,
+    "proto_in_comments": 0,
+    "duplicate_resolved_names": 0,
+    "files_changed": 1,
+    "lines_added": 38,
+    "lines_removed": 2,
+    "runtime_before_seconds": [
+      6.47,
+      8.01,
+      4.57
+    ],
+    "runtime_after_seconds": [
+      6.35,
+      5.68,
+      7.53
+    ]
+  },
+  "verification": [
+    "premise measured on origin/main @ ad9eb1a6: four independent counts of the registrations all give 268, and the four shapes that would make the assertion fire wrongly are all 0",
+    "axis 1, product script mutated back to the first draft's as_proto-only pattern: rc 2, '265 registrations parsed but 268 proto calls are in rustjava-runtime/src/loader.rs'",
+    "axis 2, product script mutated back to the first draft's bare-name keying: rc 2, '268 registrations resolved to only 263 names', naming java/util/Formatter <- java::util::Formatter::as_proto(), java::util::logging::Formatter::as_proto() among five",
+    "unmutated: rc 0, 43 named classes across 846 call sites, all 268 loadable",
+    "cost: before 6.47/8.01/4.57s vs after 6.35/5.68/7.53s, overlapping"
+  ],
+  "changes": [
+    "scripts/check-named-exception-classes-are-loadable.py - PROTO_CALL witness plus two fail-closed assertions in loadable_classes()",
+    "docs/worklog/2026-09-19-assert-rederivation-did-not-come-up-short.{md,json}, REPORT.md, STATE.md"
+  ],
+  "issues": [
+    "The proposal has no how field; this implementation follows its why and departs from its tradeoff.",
+    "Departure: the proposal expected coupling to the textual shape of loader.rs (one registration per line). Counting _proto() occurrences rather than lines avoids that, and measures equal today (268 = 268).",
+    "A genuine duplicate registration - two entries deliberately naming one class - would be a false red. There are none today and the message names them, but the risk is real.",
+    "If loader.rs ever calls as_proto() outside the registration array, the witness counts it and the check reddens on a correct tree. Measured today: all 268 calls are registrations.",
+    "It is a floor, not a proof: a registration mapped to a wrong but distinct name keeps both counts at 268 and passes.",
+    "Differs from the sibling round 2026-09-18-nonliteral-exception-call-sites#p0, which chose to print and never fail. That sized a known blind spot; this catches the check mis-reading its own input, which the file already treats as exit 2."
+  ],
+  "adoptedProposals": [
+    "2026-09-19-loadable-set-source-of-truth#p0"
+  ],
+  "proposals": []
+}
