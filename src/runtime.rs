@@ -187,6 +187,16 @@ where
         match ClassDefinitionImpl::from_classfile(data) {
             Ok(class) => Ok(Box::new(class)),
             Err(ClassDefinitionError::InvalidClassFile(cause)) => Err(jvm.exception("java/lang/ClassFormatError", cause).await),
+            Err(ClassDefinitionError::InvalidBootstrapArgument {
+                method_index,
+                argument_index,
+                actual,
+            }) => Err(jvm
+                .exception(
+                    "java/lang/ClassFormatError",
+                    &ClassDefinitionError::bootstrap_argument_message(method_index, argument_index, actual),
+                )
+                .await),
             Err(ClassDefinitionError::UnsupportedClassVersion(version)) => Err(jvm
                 .exception(
                     "java/lang/UnsupportedClassVersionError",

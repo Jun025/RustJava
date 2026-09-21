@@ -204,6 +204,19 @@
 - 검증: 검사기 `✓ 43 named … all 268 loadable` rc=0 · `check-worklog-json` rc=0 · `check-dod-ci-parity` rc=0(명령 7개) · `cargo fmt` rc=0 · `mbvar-guard` rc=0(위반 0).
 - ★후속 추천: **loadable 집합을 «파싱으로 재유도»하지 말고 loader 쪽에서 «내보낼» 것인가**(M — 이번 결함 3건이 전부 그 재유도 자리였다). 상세 = `docs/worklog/2026-09-18-named-exception-classes-are-loadable.md`.
 
+## [2026-09-18] 부트스트랩 인자 거부가 «어느 인자·무엇을 찾았는지» 말한다 (rustjava-bootstrap-argument-diagnostic-names-index-and-tag)
+- 무엇을: 채택 제안 `2026-09-18-bootstrap-argument-diagnostic-sequencing#p0`(worklog json 기록). ★**새 기능이 아니라 «이미 계산된 값을 버리지 않는 것»** — 술어가 `false` 를 내는 그 자리에 index 와 찾은 항목이 **손에 있었다**.
+- ★**ⓑ 대안을 만들지 않았다** — 같은 enum 의 `UnsupportedVersion(u16)` 이 **이미 3층을 관통해 경계에서 `format!` 되는 패턴**이라 그것을 **복제**했다(새 진단 체계 **0**).
+- ★**전/후**(같은 픽스처 `test-data/ldc/LdcDynamicBSMArgPastEnd.class` · CLI 실제 출력):
+  `BEFORE  java.lang.ClassFormatError: a bootstrap method argument names nothing or is not a loadable constant`
+  `AFTER   java.lang.ClassFormatError: bootstrap method #0 argument #0 names no constant pool entry`
+- ★**세 요구 3/3**: expected(문면) · index(`argument_index` ★+`method_index` — OpenJDK 는 그걸 안 말해 여럿일 때 모호하다) · actual(가리킨 상수의 **종류 이름**). ★태그를 **번호가 아니라 이름**으로 나른다 — 태그 바이트가 파싱 후 남지 않아 번호는 «아무도 분기 안 하는 두 번째 표»를 만들게 된다.
+- ★★**양방향의 급소** — `StringConcat` 은 인자가 **1개**라 index 0 이 **계산이든 하드코딩이든 통과한다**. 그래서 정적 인자 **3개**짜리 `Lambda.class` 의 **#0 과 #2** 를 각각 망가뜨려 ★**보고된 index 가 0 ↔ 2 로 따라가는 것**을 잠갔다.
+- ★**소비자 전수**: `InvalidFormat` 34사용처 중 **구조적 소비자는 1개**(`jvm-bytecode` 의 `From` match) — **arm 을 더했을 뿐 고치지 않았다**. 나머지 14규칙 무변.
+- ★**대가**(재서 적는다): ★**타입이 «커지지 않았다»** — `Copy` 유지 · 크기 불변(시험으로 잠금) ⇒ 할당 0. ※제안이 경계한 「소유 데이터로 커진다」는 **이 설계에선 일어나지 않았다**. ★**두 경로 공존**의 혼동은 변형 docstring 한 줄로 못박았다 · ★이 규칙의 **메시지 문면이 바뀌어** 그것을 단언하던 시험 2곳과 grep 습관이 깨진다.
+- 검증: `cargo test -p classfile` **16 passed**(전 13) · `--test test_class_format` **22 passed** · `cargo test --all` rc=0.
+- ★후속 추천: ⑴**다른 14규칙 중 «수를 아는데 버리는» 것을 세라**(S — 아직 그 수를 모른다) ⑵`ClassDefinitionError` 의 `&'static str` 두 변형도 같은 한계(M · 이 회차는 나란히 더해 **우회**했다). 상세 = `docs/worklog/2026-09-18-bootstrap-argument-index-and-tag.md`.
+
 ## [2026-09-18] 이름으로 부르는 예외 클래스가 «실을 수 있는» 것인가 — 한 자리에서 대조한다 (rustjava-lock-every-named-exception-class-is-loadable)
 - 무엇을: 채택 제안 `2026-09-17-string-concat-recipe-arity#p0`(worklog json `adoptedProposals` 기록). 산출물 = `scripts/check-named-exception-classes-are-loadable.py` **한 자리** + CI job + DoD 한 줄. ★**런타임 클래스 추가 0 · `.unwrap()` 무접촉.**
 - ★**전제를 코드로 확인했다**(총괄 선실측 없음): `jvm/src/jvm.rs:943-950` 의 `new_class(...).await.`★**`unwrap()`** ⇒ 부트스트랩 로더가 이름을 못 풀면 **Java 예외가 아니라 프로세스가 죽는다**. ★**자기 참조다** — `:842` 가 클래스 부재를 `exception("java/lang/NoClassDefFoundError", …)` 로 보고하므로 **오류 경로 자신의 클래스**가 실려야 한다.

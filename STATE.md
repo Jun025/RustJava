@@ -122,6 +122,14 @@
   ★**수 전/후**: 이름 41→**43** · 호출부 812→**846** · loadable 263→**268**(왜인지 기재).
   ★**ⓒ 편집 «전»에 새 red 위험 측정** — 늘어나는 2이름 모두 등재 ⇒ **새 red 0**.
   ★**시간 유의차 없음**(전 1.42/1.67/1.46 ↔ 후 2.01/1.69/1.19 · 구간 겹침). ★런타임 클래스 추가 0 · `protos` 무접촉.
+- [rustjava-bootstrap-argument-diagnostic-names-index-and-tag] ★★**부트스트랩 인자 거부가 «어느 인자·무엇을» 말한다.** 채택 제안 `2026-09-18-bootstrap-argument-diagnostic-sequencing#p0`.
+  ★**전제 확인(코드)**: 술어가 `false` 를 내는 자리에 `index` 와 `constant_pool.get(index)` 가 **손에 있었다** — `bool` 이 둘을 버렸다.
+  ★**새 체계 0** — 같은 enum 의 `UnsupportedVersion(u16)` 이 이미 3층을 관통하는 패턴이라 **복제**했다.
+  ★**전/후**: `ClassFormatError: a bootstrap method argument names nothing or is not a loadable constant` → ★`ClassFormatError: bootstrap method #0 argument #0 names no constant pool entry`(CLI 실측).
+  ★**세 요구 3/3**(expected·index+method_index·actual) · 태그는 **이름**으로(번호는 표가 하나 더 는다).
+  ★**양방향 급소**: `StringConcat` 은 인자 1개라 index 0 이 하드코딩이어도 통과 ⇒ **인자 3개 `Lambda.class` 의 #0↔#2** 로 **index 가 따라가는 것**을 잠갔다.
+  ★**소비자 1개**(`jvm-bytecode` `From`) — arm 추가뿐, 14규칙 무변. ★**타입 «안 커졌다»**(`Copy`·크기 불변 시험) · ★메시지 문면이 바뀌어 단언 2곳이 바뀐다.
+  ★`-p classfile` **16 passed**(전 13) · `test_class_format` **22** · `--all` rc=0.
 - [rustjava-lock-every-named-exception-class-is-loadable] ★★**이름으로 부르는 예외 클래스가 «실을 수 있는» 것인가 — 대조 한 자리.** 채택 제안 `2026-09-17-string-concat-recipe-arity#p0`(worklog json 기록).
   ★**전제 확인(코드)**: `jvm/src/jvm.rs:943-950` `new_class(...).await.`**`unwrap()`** ⇒ 못 싣는 이름은 **throw 가 아니라 패닉**. ★자기 참조 — `:842` 가 부재를 `exception("java/lang/NoClassDefFoundError")` 로 보고한다.
   ★**베이스라인 0**(★게이트² 정정 후): `exception(` 리터럴 **43 고유 / 846 호출부** ↔ 등재 **268**(`as_proto` 265 + `list_proto` 3). ★초판의 41/812/263 은 **전부 과소**였다(다중 줄 34 · `list_proto` 3 · 짧은 이름 충돌). ★제안의 「72」는 여전히 **재현 안 됨**.

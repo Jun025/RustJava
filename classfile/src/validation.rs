@@ -38,15 +38,10 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
             "class file version does not support a constant tag it carries",
         ));
     }
-    if !bootstrap_method_static_arguments_are_in_the_pool(class) {
-        return Err(ClassFileError::InvalidFormat(
-            // The rule is wider than the function name: the docstring above says the argument must also
-            // be a loadable constant, and OpenJDK says the same ("bad constant type"). The name stayed
-            // behind when the rule widened; renaming it is not this round's scope, so the cause is what
-            // gets the wording right.
-            "a bootstrap method argument names nothing or is not a loadable constant",
-        ));
-    }
+    // The rule is wider than the function name: the docstring below says the argument must also be a
+    // loadable constant, and OpenJDK says the same ("bad constant type"). The name stayed behind when
+    // the rule widened; renaming it is not this round's scope.
+    bootstrap_method_static_arguments_are_in_the_pool(class)?;
     if !bootstrap_method_indices_resolve(class) {
         return Err(ClassFileError::InvalidFormat("a dynamic constant names no bootstrap method"));
     }
@@ -165,11 +160,18 @@ fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
 /// One consequence worth naming: a long or double occupies two pool slots and only the first is
 /// usable (JVMS 4.4.5), so the second has no entry in this map and an argument naming it is
 /// rejected. That is the intended reading of "valid index" rather than an accident of the map.
-fn bootstrap_method_static_arguments_are_in_the_pool(class: &ClassInfo) -> bool {
-    class.attributes.iter().all(|attribute| match attribute {
-        AttributeInfo::BootstrapMethods(methods) => methods.iter().all(|method| {
-            method.arguments.iter().all(|index| {
-                class.constant_pool.get(index).is_some_and(|item| {
+/// ★ It returns `Result` rather than `bool` for one reason: at the moment it refuses, it is holding
+/// the position of the argument and the entry it found, and a `bool` throws both away. The caller
+/// then had to describe the failure in prose it did not measure. Nothing else about the rule moved.
+fn bootstrap_method_static_arguments_are_in_the_pool(class: &ClassInfo) -> Result<(), ClassFileError> {
+    for attribute in &class.attributes {
+        let AttributeInfo::BootstrapMethods(methods) = attribute else {
+            continue;
+        };
+        for (method_index, method) in methods.iter().enumerate() {
+            for (argument_index, index) in method.arguments.iter().enumerate() {
+                let entry = class.constant_pool.get(index);
+                let loadable = entry.is_some_and(|item| {
                     matches!(
                         item,
                         ConstantPoolItem::Integer(_)
@@ -182,11 +184,43 @@ fn bootstrap_method_static_arguments_are_in_the_pool(class: &ClassInfo) -> bool 
                             | ConstantPoolItem::MethodType { .. }
                             | ConstantPoolItem::Dynamic { .. }
                     )
-                })
-            })
-        }),
-        _ => true,
-    })
+                });
+                if !loadable {
+                    return Err(ClassFileError::InvalidBootstrapArgument {
+                        method_index: method_index as u16,
+                        argument_index: argument_index as u16,
+                        actual: entry.map(constant_kind_name),
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The JVMS 4.4 name of a constant's kind, for saying what an argument actually named.
+///
+/// ★ A name and not the numeric tag: the tag byte is not kept after parsing, so reporting it would
+/// mean a second table to hold numbers nothing branches on. The name is what a reader of the
+/// message needs, and it is derived from the variant rather than stored, so it cannot drift.
+fn constant_kind_name(item: &ConstantPoolItem) -> &'static str {
+    match item {
+        ConstantPoolItem::Utf8(_) => "Utf8",
+        ConstantPoolItem::Integer(_) => "Integer",
+        ConstantPoolItem::Float(_) => "Float",
+        ConstantPoolItem::Long(_) => "Long",
+        ConstantPoolItem::Double(_) => "Double",
+        ConstantPoolItem::Class { .. } => "Class",
+        ConstantPoolItem::String { .. } => "String",
+        ConstantPoolItem::Fieldref { .. } => "Fieldref",
+        ConstantPoolItem::Methodref { .. } => "Methodref",
+        ConstantPoolItem::InterfaceMethodref { .. } => "InterfaceMethodref",
+        ConstantPoolItem::NameAndType { .. } => "NameAndType",
+        ConstantPoolItem::MethodHandle { .. } => "MethodHandle",
+        ConstantPoolItem::MethodType { .. } => "MethodType",
+        ConstantPoolItem::Dynamic { .. } => "Dynamic",
+        ConstantPoolItem::InvokeDynamic { .. } => "InvokeDynamic",
+    }
 }
 
 /// JVMS 4.4.10 and 4.7.23: `bootstrap_method_attr_index` is an index into the `bootstrap_methods`
