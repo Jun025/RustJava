@@ -1,4 +1,13 @@
 # REPORT
+## [2026-09-21] 추천 후속작업 **2건 기각** — 보드에서 내리되 기록에서 내리지 않는다 (rustjava-prune-declined-followup-proposals-2026-09-21)
+- 무엇을: 운영자 지시(2026-09-21 「우선순위 낮은 작업은 추천 목록에서 정리하라」)에 따라 이 repo 의 열린 제안 **4건 중 2건**을 `declinedProposals` 로 닫았다. ★**제품 코드 0줄 · 새 제안 0 · 검사기/CI 신설 0.**
+- ★**닫은 둘**(둘 다 **검사기 다듬기**이고 사용자가 닿는 결함이 아니다): `2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0`(예외 이름 보고의 제품/테스트 구분) · `2026-09-20-lock-script-output-order#p0`(출력순서 잠금의 튜플 언패킹 구멍). ★**남긴 둘**(런타임 축): `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`.
+- ★★**«선언»이고 «삭제»가 아니다** — `proposals[]` 원소는 **하나도 지우지 않았다**. ref 가 `<basename>#p<0-기반 인덱스>` 라 원소를 지우면 **뒤 제안의 ref 가 조용히 다른 것을 가리킨다.** 서식은 이 repo 의 선례(`2026-09-17-ldc-asm-regeneration-declined.json`)를 그대로 따랐다 — 새 서식 발명 0.
+- ★**검증은 세서 했다**: 소비자 파생식 `open = 전체 − adopted − declined − injected − dismissed`(`~/tower/bin/cockpitd.js`)를 그대로 재현 — ★**open 4 → 2** · ★**남기기로 한 둘이 그대로 열림**(과잉 차단 0) · ★**ref 총수 99 불변**(인덱스 밀림 0). `python3 scripts/check-worklog-json.py` **rc 0**. ※`injected`·`dismissed` 는 tower 원장에 있어 **이 repo 만 세면 32 가 나온다** — 명령 전문은 worklog 에 있다.
+- ★**되살리는 법**: `docs/worklog/2026-09-21-prune-low-priority-followups.json` 의 `declinedProposals[]` 에서 그 ref 줄을 **빼면** 다시 열린다.
+- ★**대가**: 기각이 **제안이 든 파일이 아닌 제3 파일**에 적히므로 그 워크로그만 연 사람은 닫힌 표시를 못 본다(관용구의 성질). 두 제안이 가리킨 사실 자체는 각 docstring 에 **그대로 남는다**.
+- 검증: DoD 10명령 rc 0. ★**후속 추천 0건**(이 회차가 새 카드를 낳으면 지시에 어긋난다). 상세 = `docs/worklog/2026-09-21-prune-low-priority-followups.{md,json}`.
+
 ## [2026-09-20] `[Ljava/lang/String;` 오버플로 — ★**원인을 찾았고, 지난 회차 기재가 «틀렸다»** (rustjava-error-path-string-array-hiding-overflows-stack-p1)
 - 무엇을: 채택 제안 `2026-09-20-error-path-class-closure#p1`(★**조사 회차** — 제품 코드 **0줄**). cap 20 에서 `stack overflow, aborting`(rc 134)을 **재현**하고 원인을 규명했다.
 - ★★**결론 — 지난 회차의 원인 기재 「its recursion does not come back through the loader, so the cap cannot end it」은 «반증»됐다.** 매 턴 로더로 **돌아오고**, cap 이 **끝낸다** — 살아남은 전 실행에서 `asked = cap + 1`(= `[C` 와 **같은 모양**). 넘치는 이유는 모양이 아니라 ★**턴당 비용**이다.

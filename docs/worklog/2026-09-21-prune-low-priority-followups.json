@@ -1,0 +1,43 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-21",
+ "taskId": "rustjava-prune-declined-followup-proposals-2026-09-21",
+ "summary": "Disposition round, no code. Closed the two open follow-up proposals that ask the pipeline to refine its own checkers, on the 2026-09-21 operator instruction to clear low-priority work off the recommendation board so the Battle Monster play axis is not queued behind it. The two proposals about runtime behaviour (Jvm::exception's missing floor, whether Jvm::new may panic) are deliberately left open. Declining here is a declaration, not a deletion: the proposals[] elements stay exactly where they are, because that array's 0-based index is the ref.",
+ "decision": "decline 2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0 and 2026-09-20-lock-script-output-order#p0; leave 2026-09-20-string-array-hiding-overflows-stack#p0 and 2026-09-20-name-the-missing-bootstrap-class#p0 open",
+ "declineReason": "2026-09-21 운영자 지시 — 배틀몬스터 플레이 집중을 위한 우선순위 정리. Not a judgement that either proposal is wrong: both are checker-refinement work (a product/test split in the exception-name report; a tuple-unpack hole in the output-order lock), and neither is a defect a user can reach. They are being taken off the board, not off the record.",
+ "revert": "Remove the ref from declinedProposals[] in this file and it is open again on the next scan — the proposal body was never touched. Delete both refs to restore the 2026-09-21 board exactly.",
+ "measurements": {
+  "open_before": 4,
+  "open_after": 2,
+  "declined_here": 2,
+  "left_open": 2,
+  "proposals_elements_removed": 0,
+  "proposal_bodies_edited": 0,
+  "new_proposals": 0,
+  "product_lines_changed": 0,
+  "open_predicate": "open = proposals - adopted - declined - injected - dismissed (cockpitd.js collectProposals/scanRepoSimple); injected/dismissed come from ~/tower/data/{injected,dismissed}.json, so a repo-local count alone reads 32, not 4"
+ },
+ "verification": [
+  "baseline reproduced the number the ticket quotes: replicating the consumer's predicate over this tree plus tower's two ledgers gives open 4, and names exactly the 4 refs the ticket lists as 2-to-close + 2-to-keep",
+  "after: open 2, and the two remaining refs are the two the ticket says to keep (2026-09-20-string-array-hiding-overflows-stack#p0, 2026-09-20-name-the-missing-bootstrap-class#p0) - the keep set was counted, not assumed, so over-pruning would show",
+  "no ref drift: the full ref list derived from proposals[] indices is byte-identical before and after (99 refs both ways), because nothing was removed from any proposals[] array",
+  "schema lock: python3 scripts/check-worklog-json.py rc 0",
+  "full DoD block rc 0"
+ ],
+ "changes": [
+  "docs/worklog/2026-09-21-prune-low-priority-followups.{md,json}: this disposition",
+  "REPORT.md, STATE.md: the round record",
+  "no code, and no edit to either proposal's own worklog file"
+ ],
+ "issues": [
+  "Declining is recorded in a third file rather than in the file that carries the proposal, following this repo's existing idiom (2026-09-17-ldc-asm-regeneration-declined.json declines a 2026-09-16 proposal). The cost is that a reader opening the proposal's own worklog sees no sign it was closed; the consumer is the only thing that joins them.",
+  "The output-order lock's named hole stays open in the docstring of scripts/check-script-output-order.py, and the exception-name report still does not say product vs test. Both remain true after this round; what changed is that neither is on the board asking to be picked up.",
+  "The open count depends on tower's injected.json and dismissed.json, which live outside this repo. A future reader re-measuring here alone will get 32 and think this round did nothing - the predicate is recorded above for that reason."
+ ],
+ "adoptedProposals": [],
+ "declinedProposals": [
+  "2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0",
+  "2026-09-20-lock-script-output-order#p0"
+ ],
+ "proposals": []
+}
