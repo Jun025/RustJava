@@ -1,0 +1,56 @@
+{
+  "date": "2026-09-20",
+  "taskId": "rustjava-error-path-string-array-hiding-overflows-stack-p1",
+  "summary": "Adopted 2026-09-20-error-path-class-closure#p1, an investigation. Hiding [Ljava/lang/String; at a cap of 20 does abort with `stack overflow` -- reproduced -- but the reason recorded last round is wrong. The recursion does come back through the loader on every turn and the cap does end it; what differs from [C is the cost of one turn. The sweep's doc comment said the opposite and is corrected; no product code changed.",
+  "decision": "Cause found, nothing to fix in the product. The cycle is Throwable.fillInStackTrace -> instantiate_array(\"Ljava/lang/String;\") -> resolve_class -> load_class -> exception -> new_class -> Throwable.<init> -> fillInStackTrace, and it is bounded by whatever ends the failure. No host can enter it through a class set, because the bootstrap loader synthesises array classes. The false sentence in the sweep's header is the only thing this round changes.",
+  "measurements": {
+    "cited_tree": "origin/main 97707f26",
+    "reproduced": "yes -- cap 20, default stack: `thread 'probe' has overflowed its stack` / `fatal runtime error: stack overflow, aborting`, rc 134",
+    "where_the_cap_comes_from": "GIVE_UP_AFTER: u32 = 20, a const in jvm/tests/test_error_path_class_sweep.rs, passed to test_utils::test_jvm_hiding -> HidesOneClass.give_up_after. Test-only; the product has no such cap",
+    "cap_axis_default_2MiB_stack": {
+      "0": "survived, asked=1, construction OK (cap 0 never hides)",
+      "1": "survived, asked=2", "2": "survived, asked=3", "3": "survived, asked=4", "5": "survived, asked=6",
+      "10": "survived, asked=11", "11": "survived, asked=12", "12": "survived, asked=13", "13": "survived, asked=14",
+      "14": "survived, asked=15", "15": "survived, asked=16", "16": "survived, asked=17", "17": "survived, asked=18",
+      "18": "survived, asked=19", "19": "STACK OVERFLOW", "20": "STACK OVERFLOW"
+    },
+    "threshold_cap": "18 survives / 19 overflows",
+    "stack_axis_at_cap_20": { "2MiB": "overflow", "4MiB": "survived, asked=21", "8MiB": "survived, asked=21", "32MiB": "survived, asked=21", "128MiB": "survived, asked=21" },
+    "asked_is_always_cap_plus_one": "every surviving run, which is the same shape [C shows at cap 20 (asked=21)",
+    "frames_per_cycle": "~57 backtrace frames between one fillInStackTrace and the next",
+    "contrast_at_cap_20": {
+      "[C": "recursed, asked=21 (survives -- cheaper turn, reached inside from_rust_string)",
+      "[Ljava/lang/String;": "stack overflow at 2 MiB, asked=21 at 4 MiB",
+      "[B": "panics (it is in bootstrap_classes -- that is the sibling #p0 defect, not this one)",
+      "[I, [Ljava/lang/Object;, [Ljava/lang/StackTraceElement;, java/lang/Integer, java/lang/StringBuilder": "asked=0, construction succeeds -- construction never asks for them"
+    },
+    "runs": "31 process runs total, each a sub-second JVM construction; one 3m26s build reusing the warm target dir of the main checkout instead of a ~11m cold build"
+  },
+  "verification": {
+    "hypotheses_separated_by_experiment": "unbounded recursion would be insensitive to both knobs. Both knobs move the outcome independently (cap 18/19 at fixed stack; 2 MiB/4 MiB at fixed cap 20), so the recursion is bounded and merely deep",
+    "cycle_shown_not_inferred": "backtrace from a scratch panic at the 3rd entry to Throwable::fill_in_stack_trace, RUST_BACKTRACE=1: fill_in_stack_trace -> instantiate_array -> resolve_class -> resolve_class_internal -> load_class -> exception -> new_class -> invoke_special x4 (NoClassDefFoundError -> LinkageError -> Error -> Throwable) -> init_with_message -> invoke_virtual -> fill_in_stack_trace. The scratch instrumentation was reverted; nothing of it is committed",
+    "bidirectional": "not applicable -- no behaviour was changed. The only change is a doc comment that was false; the measurements above are what makes it true",
+    "dod": "all 9 DoD commands rc 0"
+  },
+  "changes": [
+    "jvm/tests/test_error_path_class_sweep.rs: the header paragraph claiming the cap cannot end this recursion is replaced by what was measured. Arrays stay excluded, for the reason that was always the real one -- no class set can lack a synthesised class"
+  ],
+  "issues": [
+    "The cycle has no floor in the product: the cap that ends it is a test-only device. It is unreachable through a class set, but that is an argument about one axis, not about the cycle. Recorded as proposal p0.",
+    "The frame count (~57) and the 2 MiB stack are this host's numbers on a debug build. A release build inlines and an OS with a different default thread stack moves the threshold; the shape does not move, which is the part that matters."
+  ],
+  "adoptedProposals": [
+    "2026-09-20-error-path-class-closure#p1"
+  ],
+  "proposals": [
+    {
+      "title": "Give Jvm::exception a floor, so a failure while reporting a failure cannot recurse",
+      "plainSummary": "If something goes wrong while the runtime is building an error message, it can start building another one, and so on until the process dies.",
+      "userBenefit": "A host sees the first failure reported instead of a process that aborts with `stack overflow` and says nothing about what actually went wrong.",
+      "why": "Measured this round: Jvm::exception -> new_class -> Throwable.<init> -> fillInStackTrace -> instantiate_array -> resolve_class -> load_class -> Jvm::exception is a closed cycle, ~57 stack frames per turn, with nothing in the product that ends it -- the cap that ends it in tests is a test-only device in test_utils::HidesOneClass. The class-set axis is already closed (Jvm::new walks the error path's closure, and array classes are synthesised so no class set can lack one), which is why this is not reachable today. But that closes one entrance, not the cycle: any failure raised from inside exception construction re-enters it.",
+      "tradeoff": "A re-entrancy guard has to decide what to return when it trips, and the honest answer is a non-Java error -- which `JavaError` cannot currently express (single variant, carries a ClassInstance). That is the same obstacle the sibling round hit, so the two should probably be decided together rather than each inventing an answer.",
+      "effort": "M",
+      "target": "jvm/src/jvm.rs, jvm/src/error.rs"
+    }
+  ]
+}

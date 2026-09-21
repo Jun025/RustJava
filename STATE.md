@@ -7,6 +7,49 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-error-path-string-array-hiding-overflows-stack-p1] ★★**`[Ljava/lang/String;` 오버플로의 원인 — 지난 회차 기재가 «틀렸다».** 채택 제안 `2026-09-20-error-path-class-closure#p1` · ★**조사 회차 · 제품 코드 0줄**.
+  ★**재현**: cap 20 · 기본 스택 → `stack overflow, aborting` rc **134**.
+  ★★**반증**: 「로더로 안 돌아와 cap 이 못 끝낸다」는 **거짓** — 살아남은 전 실행에서 `asked = cap+1`(= `[C` 와 같은 모양). 원인은 ★**턴당 비용**.
+  ★**두 손잡이가 따로 움직인다**(가설 분리): cap **18↔19** · 스택 **2 MiB↔4 MiB**(cap 20 고정).
+  ★**순환을 백트레이스로**: `fillInStackTrace`→`instantiate_array`→`resolve_class`→`load_class`(None)→`exception`→`new_class`→`invoke_special`×4→`Throwable.<init>`→`fillInStackTrace` · ★**한 턴 ≈ 57 프레임**.
+  ★**대조**: `[C` 만 같이 돈다 · `[I`·`[Ljava/lang/Object;`·`java/lang/Integer` 등은 **asked=0** ⇒ **「배열이면 난다」가 아니다**.
+  ★**고침 = 스윕 헤더의 거짓 문장 하나** · 배열 제외는 유지(이유가 다르고 여전히 유효) · **개악 양방향 해당 없음**(동작 무변경).
+  ★**남긴 것**: 순환은 제품에 **바닥이 없다**(오늘 닿을 수 없을 뿐) ⇒ 후속 카드 「`Jvm::exception` 에 바닥을」(M).
+- [rustjava-error-path-name-the-missing-bootstrap-class-p0] ★★**없는 부트스트랩 클래스의 «이름»을 말하게 했다.** 채택 제안 `2026-09-20-error-path-class-closure#p0`.
+  ★`Jvm::new` 의 `bootstrap_classes` 루프 `.unwrap()` → `let … else` · 문면 = 이름 + 여섯 중 하나 + ★**어디에 물었는지**(호스트 로더이지 `java.class.path` 가 **아니다**).
+  ★**가족을 세고 골랐다**: 이 축 **1곳 고침** ↔ 같은 «모양»의 레지스트리 조회 **4곳**은 다른 축(내부 불변식)이고 스윕이 **닿지 않음을 실측**(익명 거절 0/37) ⇒ **blind spot 으로 적고 두었다**.
+  ★★**스윕이 자기 눈으로 보고도 좋은 쪽에 세고 있었다** — `Panicked` 가 문면을 안 읽었다. 이제 payload 를 숨긴 이름과 대조하고 `PanickedAnonymously` 는 **그 자체가 실패**.
+  ★**양방향(두 사실을 «따로»)**: 개악 → 이름 적중 **0/5** · `7 by name · 5 anonymous` **FAILED** ↔ 고침 → **5/5** · `12 · 0` **ok**. ★**rc 만 보면 둘이 같다**(양쪽 패닉).
+  ★**대가**: 런타임 **0**. 패닉→오류 반환은 **하지 않았다**(`JavaError` 변종 1개 · 없는 것이 바로 예외를 만들 클래스 · 사내 3곳 + 공개 enum 파괴) ⇒ 제안 카드.
+- [rustjava-string-on-the-error-path-p0] ★★**오류 경로의 클래스 집합을 한 번에 쟀다 — 답은 «둘»이 아니었다.** 채택 제안 `2026-09-19-string-on-the-error-path#p0`.
+  ★**후보를 «유도»했다**(손 목록 아님): 기록 로더로 정상 구성 1회 → 요청 **51** · 서로 다른 이름 **42** · 배열 **5** 제외 ⇒ 후보 **37**.
+  ★★**5개가 더 재귀한다**: `Throwable`·`Error`·`LinkageError`·`CharSequence`·`Comparable` = 기존 두 이름의 **상위형·인터페이스 폐포**.
+  ★**처방 = 폐포 walk**(assert 2 → 작업목록 1 · 로더에 **직접** 질의). ★**폐포 9로 계산이 닫힌다**(막힌 2 + 재귀 5 + bootstrap 2) ⇒ 미설명 **0**.
+  ★**양방향**: `0 recursed` ok ↔ `extend` 2줄 제거 → **5 recursed FAILED** ↔ 복원 ok. 기존 잠금 2건 **무수정 통과**.
+  ★**대가**: 로더 질문 **44→51** · 스윕 **~15초** · ★배열 5개 제외(로더가 **합성**하므로 클래스 집합이 못 빠뜨린다 — 단 `[Ljava/lang/String;` 는 상한 20에서도 오버플로 = in-process 불가).
+  ★**후속 2건**: 부트스트랩 unwrap 이 **이름을 말하지 않는다**(S) · `[Ljava/lang/String;` 의 두 번째 순환(M).
+- [rustjava-checker-output-determinism-has-no-guard] ★★**검사기 출력 순서를 잠갔다 — 습관을 규칙으로.** 채택 제안 `2026-09-19-merge-drops-deterministic-order#p0` · 신설 `scripts/check-script-output-order.py`(AST) + CI 잡 `script_output_order` + DoD 10번째 줄.
+  ★**불변식 한 줄**: `scripts/*.py` 의 어떤 `for`·컴프리헨션도 **`sorted(...)` 밖에서 set 을 순회하지 않는다**.
+  ★**「그물 0」 재현**: 비결정성을 되돌린 채 파이썬 검사기 **4종 rc 0** · `cargo fmt` **rc 0**. ★해소 여부 선행 확인 — `scripts/`·`rust.yml` 최종 커밋은 **`35f34797`**(그 수정 자신).
+  ★**정적을 고른 이유**: 두 `PYTHONHASHSEED` 재실행은 ★**회차당 약 절반 눈을 감고**(해시 순서 = 정렬 순서면 무증상), `assert sorted` 는 **다른 곳의 새 출처를 못 잡는다**(제안 자신의 약점 기술).
+  ★**양방향 2×2**(제품 호출부): M1 `check-merge-dropped-symbols.py:254` 제거 → rc 1 ↔ 복원 rc 0 · M2 ★**다른 파일** `check-dod-ci-parity.py:215` → rc 1 ↔ 복원 rc 0. 정상 `7 script(s): 0` · 0.06초.
+  ★**측정된 사각**: 튜플 언패킹 반환 set 은 못 본다 — `ci_runs, ci_tcs = parse_ci(...)` 에 정렬 없는 순회를 넣으니 ★**rc 0 통과**. 후속 제안 `#p0`.
+  ★★**게이트² 반려 승계(`-fix`)**: **R1** `", ".join(myset)`·`print(*myset)` 이 통과했다(사고와 **같은 계급** · 미기재) ⇒ `str.join` 첫 인자 + `Starred`(Load) 를 검사에 더하고 약속 문구를 ★**«for/컴프리헨션 · str.join · \*-언팩» 세 위치로 명시** ·
+  **R2** 「set→dict 는 set 에서 잡힌다」가 **거짓**(`dict.fromkeys`)이라 **삭제**. ★`fromkeys` 만 반쪽으로 잡지 «않았다» — 진짜 계급은 «컨테이너 순서 오염»이고 하나만 잡으면 **없는 프로그램을 있는 것처럼 보이게 한다**(오늘 0건 ⇒ 문안 결함) ·
+  **R3** ★**python 린터·포매터·테스트 0**(추적 파일 0건 · `rust.yml` 은 검사기 5회 실행뿐) ⇒ **이 파일을 보는 기계는 CI 잡 «하나»**임을 빚으로 적었다(하네스는 만들지 «않았다»).
+  ★승계 양방향: `join`·`*` 반례 **rc 1** ↔ `sorted()` 씌우면 **무검출**(오탐 0) ↔ 반례 제거 **rc 0** · 원 M1·M2 **회귀 재확인**.
+- [rustjava-error-path-needs-java-lang-string-measure-first] ★★**오류 경로의 또 하나 `java/lang/String` — ⒜ «재귀한다»로 확정하고 선재 확인을 넣었다.** 채택 제안 `2026-09-19-fallback-class-absence-fails-at-construction#p0`. ★제안의 조건이 「측정이 먼저」였고 그대로 했다.
+  ★**실측**: 상한 **116 생존 ↔ 117 SIGABRT «stack overflow, aborting»**(양쪽 2회 재현) · ★**상한 100000 도 abort** ⇒ 바닥이 없다.
+  ★**⒞ 아님을 구조로**: `bootstrap_classes` **6개에 String 없음** · `from_rust_class` 는 이름을 **`[B`(nameBytes)** 로 넣는다 ⇒ 처음 필요한 곳은 프로퍼티 루프.
+  ★**자리**: 프로퍼티 루프 **앞**(기존 `NoClassDefFoundError` 확인은 그 **뒤**라 String 형상엔 **늦다**) · 관용은 동일(로더에 **직접** 질의 후 resolve — bare `resolve_class` 는 순환 자신에게 넘긴다).
+  ★**양방향**(제품 호출부): green ↔ 제거 시 ★**바이너리째 SIGABRT** ↔ 복원 green.
+  ★**시작 비용**: 로더 질의 **1 → 2회**(결정론 계수). ★**벽시계는 버렸다** — 형제 레인 부하로 같은 형상 p50 이 69ms~1690ms 고 교대 8회 중 3회는 확인 있는 쪽이 더 빨랐다 ⇒ 수를 주장하지 않는다.
+  ★**미측정**: 두 클래스의 생성자·정적 초기화가 닿는 나머지(후속 카드).
+- [2026-09-19-partial-clone-blob-vs-absence-p0] ★★**`check-merge-dropped-symbols.py` 의 출력 순서를 고정했다 — 두 회차를 diff 할 수 있다.** 채택 제안 `2026-09-19-partial-clone-blob-vs-absence#p0`. ★**코드 1줄**(+주석 8줄) · `.rs` 0줄.
+  ★**재현**: `origin/main` 판본 · `PYTHONHASHSEED=random` **10회** → 순서 **2종**(같은 6건) ⇒ 없는 차이가 diff 에 보였다.
+  ★★**제안 진단은 부정확**: `findings` 는 set 이 아니라 **list** 이고 이름은 이미 정렬돼 있었다 — set 4개 중 출력에 닿는 것은 ★**`changed`(경로) 하나**다. ⇒ 「print site」가 아니라 ★**출처에서** 정렬했다(`check()` 의 **반환값**도 결정적이어야 하므로).
+  ★**양방향**: 2종 ↔ **1종** ↔ 되돌리면 2종. ★찾은 것 불변(15줄 · 집합 일치 · rc 1).
+  ★**대가**: 아무도 잠그지 않는다 — `scripts/` 테스트 하네스 **0** · 비결정성을 넣어도 파이썬 검사기 **4종 rc 0** · fmt **rc 0** ⇒ ★**그물 «0»**. 후속 제안으로 남겼다.
 - [2026-09-18-nonliteral-exception-call-sites-p0] ★★**비리터럴 사각은 «관문»이 아니라 «보고»다 — 제안의 전제 둘 다 소멸.** 채택 제안 `2026-09-18-nonliteral-exception-call-sites#p0`.
   ★**전제 재측**: 「baseline 0」 → ★**1**(그 1자리는 **정상**이고 «비리터럴이어야만» 한다 — 리터럴이면 이 검사기가 red) · 「죽는다」 → ★**더는 안 죽는다**(#76 착지) ⇒ 해악이 «죽음»에서 «틀린 catch»로 내려갔다.
   ★**관문을 0으로 걸었으면 제안된 날 main 이 red** 였다 — ★제안이 자기 `why` 에 그 비용을 예고했고 **4시간 뒤** 현실이 됐다.
@@ -21,6 +64,12 @@
   ★★**결정적 실측**: 초판 검사기를 지금 트리에서 돌리면 **265/263 ↔ 등재 줄 268** ⇒ ★불변식 하나로 **결함 2건이 1회차에 잡혔을 값**(현행 268/268/268). ★단 «모든 오귀속»은 못 잡는다(과소계수 계급만).
   ★**브리프 전제 1건이 거짓**: 이 repo 엔 `machine-independence-guard` 가 **없다**(다른 repo 축).
   ★**재개 조건 사전 등록**: loadable 재유도 경로에서 **세 번째** 결함이 나오면 다시 연다(「고침 이후 0」은 하루짜리라 논거로 쓰지 않았다).
+- [2026-09-19-exception-reports-instead-of-aborting-p0] ★★**보고자의 부재는 보고될 수 없다 — 로더에 직접 묻고 «이름을 들어» 실패한다.** 채택 제안 `2026-09-19-exception-reports-instead-of-aborting#p0`.
+  ★**이 회차가 그 순환을 «처음 실측»했다**(제안 회차는 「실측 아님」이라 적었다): 숨김 로더로 **6/21/61/121 왕복** 후 완료 · 상한 160·200 → ★**SIGABRT 스택 오버플로** ⇒ 바닥 없음 · **121~160 사이**에서 죽는다.
+  ★★**측정이 설계를 두 번 기각했다**: ⑴부트스트랩 목록 추가 → **6 테스트 즉사**(해석이 «초기화»를 돌려 스레드가 필요) ⑵시스템 로더 뒤 `resolve_class` → 정상 6/6 인데 ★**숨김 로더에선 여전히 스택 오버플로**(시점만 이동).
+  ★**처방**: 예외 기구를 **우회**해 로더에 직접 묻는다 — 없으면 생성 시점에 이름을 들어 실패 · 그 뒤 등재해 재질의 0.
+  ★**축**: 전 **바이너리째 SIGABRT** ↔ 후 **`should_panic` 통과** · 정상 기동 **6/6 불변**.
+  ★**대가**: ★패닉이고 `AGENTS.md` 와 충돌한다(대안 둘은 각각 «불가능»·«460자리 무언 변경»이라 기각 · `Jvm::new` 는 이미 unwrap 한다) · 필요보다 일찍 실패 · **이 순환만** 막는다(`String` 은 미측정 · 후속 카드).
 - [rustjava-jvm-exception-throws-instead-of-unwrap] ★★**일으키려던 예외를 못 만들면 죽던 것을 «보고»로 바꿨다.** 채택 제안 `2026-09-18-named-exception-classes-are-loadable#p1`. ★시그니처 불변 · variant 0 · 호출부 편집 0.
   ★**급소**: `from_rust_string`·`new_class` 의 실패는 **이미 `JavaError`**(= 자바 예외)다 — unwrap 이 그것을 버렸다. ⇒ 그대로 돌려준다.
   ★**실측**: `panicked … unwrap() on an Err value: JavaException(java/lang/NoClassDefFoundError)` — ★올바른 보고가 **패닉 메시지 안에** 실려 사라졌다.
