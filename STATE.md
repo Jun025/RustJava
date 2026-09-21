@@ -7,6 +7,12 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-prune-declined-followup-proposals-2026-09-21] ★**추천 후속작업 2건 기각** — 운영자 지시(2026-09-21 우선순위 정리). ★제품 코드 **0줄** · 새 제안 **0** · 검사기/CI 신설 **0**.
+  ★**닫은 둘**(검사기 다듬기 축): `2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0` · `2026-09-20-lock-script-output-order#p0`.
+  ★**남긴 둘**(런타임 축): `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`.
+  ★★**«선언»이고 «삭제»가 아니다** — `proposals[]` 원소 삭제 **0**(지우면 0-기반 `#pN` 이 밀려 **다른 제안의 ref 가 바뀐다**). 서식은 선례 `2026-09-17-ldc-asm-regeneration-declined.json` 그대로.
+  ★**실측**: 소비자 파생식 재현 → **open 4 → 2** · 남기기로 한 둘 **그대로 열림**(과잉 차단 0) · **ref 총수 99 불변** · `check-worklog-json.py` **rc 0**.
+  ★**되살리기**: 그 json 의 `declinedProposals[]` 에서 ref 줄을 빼면 다시 열린다.
 - [rustjava-error-path-string-array-hiding-overflows-stack-p1] ★★**`[Ljava/lang/String;` 오버플로의 원인 — 지난 회차 기재가 «틀렸다».** 채택 제안 `2026-09-20-error-path-class-closure#p1` · ★**조사 회차 · 제품 코드 0줄**.
   ★**재현**: cap 20 · 기본 스택 → `stack overflow, aborting` rc **134**.
   ★★**반증**: 「로더로 안 돌아와 cap 이 못 끝낸다」는 **거짓** — 살아남은 전 실행에서 `asked = cap+1`(= `[C` 와 같은 모양). 원인은 ★**턴당 비용**.
