@@ -46,7 +46,10 @@ async fn test_stacktrace() -> Result<()> {
     let url_string = JavaLangString::from_rust_string(&jvm, "invalid://invalid").await?;
     let url: Result<Box<dyn ClassInstance>> = jvm.new_class("java/net/URL", "(Ljava/lang/String;)V", (url_string,)).await;
 
-    let JavaError::JavaException(exception) = url.err().unwrap();
+    let error = url.err().unwrap();
+    let JavaError::JavaException(exception) = error else {
+        panic!("expected a Java exception, got {error:?}");
+    };
 
     let string_writer = jvm.new_class("java/io/StringWriter", "()V", ()).await?;
     let print_writer = jvm

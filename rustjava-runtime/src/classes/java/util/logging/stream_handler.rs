@@ -234,6 +234,7 @@ impl StreamHandler {
                     .await?;
                 return Ok(());
             }
+            Err(e @ JavaError::Unraisable(_)) => return Err(e),
         };
         let writer: ClassInstanceRef<OutputStreamWriter> = jvm.get_field(&this, "writer", "Ljava/io/OutputStreamWriter;").await?;
         if let Err(JavaError::JavaException(exception)) = jvm

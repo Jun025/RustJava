@@ -49,6 +49,9 @@ struct JvmInner {
     get_current_thread_id: Box<dyn Fn() -> u64 + Sync + Send>,
     bootstrap_class_loader: Box<dyn BootstrapClassLoader>,
     bootstrapping: AtomicBool,
+    /// Per thread, the exceptions `Jvm::exception` is building right now, outermost first -- the floor
+    /// under its recursion.
+    raising: RwLock<BTreeMap<u64, Vec<String>>>,
 }
 
 #[derive(Clone)]
@@ -76,6 +79,7 @@ impl Jvm {
                 get_current_thread_id: Box::new(get_current_thread_id),
                 bootstrap_class_loader: Box::new(bootstrap_class_loader),
                 bootstrapping: AtomicBool::new(true),
+                raising: RwLock::new(BTreeMap::new()),
             }),
         };
 
@@ -89,16 +93,17 @@ impl Jvm {
             "java/lang/Class",
         ];
         for class_name in bootstrap_classes.iter() {
-            // Panics like the closure walk below, and for the same reason -- nothing can be *raised*
-            // yet, this is what loads the classes an exception is made of -- but it has to say which
-            // name it was, which `unwrap` did not: a host with a gap in its class set read
+            // Fails like the closure walk below, and for the same reason -- nothing can be *raised*
+            // yet, this is what loads the classes an exception is made of -- so the error is
+            // `Unraisable` rather than a Java exception. It has to say which name it was, which the
+            // `unwrap` this once was did not: a host with a gap in its class set read
             // `called Option::unwrap() on a None value` and had to bisect this list to find out
             // which of six. Measured by last round's sweep: 5 of the 12 named refusals were this
             // line, and two of those names (`java/lang/Object`, `java/io/Serializable`) are also in
             // the error path's closure, so the same gap got a good message or a useless one
             // depending only on which loop reached it first.
             let Some(class_definition) = jvm.inner.bootstrap_class_loader.load_class(&jvm, class_name).await? else {
-                panic!(
+                return Err(JavaError::Unraisable(format!(
                     "the class set has no {class_name}, which is one of the {} classes loaded before \
                      anything else and before any error can be raised. Asked of the bootstrap class \
                      loader passed to `Jvm::new`, which is the host's own -- not the class path: \
@@ -106,7 +111,7 @@ impl Jvm {
                      this same function and never runs if this fails. Add {class_name} to that \
                      loader's class set.",
                     bootstrap_classes.len()
-                )
+                )));
             };
             let class = Class::new(class_definition, None, None);
 
@@ -161,7 +166,7 @@ impl Jvm {
                 continue;
             }
             let Some(definition) = jvm.inner.bootstrap_class_loader.load_class(&jvm, &class_name).await? else {
-                panic!(
+                return Err(JavaError::Unraisable(format!(
                     "the class set has no {class_name}, which the error path needs before anything can be \
                      raised. Every raised error is an exception instance carrying a String message, so \
                      building one resolves java/lang/String and java/lang/NoClassDefFoundError -- and with \
@@ -170,7 +175,7 @@ impl Jvm {
                      and that recursion has no floor (measured: 117 round trips for String, 121 for \
                      NoClassDefFoundError, then the process aborts on a stack overflow). Add it to the \
                      class set."
-                )
+                )));
             };
             pending.extend(definition.interface_names());
             pending.extend(definition.super_class_name());
@@ -1036,8 +1041,50 @@ impl Jvm {
     /// What the caller gets is then the *real* failure rather than the requested one -- a
     /// NoClassDefFoundError for the missing class, or whatever the constructor threw -- which is how a
     /// JVM behaves when raising one exception runs into another.
+    ///
+    /// Building an exception runs Java code, and that code can fail in a way that is reported by
+    /// building another exception. One level of that is ordinary -- raising a class that cannot be
+    /// loaded raises NoClassDefFoundError from inside -- but it can also close into a cycle: hiding
+    /// `[Ljava/lang/String;` makes `fillInStackTrace` ask for it, which raises NoClassDefFoundError,
+    /// whose construction calls `fillInStackTrace`, ~57 stack frames a turn until the process aborts on
+    /// a stack overflow. So a thread that is already building the *same* exception, or is
+    /// `MAX_RAISING_DEPTH` deep, gets `Unraisable` instead, naming the exception the thread started
+    /// with -- the first failure, not the last.
     pub async fn exception(&self, r#type: &str, message: &str) -> JavaError {
+        // Only a floor for cycles that do not repeat themselves exactly; the ordinary nesting is 2.
+        const MAX_RAISING_DEPTH: usize = 8;
+
         tracing::info!("throwing java exception: {} {message}", r#type);
+
+        let thread_id = (self.inner.get_current_thread_id)();
+        let this = format!("{} ({message})", r#type);
+        {
+            let mut raising = self.inner.raising.write();
+            let stack = raising.entry(thread_id).or_default();
+            if stack.contains(&this) || stack.len() >= MAX_RAISING_DEPTH {
+                return JavaError::Unraisable(format!(
+                    "raising {this} needed raising it again, {} level(s) into raising {}, which is the first failure",
+                    stack.len(),
+                    stack[0]
+                ));
+            }
+            stack.push(this);
+        }
+        // Popped on every exit, including this future being dropped mid-way: a stale entry would make
+        // a later exception on this thread unraisable.
+        struct Raising<'a>(&'a JvmInner, u64);
+        impl Drop for Raising<'_> {
+            fn drop(&mut self) {
+                let mut raising = self.0.raising.write();
+                if let Some(stack) = raising.get_mut(&self.1) {
+                    stack.pop();
+                    if stack.is_empty() {
+                        raising.remove(&self.1);
+                    }
+                }
+            }
+        }
+        let _raising = Raising(&self.inner, thread_id);
 
         let message_str = match JavaLangString::from_rust_string(self, message).await {
             Ok(x) => x,
@@ -1170,7 +1217,10 @@ impl Jvm {
             if let Err(err) = self.execute_method(class, None, &clinit, Box::new([])).await {
                 class.finish_initialization(InitState::Erroneous);
 
-                let JavaError::JavaException(exception) = &err;
+                // An unraisable error has no instance to wrap in ExceptionInInitializerError.
+                let JavaError::JavaException(exception) = &err else {
+                    return Err(err);
+                };
                 if self.is_instance(&**exception, "java/lang/Error") {
                     return Err(err);
                 }

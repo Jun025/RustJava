@@ -1,4 +1,8 @@
 # REPORT
+## [2026-09-24] `JavaError` 에 «Java 예외로 만들 수 없는 실패»를 뒀다 — `Jvm::new` 는 패닉 대신 `Err`, 예외 생성의 재귀에는 바닥 (rustjava-2026-09-20-name-the-missing-bootstrap-class-adopt-p0)
+- 무엇을: `JavaError::Unraisable(String)` 변종 추가. `Jvm::new` 의 패닉 2곳(부트스트랩 클래스·오류 경로 closure)이 빠진 클래스 이름을 담은 `Err` 를 돌려준다. `Jvm::exception` 은 같은 스레드에서 이미 만들고 있는 예외를 다시 만들려 하면(또는 깊이 8) `Unraisable` 로 첫 실패를 명명한다.
+- 왜: 채택 제안 2건(`…name-the-missing-bootstrap-class#p0` · `…string-array-hiding-overflows-stack#p0`)이 같은 장애물 — 단일 변종 `JavaError` — 에 닿았고, 하류 임베더 wie 가 같은 변종을 요청했다(타이틀 2건이 호스트를 죽였다). AGENTS.md 「라이브러리 코드는 패닉하지 않는다」.
+- 사용자 영향: 불완전한 클래스 집합을 받은 호스트가 프로세스 abort 대신 처리 가능한 오류를 받는다. ★공개 enum 확장이라 외부 소비자의 irrefutable 구조분해는 깨진다. 후속 추천 1건(GC 순회 `Result` 전파) — `docs/worklog/2026-09-24-unraisable-error-variant.{md,json}`.
 ## [2026-09-23] `## 다음` 은 «ref 목록»으로 남긴다 — 카드로 옮기면 할 일이 0으로 보인다 (rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p1)
 - 무엇을: `STATE.md` `## 다음` 머리에 규칙 3줄을 박고 절을 한 번 재작성했다 — 항목은 카드 ref·PR 번호만, 선행 사슬 1개, 카드 밖 항목(PR #81) 1개. 종전 ⓪ 블록은 사료로 내렸다.
 - 왜: 세 번 낡았고 세 번 다 «지목을 쓴 회차 ≠ 닫은 회차»였다(규칙 「닫히는 즉시」는 08-27 부터 있었다). 카드 전면 이전(⒞)은 tower 술어로 이 레인 열린 카드가 **0**(32건 전건 injected)이라 정본이 「할 일 없음」을 말하게 돼 기각.

@@ -15,7 +15,8 @@
 //! the error path later brings its own supertypes with it, and they land here without anyone
 //! thinking to ask.
 //!
-//! The second axis is *what the refusal says*. `refused by name` used to mean only that construction
+//! The second axis is *what the refusal says*. (A refusal was a panic until construction learned to
+//! return `JavaError::Unraisable`; it is read from either, and the counts below are unchanged by it.) `refused by name` used to mean only that construction
 //! had panicked; five of the twelve panicked on `called Option::unwrap() on a None value` from the
 //! `bootstrap_classes` loop, which is a refusal a host cannot act on, and this sweep reported them
 //! among the good ones. The panic message is now read and matched against the hidden name, so a
@@ -50,6 +51,7 @@ use std::{
     sync::atomic::Ordering,
 };
 
+use jvm::JavaError;
 use test_utils::{test_jvm_hiding, test_jvm_recording};
 
 /// Low on purpose. A name on the error path comes back for the cap's worth of questions and then the
@@ -63,15 +65,15 @@ enum Outcome {
     /// that this class is missing. Without a check, the real loader never relents and the process
     /// aborts on a stack overflow.
     Recursed,
-    /// Construction refused *and the panic message contains the hidden name*. What the check
-    /// produces. The message is read rather than assumed: for five of the names below this outcome
+    /// Construction refused -- `Unraisable`, or a panic -- *and the message contains the hidden name*.
+    /// What the check produces. The message is read rather than assumed: for five of the names below this outcome
     /// used to be `called Option::unwrap() on a None value`, which is a refusal that tells the host
     /// nothing, and this arm counted it as a good one. A dead process and a read message are two
     /// facts, so they are measured separately.
     Panicked,
     /// Construction refused without saying which class. The defect this file no longer accepts.
     PanickedAnonymously,
-    /// Construction returned an error after a single question. Also fine: nothing looped.
+    /// Construction returned a Java exception after a single question. Also fine: nothing looped.
     Failed,
     /// Construction succeeded without the class. It is asked for but not needed.
     Built,
@@ -95,21 +97,27 @@ fn hide(name: &str) -> Outcome {
                 .map(String::as_str)
                 .or_else(|| payload.downcast_ref::<&str>().copied())
                 .unwrap_or("");
-            if message.contains(name) {
-                Outcome::Panicked
-            } else {
-                Outcome::PanickedAnonymously
-            }
+            named(message, name)
         }
         Ok((result, requests)) => {
             if requests.load(Ordering::SeqCst) > GIVE_UP_AFTER {
                 Outcome::Recursed
+            } else if let Err(JavaError::Unraisable(message)) = &result {
+                named(message, name)
             } else if result.is_err() {
                 Outcome::Failed
             } else {
                 Outcome::Built
             }
         }
+    }
+}
+
+fn named(message: &str, name: &str) -> Outcome {
+    if message.contains(name) {
+        Outcome::Panicked
+    } else {
+        Outcome::PanickedAnonymously
     }
 }
 
