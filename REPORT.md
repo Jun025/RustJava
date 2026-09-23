@@ -3,6 +3,11 @@
 - 무엇을: `InputStreamReader::read()` 의 charset 이름 문자열 비교 2곳을 `Charset::bytes_to_hold_back` 로 옮겼다(wildcard 없는 match · 동작 불변).
 - 왜: 채택 제안 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p0` — 새 charset 을 더하면 그 if 사슬은 조용히 빠졌다. 이제 컴파일이 막는다.
 - 사용자 영향: 없음(동작 불변). 다음에 멀티바이트 charset 을 더할 때 읽기 경계에서 글자가 사라지는 결함을 «잊어서» 만들 수 없다. 후속 추천 0건. 상세 = `docs/worklog/2026-09-23-charset-hold-back-exhaustive-match.{md,json}`.
+## [2026-09-23] `## 다음` 은 «ref 목록»으로 남긴다 — 카드로 옮기면 할 일이 0으로 보인다 (rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p1)
+- 무엇을: `STATE.md` `## 다음` 머리에 규칙 3줄을 박고 절을 한 번 재작성했다 — 항목은 카드 ref·PR 번호만, 선행 사슬 1개, 카드 밖 항목(PR #81) 1개. 종전 ⓪ 블록은 사료로 내렸다.
+- 왜: 세 번 낡았고 세 번 다 «지목을 쓴 회차 ≠ 닫은 회차»였다(규칙 「닫히는 즉시」는 08-27 부터 있었다). 카드 전면 이전(⒞)은 tower 술어로 이 레인 열린 카드가 **0**(32건 전건 injected)이라 정본이 「할 일 없음」을 말하게 돼 기각.
+- 사용자 영향: 없음(문서). 낡은 줄이 생겨도 줄당 조회 1회(`adoptedProposals` 에 있나)로 보인다.
+- 후속 추천: 총괄 몫 1건 — 주입됐으나 이름 일치 티켓이 없는 RustJava 카드 11건 처분 확인(상세 = `docs/worklog/2026-09-23-next-section-canon-decision.md`).
 
 ## [2026-09-23] `## 다음` 이 세 번째로 낡았고, 그 밑에서 EUC-KR 한 글자가 조용히 사라지고 있었다 (rustjava-next-slice-and-stale-next-pointer)
 - 무엇을: `STATE.md` `## 다음` 의 모든 「다음 후보」를 `git merge-base --is-ancestor` 로 **전수 재측**해 **8건 중 7건이 이미 닫혀 있음**을 확인하고 사료로 접었으며, 살아 있는 후보만 새 `⓪` 블록에 올렸다. 재측 과정에서 유일하게 «열려 있던» 항목(④-3 `InputStreamReader` 디코더)이 실제 결함임이 드러나 **그 자리에서 고쳤다**.
