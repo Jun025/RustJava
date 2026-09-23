@@ -631,12 +631,19 @@ async fn test_a_rejected_class_says_why() {
         (
             "test-data/ldc/LdcDynamicDuplicateBSM.class",
             "./test-data/ldc/",
-            "a single-valued class attribute appears more than once",
+            // The position is the fixture's second BootstrapMethods table — the one that duplicates.
+            "a single-valued class attribute appears more than once (class attribute #1)",
         ),
         (
             "test-data/ldc/LdcDynamicOldMajor.class",
             "./test-data/ldc/",
-            "class file version does not support a constant tag it carries",
+            // #18 is the fixture's Dynamic entry at major 52; its MethodHandle (#14) is legal there.
+            "class file version does not support a constant tag it carries (constant pool entry #18)",
+        ),
+        (
+            "test-data/ldc/LdcDynamicNoBSM.class",
+            "./test-data/ldc/",
+            "a dynamic constant names no bootstrap method (constant pool entry #11)",
         ),
         (
             "test-data/ldc/LdcDynamicBSMArgPastEnd.class",

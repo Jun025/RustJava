@@ -342,6 +342,9 @@ impl Runtime for TestRuntime {
                     &ClassDefinitionError::bootstrap_argument_message(method_index, argument_index, actual),
                 )
                 .await),
+            Err(ClassDefinitionError::InvalidClassFileAt { cause, location }) => Err(jvm
+                .exception("java/lang/ClassFormatError", &ClassDefinitionError::located_message(cause, location))
+                .await),
             Err(ClassDefinitionError::UnsupportedClassVersion(version)) => Err(jvm
                 .exception(
                     "java/lang/UnsupportedClassVersionError",

@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 
 use jvm_types::MethodAccessFlags;
 
-use crate::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference, constant_pool::ConstantPoolItem};
+use crate::{AttributeInfo, ClassFileError, ClassInfo, ConstantPoolReference, Location, constant_pool::ConstantPoolItem};
 
 enum MemberKind {
     Field,
@@ -20,6 +20,9 @@ enum MemberKind {
 /// The strings are the message, so they are written the way a JVM writes one. They are not
 /// identifiers and nothing matches on them; tests assert them to pin *which* rule fired, which is
 /// the observability the flat version could not give.
+///
+/// A rule that walks a table reports *where* it stopped as well (`InvalidFormatAt`); the two that
+/// check a single name (`this_class`, `super_class`) have nothing to point at and stay `InvalidFormat`.
 pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
     if !is_internal_class_name(&class.this_class) {
         return Err(ClassFileError::InvalidFormat("this_class does not name a class"));
@@ -27,31 +30,39 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
     if class.super_class.as_ref().is_some_and(|name| !is_internal_class_name(name)) {
         return Err(ClassFileError::InvalidFormat("super_class does not name a class"));
     }
-    if class.interfaces.iter().any(|name| !is_internal_class_name(name)) {
-        return Err(ClassFileError::InvalidFormat("an interface entry does not name a class"));
+    if let Some(index) = class.interfaces.iter().position(|name| !is_internal_class_name(name)) {
+        return Err(at("an interface entry does not name a class", Location::Interface(index as u16)));
     }
-    if !validate_constant_pool(&class.constant_pool) {
-        return Err(ClassFileError::InvalidFormat("a constant pool entry names a missing or wrong-kind entry"));
+    if let Some(index) = validate_constant_pool(&class.constant_pool) {
+        return Err(at(
+            "a constant pool entry names a missing or wrong-kind entry",
+            Location::ConstantPoolEntry(index),
+        ));
     }
-    if !constant_pool_tags_fit_the_class_file_version(class) {
-        return Err(ClassFileError::InvalidFormat(
+    if let Some(index) = constant_pool_tags_fit_the_class_file_version(class) {
+        return Err(at(
             "class file version does not support a constant tag it carries",
+            Location::ConstantPoolEntry(index),
         ));
     }
     // The rule is wider than the function name: the docstring below says the argument must also be a
     // loadable constant, and OpenJDK says the same ("bad constant type"). The name stayed behind when
     // the rule widened; renaming it is not this round's scope.
     bootstrap_method_static_arguments_are_in_the_pool(class)?;
-    if !bootstrap_method_indices_resolve(class) {
-        return Err(ClassFileError::InvalidFormat("a dynamic constant names no bootstrap method"));
+    if let Some(index) = bootstrap_method_indices_resolve(class) {
+        return Err(at("a dynamic constant names no bootstrap method", Location::ConstantPoolEntry(index)));
     }
-    if !at_most_one_of_each_single_class_attribute(class) {
-        return Err(ClassFileError::InvalidFormat("a single-valued class attribute appears more than once"));
+    if let Some(position) = at_most_one_of_each_single_class_attribute(class) {
+        return Err(at(
+            "a single-valued class attribute appears more than once",
+            Location::ClassAttribute(position as u16),
+        ));
     }
 
-    for field in &class.fields {
+    for (index, field) in class.fields.iter().enumerate() {
+        let here = Location::Field(index as u16);
         if !is_field_descriptor(&field.descriptor) {
-            return Err(ClassFileError::InvalidFormat("a field descriptor is malformed"));
+            return Err(at("a field descriptor is malformed", here));
         }
 
         let constant_values = field
@@ -64,7 +75,7 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
             .collect::<alloc::vec::Vec<_>>();
         // Two rules, not one: "how many" and "of what type". The flat version could not say which.
         if constant_values.len() > 1 {
-            return Err(ClassFileError::InvalidFormat("multiple ConstantValue attributes on a field"));
+            return Err(at("multiple ConstantValue attributes on a field", here));
         }
         if constant_values.first().is_some_and(|value| {
             !matches!(
@@ -76,13 +87,14 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
                     | ("Ljava/lang/String;", ConstantPoolReference::String(_))
             )
         }) {
-            return Err(ClassFileError::InvalidFormat("a ConstantValue does not match its field descriptor"));
+            return Err(at("a ConstantValue does not match its field descriptor", here));
         }
     }
 
-    for method in &class.methods {
+    for (index, method) in class.methods.iter().enumerate() {
+        let here = Location::Method(index as u16);
         if !is_method_descriptor(&method.descriptor) {
-            return Err(ClassFileError::InvalidFormat("a method descriptor is malformed"));
+            return Err(at("a method descriptor is malformed", here));
         }
 
         let code_attributes = method
@@ -92,14 +104,24 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
             .count();
         if method.access_flags.intersects(MethodAccessFlags::ABSTRACT | MethodAccessFlags::NATIVE) {
             if code_attributes != 0 {
-                return Err(ClassFileError::InvalidFormat("an abstract or native method carries a Code attribute"));
+                return Err(at("an abstract or native method carries a Code attribute", here));
             }
         } else if code_attributes != 1 {
-            return Err(ClassFileError::InvalidFormat("a method does not have exactly one Code attribute"));
+            return Err(at("a method does not have exactly one Code attribute", here));
         }
     }
 
     Ok(())
+}
+
+fn at(cause: &'static str, location: Location) -> ClassFileError {
+    ClassFileError::InvalidFormatAt { cause, location }
+}
+
+/// The key of the first pool entry `is_valid` refuses. Pool rules are "every entry satisfies X",
+/// and the entry that does not is the one to name — `all` would answer the same question and drop it.
+fn first_invalid_entry(constant_pool: &BTreeMap<u16, ConstantPoolItem>, mut is_valid: impl FnMut(&ConstantPoolItem) -> bool) -> Option<u16> {
+    constant_pool.iter().find(|(_, item)| !is_valid(item)).map(|(index, _)| *index)
 }
 
 /// JVMS 4.4: a constant kind is legal only from the class file version that introduced it.
@@ -115,8 +137,8 @@ pub(crate) fn validate_class(class: &ClassInfo) -> Result<(), ClassFileError> {
 /// nothing in its place, and the class went from "corrupt" to "this runtime does not support
 /// that yet" — a sentence this lineage exists to make true, applied to a file no JVM can read.
 /// `test-data/ldc/LdcDynamicOldMajor.class` holds that case.
-fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> bool {
-    class.constant_pool.values().all(|item| {
+fn constant_pool_tags_fit_the_class_file_version(class: &ClassInfo) -> Option<u16> {
+    first_invalid_entry(&class.constant_pool, |item| {
         let minimum_major_version = match item {
             // Java 7 (JSR 292) introduced the method handle family.
             ConstantPoolItem::MethodHandle { .. } | ConstantPoolItem::MethodType { .. } | ConstantPoolItem::InvokeDynamic { .. } => 51,
@@ -238,13 +260,13 @@ fn constant_kind_name(item: &ConstantPoolItem) -> &'static str {
 /// was `UnsupportedOperationException`, i.e. *this runtime cannot do that yet*, about a file no
 /// runtime can read. That sentence is what the lineage exists to make true, so narrowing it here
 /// is the point rather than a side effect.
-fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
+fn bootstrap_method_indices_resolve(class: &ClassInfo) -> Option<u16> {
     let bootstrap_method_count = class.attributes.iter().find_map(|attribute| match attribute {
         AttributeInfo::BootstrapMethods(methods) => Some(methods.len()),
         _ => None,
     });
 
-    class.constant_pool.values().all(|item| {
+    first_invalid_entry(&class.constant_pool, |item| {
         let index = match item {
             ConstantPoolItem::Dynamic {
                 bootstrap_method_attr_index, ..
@@ -297,7 +319,7 @@ fn bootstrap_method_indices_resolve(class: &ClassInfo) -> bool {
 /// (`ConstantValue`, `Code`, `Exceptions`, `MethodParameters`, `StackMapTable`, `LineNumberTable`,
 /// `LocalVariableTable`) are not listed even when they turn up in a class's attribute table, because
 /// there they are attributes in a place they are not defined for — ignored, not counted.
-fn at_most_one_of_each_single_class_attribute(class: &ClassInfo) -> bool {
+fn at_most_one_of_each_single_class_attribute(class: &ClassInfo) -> Option<usize> {
     // (discriminant, the class file version that introduced the attribute)
     fn single_valued(attribute: &AttributeInfo) -> Option<(u8, u16)> {
         Some(match attribute {
@@ -311,23 +333,23 @@ fn at_most_one_of_each_single_class_attribute(class: &ClassInfo) -> bool {
         })
     }
 
-    class.attributes.iter().enumerate().all(|(position, attribute)| {
-        let Some((kind, introduced_in)) = single_valued(attribute) else {
-            return true;
+    // The position returned is the second occurrence — the one that makes it a duplicate.
+    (0..class.attributes.len()).find(|&position| {
+        let Some((kind, introduced_in)) = single_valued(&class.attributes[position]) else {
+            return false;
         };
         if class.major_version < introduced_in {
-            return true;
+            return false;
         }
 
-        // Only the first of each kind looks behind it, so one duplicate is reported once.
-        !class.attributes[..position]
+        class.attributes[..position]
             .iter()
             .any(|earlier| single_valued(earlier).is_some_and(|(earlier_kind, _)| earlier_kind == kind))
     })
 }
 
-fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> bool {
-    constant_pool.values().all(|item| match item {
+fn validate_constant_pool(constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> Option<u16> {
+    first_invalid_entry(constant_pool, |item| match item {
         ConstantPoolItem::Class { name_index } => constant_pool
             .get(name_index)
             .and_then(ConstantPoolItem::utf8)

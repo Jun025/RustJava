@@ -15,7 +15,7 @@ pub use {
     attribute::{AttributeInfo, AttributeInfoCode, BootstrapMethod, MethodHandleKind, MethodHandleRef, method_type_descriptor},
     class::ClassInfo,
     constant_pool::{ConstantPoolReference, FieldMethodref},
-    error::ClassFileError,
+    error::{ClassFileError, Location},
     field::FieldInfo,
     method::MethodInfo,
     opcode::{LambdaCallSite, Opcode, StringConcatCallSite},

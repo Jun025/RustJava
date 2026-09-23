@@ -1,6 +1,6 @@
 use alloc::{format, string::String};
 
-use classfile::ClassFileError;
+use classfile::{ClassFileError, Location};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ClassDefinitionError {
@@ -14,6 +14,11 @@ pub enum ClassDefinitionError {
         method_index: u16,
         argument_index: u16,
         actual: Option<&'static str>,
+    },
+    /// The classfile-layer `InvalidFormatAt`, carried through for the same reason as the variant above.
+    InvalidClassFileAt {
+        cause: &'static str,
+        location: Location,
     },
     UnsupportedClassVersion(u16),
     Verification,
@@ -37,6 +42,15 @@ impl ClassDefinitionError {
     }
 }
 
+impl ClassDefinitionError {
+    /// The `ClassFormatError` message for `InvalidClassFileAt` — here for the same two-boundary
+    /// reason as `bootstrap_argument_message`. The rule's sentence comes first, unchanged, so a
+    /// reader who knew the old message still finds it; the position follows.
+    pub fn located_message(cause: &'static str, location: Location) -> String {
+        format!("{cause} ({location})")
+    }
+}
+
 impl From<ClassFileError> for ClassDefinitionError {
     fn from(error: ClassFileError) -> Self {
         match error {
@@ -50,6 +64,7 @@ impl From<ClassFileError> for ClassDefinitionError {
                 argument_index,
                 actual,
             },
+            ClassFileError::InvalidFormatAt { cause, location } => Self::InvalidClassFileAt { cause, location },
             ClassFileError::UnsupportedVersion(version) => Self::UnsupportedClassVersion(version),
         }
     }

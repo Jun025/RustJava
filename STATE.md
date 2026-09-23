@@ -7,6 +7,12 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0] ★**검증 규칙이 멈춘 위치를 말한다 — 11규칙, 변종 1개.** 채택 제안 `2026-09-18-bootstrap-argument-index-and-tag#p0`.
+  ★**전제 반증(작게)**: `validate_class` 규칙은 15/14 가 아니라 **14 · 고정문장 13**(@origin/main `c654ae2e`).
+  ★**전수**: 13 중 **11**이 표를 걸으며 멈춘 위치를 쥐고 있었다(pool 3 · field 3 · method 3 · interface 1 · class attribute 1) · `this_class`/`super_class` 2개는 가리킬 곳 없음 → `InvalidFormat` 유지.
+  ★**멈춤 기준**: enum 은 «규칙»이 아니라 «표 종류»로만 자란다 ⇒ `InvalidFormatAt { cause, location: Location }` **1변종** + `Location` 5종. `ClassFileError` 크기 불변(기존 크기 테스트 무수정 통과).
+  ★**문면** = `<종전 문장> (<표> #<n>)` · pool 은 `javap` 의 1-기반 `#N` · 파일 바이트 0. 경계 무이동(술어 본문 불변 · `all/any` → 첫 위반 위치).
+  ★**양방향**: 인덱스 3종 개악(M1 문면에서 위치 삭제 · M2 field/method 0 고정 · M3 pool 첫 키 보고) **전건 red** · pool 인덱스(#11·#18·#34)는 **독립 바이트 워커로 교차 확인**.
 - [rustjava-prune-declined-followup-proposals-2026-09-21] ★**추천 후속작업 2건 기각** — 운영자 지시(2026-09-21 우선순위 정리). ★제품 코드 **0줄** · 새 제안 **0** · 검사기/CI 신설 **0**.
   ★**닫은 둘**(검사기 다듬기 축): `2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0` · `2026-09-20-lock-script-output-order#p0`.
   ★**남긴 둘**(런타임 축): `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`.

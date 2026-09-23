@@ -1,4 +1,10 @@
 # REPORT
+## [2026-09-23] 클래스 파일 거부가 «어디서» 걸렸는지 말한다 — 검증 규칙 11개, 오류 변종은 1개 (rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0)
+- 무엇을: `validate_class` 규칙을 전수 세어(14개 · 고정문장 13개) 표를 걸으며 멈춘 위치를 이미 쥔 **11개**가 그 위치를 싣게 했다 — `ClassFileError::InvalidFormatAt { cause, location }` 하나와 표 5종(`Location`)으로.
+- 왜: #73 이 부트스트랩 인자 규칙 하나를 구조화한 뒤 나머지가 몇이나 되는지 아무도 세지 않았다. 규칙마다 변종을 늘리면 `&'static str` 설계가 피하던 enum 비대가 오므로, 변종은 «규칙 수»가 아니라 «표 종류 수»로만 늘게 멈춤 기준을 먼저 세웠다.
+- 사용자 영향: `ClassFormatError` 문면 끝에 `(constant pool entry #18)`·`(method #2)` 처럼 위치가 붙는다. 종전 문장은 그대로 앞에 남는다. 받아들이는/거부하는 파일은 하나도 바뀌지 않는다.
+- 후속 추천: `class.rs` 의 파싱 단계 거부 3종(잘림·꼬리 바이트·45.0 미만)은 이번 범위 밖 — 그중 위치를 쥔 것이 있는지만 세어 볼 것(S). 상세 = `docs/worklog/2026-09-23-validation-rules-name-their-position.{md,json}`.
+
 ## [2026-09-23] `## 다음` 이 세 번째로 낡았고, 그 밑에서 EUC-KR 한 글자가 조용히 사라지고 있었다 (rustjava-next-slice-and-stale-next-pointer)
 - 무엇을: `STATE.md` `## 다음` 의 모든 「다음 후보」를 `git merge-base --is-ancestor` 로 **전수 재측**해 **8건 중 7건이 이미 닫혀 있음**을 확인하고 사료로 접었으며, 살아 있는 후보만 새 `⓪` 블록에 올렸다. 재측 과정에서 유일하게 «열려 있던» 항목(④-3 `InputStreamReader` 디코더)이 실제 결함임이 드러나 **그 자리에서 고쳤다**.
 - 왜: `LANE_IDLE rustjava`(2026-09-23 · ★**1088분** 조용 · 큐 0 · running 0). 근인은 워커가 아니라 **발권**이었고, 발권이 멈춘 이유는 `## 다음` 의 최우선 항목이 **이미 끝난 일**을 가리켰기 때문이다. ★**이 절이 그 병을 스스로 두 번 기록해 놓고 세 번째를 냈다** — 2026-09-11 에 「다음 실작업 = ③의 null-guard」로 고쳐 쓴 그 null-guard 가 **같은 날 이미 닫혀 있었다**(`6da7d66f`).
