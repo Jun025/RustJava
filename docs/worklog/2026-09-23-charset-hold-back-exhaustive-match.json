@@ -1,0 +1,17 @@
+{
+ "schema": "worklog/v1",
+ "date": "2026-09-23",
+ "taskId": "rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p0",
+ "summary": "Behaviour-preserving refactor. InputStreamReader::read() chose how many trailing bytes to withhold at a multibyte boundary by comparing the charset name string (\"UTF-8\" / \"EUC-KR\"). That decision now lives in Charset::bytes_to_hold_back, a match over Charset with no wildcard arm, so adding a Charset variant fails to compile until someone decides its boundary rule instead of silently dropping characters.",
+ "changes": [
+  "rustjava-runtime/src/charset.rs: new Charset::bytes_to_hold_back(&[u8]) -> usize; UTF-8 backward scan and EUC-KR forward walk moved verbatim; Iso8859_1 | UsAscii => 0 explicitly",
+  "rustjava-runtime/src/classes/java/io/input_stream_reader.rs: read() calls it; name-string branches removed; stale comment at the default ctor reworded"
+ ],
+ "verification": [
+  "DoD 10 commands rc 0; cargo test --all 592 passed 0 failed",
+  "temp Charset variant -> E0004 non-exhaustive in bytes_to_hold_back (reverted)",
+  "EUC-KR hold forced to 0 -> #90 boundary test red (reverted); restored -> green"
+ ],
+ "proposals": [],
+ "adoptedProposals": ["2026-09-23-stale-next-pointer-and-euc-kr-boundary#p0"]
+}

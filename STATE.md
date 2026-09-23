@@ -7,6 +7,7 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p0] charset 보류 판단을 `Charset::bytes_to_hold_back`(wildcard 없는 match)로 옮김 · `read()` 이름 비교 0 · 동작 불변 · 변이 양방향 확인. 채택 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p0`.
 - [rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p1] `## 다음` 정본 결정 = ⒝ 얇은 층(ref + 선행 사슬 + 카드 밖 항목만 · 산문 지목 금지). ⒞ 기각 근거 = tower 술어로 열린 카드 0(32건 전건 injected). 채택 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p1`. 상세 `docs/worklog/2026-09-23-next-section-canon-decision.md`.
 - [rustjava-prune-declined-followup-proposals-2026-09-21] ★**추천 후속작업 2건 기각** — 운영자 지시(2026-09-21 우선순위 정리). ★제품 코드 **0줄** · 새 제안 **0** · 검사기/CI 신설 **0**.
   ★**닫은 둘**(검사기 다듬기 축): `2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0` · `2026-09-20-lock-script-output-order#p0`.
