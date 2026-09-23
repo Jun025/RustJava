@@ -1,4 +1,9 @@
 # REPORT
+## [2026-09-23] 클래스 파일 거부가 «어디서» 걸렸는지 말한다 — 검증 규칙 11개, 오류 변종은 1개 (rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0)
+- 무엇을: `validate_class` 규칙을 전수 세어(14개 · 고정문장 13개) 표를 걸으며 멈춘 위치를 이미 쥔 **11개**가 그 위치를 싣게 했다 — `ClassFileError::InvalidFormatAt { cause, location }` 하나와 표 5종(`Location`)으로.
+- 왜: #73 이 부트스트랩 인자 규칙 하나를 구조화한 뒤 나머지가 몇이나 되는지 아무도 세지 않았다. 규칙마다 변종을 늘리면 `&'static str` 설계가 피하던 enum 비대가 오므로, 변종은 «규칙 수»가 아니라 «표 종류 수»로만 늘게 멈춤 기준을 먼저 세웠다.
+- 사용자 영향: `ClassFormatError` 문면 끝에 `(constant pool entry #18)`·`(method #2)` 처럼 위치가 붙는다. 종전 문장은 그대로 앞에 남는다. 받아들이는/거부하는 파일은 하나도 바뀌지 않는다.
+- 후속 추천: `class.rs` 의 파싱 단계 거부 3종(잘림·꼬리 바이트·45.0 미만)은 이번 범위 밖 — 그중 위치를 쥔 것이 있는지만 세어 볼 것(S). 상세 = `docs/worklog/2026-09-23-validation-rules-name-their-position.{md,json}`.
 ## [2026-09-23] charset 보류 판단을 `Charset` 의 exhaustive match 로 옮겼다 (rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p0)
 - 무엇을: `InputStreamReader::read()` 의 charset 이름 문자열 비교 2곳을 `Charset::bytes_to_hold_back` 로 옮겼다(wildcard 없는 match · 동작 불변).
 - 왜: 채택 제안 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p0` — 새 charset 을 더하면 그 if 사슬은 조용히 빠졌다. 이제 컴파일이 막는다.

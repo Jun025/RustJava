@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use jvm_types::ClassAccessFlags;
 
-use classfile::{AttributeInfo, BootstrapMethod, ClassFileError, ClassInfo, ConstantPoolReference, MethodHandleKind, Opcode};
+use classfile::{AttributeInfo, BootstrapMethod, ClassFileError, ClassInfo, ConstantPoolReference, Location, MethodHandleKind, Opcode};
 
 #[test]
 fn test_hello() {
@@ -209,14 +209,20 @@ fn test_class_info_validation_rejects_invalid_names_descriptors_and_code_layout(
     invalid_descriptor.methods[0].descriptor = "(V)V".to_string().into();
     assert_eq!(
         invalid_descriptor.validate(),
-        Err(ClassFileError::InvalidFormat("a method descriptor is malformed"))
+        Err(ClassFileError::InvalidFormatAt {
+            cause: "a method descriptor is malformed",
+            location: Location::Method(0),
+        })
     );
 
     let mut missing_code = ClassInfo::parse(hello).unwrap();
     missing_code.methods[0].attributes.clear();
     assert_eq!(
         missing_code.validate(),
-        Err(ClassFileError::InvalidFormat("a method does not have exactly one Code attribute"))
+        Err(ClassFileError::InvalidFormatAt {
+            cause: "a method does not have exactly one Code attribute",
+            location: Location::Method(0),
+        })
     );
 }
 
@@ -320,7 +326,11 @@ fn test_bootstrap_method_reference_kinds_outside_the_set_and_mispaired_kinds_are
     for reference_kind in [1u8, 4, 9] {
         assert_eq!(
             parse_with_kind(reference_kind),
-            Some(ClassFileError::InvalidFormat("a constant pool entry names a missing or wrong-kind entry")),
+            Some(ClassFileError::InvalidFormatAt {
+                cause: "a constant pool entry names a missing or wrong-kind entry",
+                // the mutated MethodHandle itself — byte 383 of the fixture is pool entry #34
+                location: Location::ConstantPoolEntry(34),
+            }),
             "reference kind {reference_kind} does not pair with a Methodref — and the cause says it was validation, \
              not the parser, that refused it (the loop above is the parser's)"
         );
@@ -459,4 +469,74 @@ fn test_the_structured_variant_does_not_grow_the_error_type() {
     assert_eq!(size_of::<ClassFileError>(), size_of::<&'static str>() + size_of::<usize>());
     fn assert_copy<T: Copy>() {}
     assert_copy::<ClassFileError>();
+}
+
+/// Every table kind a rule can stop in, each asserted with the position the rule stopped at.
+///
+/// ★ The mutations put the fault at a position that is *not* zero where the table allows it, so a
+/// rule that reported "the first one" instead of "the one that failed" would not pass by accident.
+#[test]
+fn test_a_rule_that_walks_a_table_names_the_position_it_stopped_at() {
+    let hello = include_bytes!("../../test-data/Hello.class");
+
+    let mut interface = ClassInfo::parse(hello).unwrap();
+    let position = interface.interfaces.len() as u16;
+    interface.interfaces.push("[I".to_string().into());
+    assert_eq!(
+        interface.validate(),
+        Err(ClassFileError::InvalidFormatAt {
+            cause: "an interface entry does not name a class",
+            location: Location::Interface(position),
+        })
+    );
+
+    let mut method = ClassInfo::parse(hello).unwrap();
+    let last = method.methods.len() - 1;
+    method.methods[last].descriptor = "(V)V".to_string().into();
+    assert_eq!(
+        method.validate(),
+        Err(ClassFileError::InvalidFormatAt {
+            cause: "a method descriptor is malformed",
+            location: Location::Method(last as u16),
+        })
+    );
+
+    let mut field = ClassInfo::parse(include_bytes!("../../test-data/Field.class")).unwrap();
+    let last = field.fields.len() - 1;
+    field.fields[last].descriptor = "V".to_string().into();
+    assert_eq!(
+        field.validate(),
+        Err(ClassFileError::InvalidFormatAt {
+            cause: "a field descriptor is malformed",
+            location: Location::Field(last as u16),
+        })
+    );
+
+    // From committed fixtures rather than mutations: the pool index and attribute position are the
+    // fixture's own, so these pin that the number comes out of the file and not out of the loop.
+    for (bytes, expected) in [
+        (
+            &include_bytes!("../../test-data/ldc/LdcDynamicOldMajor.class")[..],
+            ClassFileError::InvalidFormatAt {
+                cause: "class file version does not support a constant tag it carries",
+                location: Location::ConstantPoolEntry(18),
+            },
+        ),
+        (
+            &include_bytes!("../../test-data/ldc/LdcDynamicNoBSM.class")[..],
+            ClassFileError::InvalidFormatAt {
+                cause: "a dynamic constant names no bootstrap method",
+                location: Location::ConstantPoolEntry(11),
+            },
+        ),
+        (
+            &include_bytes!("../../test-data/ldc/LdcDynamicDuplicateBSM.class")[..],
+            ClassFileError::InvalidFormatAt {
+                cause: "a single-valued class attribute appears more than once",
+                location: Location::ClassAttribute(1),
+            },
+        ),
+    ] {
+        assert_eq!(ClassInfo::parse(bytes).err(), Some(expected));
+    }
 }
