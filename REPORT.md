@@ -1,4 +1,8 @@
 # REPORT
+## [2026-09-24] GC 가 호스트 오류에 패닉하지 않고 `Err` 를 돌려준다 (wie-2026-09-22-lgt-object-reference-gate-adopt-p0)
+- 무엇을: `Jvm::collect_garbage` 의 도달성 순회가 `get_field`·`get_static_field`·배열 `load` 오류를 `.unwrap()` 대신 호출자에게 돌려준다. 내부 불변식 두 곳은 `JavaError::Unraisable` 로 대상을 이름으로 말한다. 오류가 나면 아무것도 해제하지 않는다.
+- 왜: wie 제안 `2026-09-22-lgt-object-reference-gate#p0` 의 나머지 절반이다(변종은 #94 에서 끝났다). 변종만 있으면 호스트가 올린 오류가 GC 경로에서 다시 패닉이 된다.
+- 사용자 영향: 게스트가 잘못된 참조를 넘겨도 GC 가 호스트를 죽이지 않는다. 공개 API 변경 없음. wie 는 crates.io 릴리스 뒤에야 게이트의 `None` 을 호스트 오류로 올릴 수 있다. 후속 추천 0건 — 한계 3개는 `docs/worklog/2026-09-24-gc-walk-propagates-host-errors.md` 에 있다.
 ## [2026-09-24] `JavaError` 에 «Java 예외로 만들 수 없는 실패»를 뒀다 — `Jvm::new` 는 패닉 대신 `Err`, 예외 생성의 재귀에는 바닥 (rustjava-2026-09-20-name-the-missing-bootstrap-class-adopt-p0)
 - 무엇을: `JavaError::Unraisable(String)` 변종 추가. `Jvm::new` 의 패닉 2곳(부트스트랩 클래스·오류 경로 closure)이 빠진 클래스 이름을 담은 `Err` 를 돌려준다. `Jvm::exception` 은 같은 스레드에서 이미 만들고 있는 예외를 다시 만들려 하면(또는 깊이 8) `Unraisable` 로 첫 실패를 명명한다.
 - 왜: 채택 제안 2건(`…name-the-missing-bootstrap-class#p0` · `…string-array-hiding-overflows-stack#p0`)이 같은 장애물 — 단일 변종 `JavaError` — 에 닿았고, 하류 임베더 wie 가 같은 변종을 요청했다(타이틀 2건이 호스트를 죽였다). AGENTS.md 「라이브러리 코드는 패닉하지 않는다」.

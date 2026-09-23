@@ -1128,7 +1128,7 @@ impl Jvm {
             let classes = self.inner.classes.read();
             let interned_strings = self.interned_strings();
 
-            determine_garbage(self, &threads, &global_references, &all_objects, &classes, &interned_strings)
+            determine_garbage(self, &threads, &global_references, &all_objects, &classes, &interned_strings)?
         };
 
         let garbage_count = garbage.len();
