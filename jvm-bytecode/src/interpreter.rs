@@ -60,6 +60,8 @@ impl Interpreter {
                         return Err(JavaError::JavaException(e));
                     }
                 }
+                // No instance, so no handler can match it: it goes to the host as it is.
+                Err(e @ JavaError::Unraisable(_)) => return Err(e),
             }
         }
 

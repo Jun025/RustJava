@@ -1,0 +1,21 @@
+{
+  "schema": "rustjava-worklog-v1",
+  "date": "2026-09-24",
+  "taskId": "rustjava-2026-09-20-name-the-missing-bootstrap-class-adopt-p0",
+  "summary": "JavaError::Unraisable(String) added; Jvm::new returns it instead of panicking (2 sites); Jvm::exception refuses to rebuild an exception already being built on the same thread (or depth 8) and names the first failure.",
+  "adoptedProposals": [
+    "2026-09-20-name-the-missing-bootstrap-class#p0",
+    "2026-09-20-string-array-hiding-overflows-stack#p0"
+  ],
+  "proposals": [
+    {
+      "title": "Let the GC reachability walk return errors instead of unwrapping them",
+      "plainSummary": "Garbage collection still kills the process if reading an object's fields fails, even though there is now an error type that can say so.",
+      "userBenefit": "An embedder (wie) whose guest hands over a broken object gets an error for that program instead of losing the whole emulator.",
+      "why": "wie's 2026-09-22-lgt-object-reference-gate#p0 asked for two halves: a non-Java JavaError variant and a Result-propagating reachability walk. This round delivered the first (JavaError::Unraisable). jvm::garbage_collector::find_reachable_objects returns () and unwraps get_field/load/get_static_field, so a failure there is still a panic; Jvm::collect_garbage already returns Result<usize>, so the propagation point exists.",
+      "tradeoff": "Touches the GC path every allocation-heavy run goes through; needs a regression fixture that makes a field read fail during collection, which does not exist yet.",
+      "effort": "M",
+      "target": "jvm/src/garbage_collector.rs"
+    }
+  ]
+}

@@ -18,7 +18,9 @@ async fn test_exception_reports_unloadable_class_instead_of_aborting() -> Result
     let unloadable = "java/lang/NoSuchClassAnywhere";
     let error = jvm.exception(unloadable, "message").await;
 
-    let JavaError::JavaException(exception) = error;
+    let JavaError::JavaException(exception) = error else {
+        panic!("expected a Java exception, got {error:?}");
+    };
     assert!(jvm.is_instance(&*exception, "java/lang/NoClassDefFoundError"));
 
     let message = jvm

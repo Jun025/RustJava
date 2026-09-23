@@ -7,6 +7,8 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-2026-09-20-name-the-missing-bootstrap-class-adopt-p0] ★**공개 API 변경(breaking)**: `JavaError::Unraisable(String)` 신설 — Java 예외로 만들 수 없는 실패. `Jvm::new` 패닉 2곳 → `Err(Unraisable)`(빠진 클래스 이름 포함) · `Jvm::exception` 재귀 바닥(같은 스레드에서 «같은 예외»를 다시 만들거나 깊이 8 → `Unraisable`, 첫 실패 명명) · `[Ljava/lang/String;` 숨김 재현이 stack overflow → loader 질문 2회. ★외부 소비자: `let JavaError::JavaException(..) = ..` irrefutable 구조분해가 컴파일 에러가 된다(이 repo 3곳 수정 · wie 는 crates.io 0.1.1 소비라 판올림 때 발생). 채택 `2026-09-20-name-the-missing-bootstrap-class#p0` · `2026-09-20-string-array-hiding-overflows-stack#p0`. 상세 `docs/worklog/2026-09-24-unraisable-error-variant.md`.
+  보정(-fix): `stream_handler.rs` `publish` 의 `if let Err(JavaException)` 2곳 → `match` + `Unraisable` 전파(삼킴 제거) · 회귀 `stream_handler_propagates_unraisable_output_failures`.
 - [rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0] ★**검증 규칙이 멈춘 위치를 말한다 — 11규칙, 변종 1개.** 채택 제안 `2026-09-18-bootstrap-argument-index-and-tag#p0`.
   ★**전제 반증(작게)**: `validate_class` 규칙은 15/14 가 아니라 **14 · 고정문장 13**(@origin/main `c654ae2e`).
   ★**전수**: 13 중 **11**이 표를 걸으며 멈춘 위치를 쥐고 있었다(pool 3 · field 3 · method 3 · interface 1 · class attribute 1) · `this_class`/`super_class` 2개는 가리킬 곳 없음 → `InvalidFormat` 유지.
@@ -1525,7 +1527,7 @@
 ★**카드 «열림»은 tower 술어(`… − injected`)로 세지 마라** — 이 레인은 그 술어로 **0**이다(주입 = 발권 요청일 뿐 착지가 아니다). 여기 술어는 `전체 − adopted − declined` 다.
 
 1. **선행 사슬**(카드가 표현 못 하는 유일한 것): `2026-09-17-link-lambdametafactory#p1`(결정) → `#p0`(어댑터) → `java.lang.invoke` 패키지(카드 없음 · 근거 = `rustjava-runtime/src/classes/java/lang/invoke` **부재**) → `2026-09-17-string-concat-recipe-arity#p1`.
-2. **순서 없음**: `2026-09-18-bootstrap-argument-index-and-tag#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`(둘 다 `queue/rustjava` 발권됨) · `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-12-zip-getinputstream-guard-lock#p0` · `2026-09-12-test-class-scratch-premise#p0`.
+2. **순서 없음**: `2026-09-18-bootstrap-argument-index-and-tag#p0`(`queue/rustjava` 발권됨) · `2026-09-24-unraisable-error-variant#p0` · `2026-09-12-zip-getinputstream-guard-lock#p0` · `2026-09-12-test-class-scratch-premise#p0`.
 3. **카드 밖**: PR **#81** — `CONFLICTING`(2026-09-23 워밍 후 재조회) · 충돌 해소 선행.
 
 ---- 이하 ⓪(2026-09-23 전수 재측 판)·①~⑤ 는 사료다. ★**「다음」으로 읽지 마라** ----

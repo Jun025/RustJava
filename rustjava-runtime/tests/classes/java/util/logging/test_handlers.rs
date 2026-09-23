@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::btree_map::BTreeMap, vec};
 
-use jvm::{Array, ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+use jvm::{Array, ClassInstanceRef, JavaError, Jvm, Result, runtime::JavaLangString};
 use jvm_bytecode::ClassDefinitionImpl;
 use jvm_class_proto::{JavaFieldProto, JavaMethodProto};
 use jvm_types::{ClassAccessFlags, FieldAccessFlags, MethodAccessFlags};
@@ -72,6 +72,32 @@ impl FailingOutputStream {
     }
 }
 
+struct UnraisableOutputStream;
+
+impl UnraisableOutputStream {
+    fn as_proto() -> RuntimeClassProto {
+        RuntimeClassProto {
+            name: "UnraisableLoggingOutputStream",
+            parent_class: Some("java/io/OutputStream"),
+            interfaces: vec![],
+            methods: vec![
+                JavaMethodProto::new("<init>", "()V", Self::init, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("write", "(I)V", Self::write, MethodAccessFlags::PUBLIC),
+            ],
+            fields: vec![],
+            access_flags: ClassAccessFlags::PUBLIC,
+        }
+    }
+
+    async fn init(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<()> {
+        jvm.invoke_special(&this, "java/io/OutputStream", "<init>", "()V", ()).await
+    }
+
+    async fn write(_: &Jvm, _: &mut RuntimeContext, _: ClassInstanceRef<Self>, _: i32) -> Result<()> {
+        Err(JavaError::Unraisable("output unraisable".into()))
+    }
+}
+
 async fn logging_jvm() -> Result<Jvm> {
     let runtime = TestRuntime::new(BTreeMap::new());
     let jvm = create_test_jvm(runtime.clone()).await?;
@@ -86,6 +112,14 @@ async fn logging_jvm() -> Result<Jvm> {
     jvm.register_class(
         Box::new(ClassDefinitionImpl::from_class_proto(
             FailingOutputStream::as_proto(),
+            Box::new(runtime.clone()) as Box<_>,
+        )),
+        None,
+    )
+    .await?;
+    jvm.register_class(
+        Box::new(ClassDefinitionImpl::from_class_proto(
+            UnraisableOutputStream::as_proto(),
             Box::new(runtime) as Box<_>,
         )),
         None,
@@ -222,6 +256,46 @@ async fn stream_handler_reports_output_failures_without_propagating_them() -> Re
             (record,),
         )
         .await?;
+    Ok(())
+}
+
+// `Unraisable` has no Java instance, so `reportError` cannot take it: publish has to hand it back
+// rather than fall through to `Ok(())` as the `if let Err(JavaException)` form did.
+#[tokio::test]
+async fn stream_handler_propagates_unraisable_output_failures() -> Result<()> {
+    let jvm = logging_jvm().await?;
+    let output: ClassInstanceRef<OutputStream> = jvm.new_class("UnraisableLoggingOutputStream", "()V", ()).await?.into();
+    let formatter: ClassInstanceRef<Formatter> = jvm.new_class("java/util/logging/SimpleFormatter", "()V", ()).await?.into();
+    let handler: ClassInstanceRef<StreamHandler> = jvm
+        .new_class(
+            "java/util/logging/StreamHandler",
+            "(Ljava/io/OutputStream;Ljava/util/logging/Formatter;)V",
+            (output, formatter),
+        )
+        .await?
+        .into();
+    let info: ClassInstanceRef<Level> = jvm
+        .get_static_field("java/util/logging/Level", "INFO", "Ljava/util/logging/Level;")
+        .await?;
+    let record: ClassInstanceRef<LogRecord> = jvm
+        .new_class(
+            "java/util/logging/LogRecord",
+            "(Ljava/util/logging/Level;Ljava/lang/String;)V",
+            (info, JavaLangString::from_rust_string(&jvm, "message").await?),
+        )
+        .await?
+        .into();
+
+    let result: Result<()> = jvm
+        .invoke_virtual(
+            &handler,
+            "java/util/logging/StreamHandler",
+            "publish",
+            "(Ljava/util/logging/LogRecord;)V",
+            (record,),
+        )
+        .await;
+    assert!(matches!(&result, Err(JavaError::Unraisable(m)) if m == "output unraisable"), "{result:?}");
     Ok(())
 }
 
