@@ -56,7 +56,7 @@ impl InputStreamReader {
         // Unlike the (InputStream, String) ctor, JDK's single-argument ctor is not declared to throw
         // UnsupportedEncodingException, so an unusable default encoding must surface at read() instead.
         let charset = System::get_charset(jvm).await?;
-        // Canonicalize when we recognize it so read()'s multibyte-boundary checks see "UTF-8"/"EUC-KR";
+        // Canonicalize when we recognize it so the stored charset field holds the canonical name;
         // pass an unknown name through unchanged so read() reports it verbatim.
         let charset_name = Charset::from_name(&charset).map_or(charset.as_str(), |x| x.canonical_name());
         Self::init_fields(jvm, this, r#in, charset_name).await
@@ -161,40 +161,14 @@ impl InputStreamReader {
 
             let charset_ref = jvm.get_field(&this, "charset", "Ljava/lang/String;").await?;
             let charset = JavaLangString::to_rust_string(jvm, &charset_ref).await?;
-            let mut decoder = Charset::resolve(jvm, &charset).await?.new_stream_decoder();
+            let charset = Charset::resolve(jvm, &charset).await?;
+            let mut decoder = charset.new_stream_decoder();
 
             let read_buf_data: Vec<u8> = cast_vec(read_buf_data);
             let end_of_input: bool = jvm.get_field(&this, "endOfInput", "Z").await?;
             let mut decode_length = read_buf_data.len();
-            if !end_of_input && charset == "UTF-8" && decode_length > 0 {
-                let mut lead_index = decode_length - 1;
-                while lead_index > 0 && read_buf_data[lead_index] & 0xc0 == 0x80 {
-                    lead_index -= 1;
-                }
-                let expected_length = match read_buf_data[lead_index] {
-                    0xc0..=0xdf => 2,
-                    0xe0..=0xef => 3,
-                    0xf0..=0xf7 => 4,
-                    _ => 1,
-                };
-                if decode_length - lead_index < expected_length {
-                    decode_length = lead_index;
-                }
-            } else if !end_of_input && charset == "EUC-KR" {
-                // Unlike UTF-8, EUC-KR trail bytes overlap the lead range (0x81..=0xfe), so the last
-                // byte alone cannot say whether the final pair is complete — a whole pair ends in a
-                // byte that looks exactly like a lead. Withholding it there strands the pair's own
-                // lead byte, which the decoder then swallows into state this read is about to drop.
-                // readBuf always begins on a character boundary, so walk it forward instead: a byte
-                // >= 0x81 opens a pair, anything else stands alone. Only a lead byte that overruns
-                // the buffer is held back.
-                let mut index = 0;
-                while index < decode_length {
-                    index += if read_buf_data[index] >= 0x81 { 2 } else { 1 };
-                }
-                if index > decode_length {
-                    decode_length -= 1;
-                }
+            if !end_of_input {
+                decode_length -= charset.bytes_to_hold_back(&read_buf_data);
             }
 
             let mut decoded = vec![0; BUF_SIZE * 3];

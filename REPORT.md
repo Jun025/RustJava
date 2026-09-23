@@ -1,4 +1,9 @@
 # REPORT
+## [2026-09-23] charset 보류 판단을 `Charset` 의 exhaustive match 로 옮겼다 (rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p0)
+- 무엇을: `InputStreamReader::read()` 의 charset 이름 문자열 비교 2곳을 `Charset::bytes_to_hold_back` 로 옮겼다(wildcard 없는 match · 동작 불변).
+- 왜: 채택 제안 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p0` — 새 charset 을 더하면 그 if 사슬은 조용히 빠졌다. 이제 컴파일이 막는다.
+- 사용자 영향: 없음(동작 불변). 다음에 멀티바이트 charset 을 더할 때 읽기 경계에서 글자가 사라지는 결함을 «잊어서» 만들 수 없다. 후속 추천 0건. 상세 = `docs/worklog/2026-09-23-charset-hold-back-exhaustive-match.{md,json}`.
+
 ## [2026-09-23] `## 다음` 이 세 번째로 낡았고, 그 밑에서 EUC-KR 한 글자가 조용히 사라지고 있었다 (rustjava-next-slice-and-stale-next-pointer)
 - 무엇을: `STATE.md` `## 다음` 의 모든 「다음 후보」를 `git merge-base --is-ancestor` 로 **전수 재측**해 **8건 중 7건이 이미 닫혀 있음**을 확인하고 사료로 접었으며, 살아 있는 후보만 새 `⓪` 블록에 올렸다. 재측 과정에서 유일하게 «열려 있던» 항목(④-3 `InputStreamReader` 디코더)이 실제 결함임이 드러나 **그 자리에서 고쳤다**.
 - 왜: `LANE_IDLE rustjava`(2026-09-23 · ★**1088분** 조용 · 큐 0 · running 0). 근인은 워커가 아니라 **발권**이었고, 발권이 멈춘 이유는 `## 다음` 의 최우선 항목이 **이미 끝난 일**을 가리켰기 때문이다. ★**이 절이 그 병을 스스로 두 번 기록해 놓고 세 번째를 냈다** — 2026-09-11 에 「다음 실작업 = ③의 null-guard」로 고쳐 쓴 그 null-guard 가 **같은 날 이미 닫혀 있었다**(`6da7d66f`).
