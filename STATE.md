@@ -7,6 +7,7 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p1] `## 다음` 정본 결정 = ⒝ 얇은 층(ref + 선행 사슬 + 카드 밖 항목만 · 산문 지목 금지). ⒞ 기각 근거 = tower 술어로 열린 카드 0(32건 전건 injected). 채택 `2026-09-23-stale-next-pointer-and-euc-kr-boundary#p1`. 상세 `docs/worklog/2026-09-23-next-section-canon-decision.md`.
 - [rustjava-prune-declined-followup-proposals-2026-09-21] ★**추천 후속작업 2건 기각** — 운영자 지시(2026-09-21 우선순위 정리). ★제품 코드 **0줄** · 새 제안 **0** · 검사기/CI 신설 **0**.
   ★**닫은 둘**(검사기 다듬기 축): `2026-09-19-nonliteral-blind-spot-is-reported-not-gated#p0` · `2026-09-20-lock-script-output-order#p0`.
   ★**남긴 둘**(런타임 축): `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`.
@@ -1510,7 +1511,20 @@
 
 ## 다음
 
-### ⓪살아 있는 후보 — ★★**[2026-09-23 전수 재측] 이 블록«만» 읽어라. ①~⑤ 는 사료다.**
+### ⓪규칙 — ★**이 절은 «카드 ref + 선행관계 + 카드 밖 항목»만 적는다**(2026-09-23 결정 · `…-adopt-p1`)
+
+★**항목은 전부 ref(`<worklog>#pN`) 또는 PR 번호로 적는다 — 「다음 실작업 = X」 같은 산문 지목 금지.** 할 일의 본문은 카드(`docs/worklog/*.json`)가 갖는다.
+★**닫힘 판정 = 그 ref 가 어느 worklog 의 `adoptedProposals`/`declinedProposals` 에 있다**(PR 은 `state`) — 한 줄당 조회 1회로 끝난다. 닫힌 줄은 **닫는 회차가** 지운다.
+★**카드 «열림»은 tower 술어(`… − injected`)로 세지 마라** — 이 레인은 그 술어로 **0**이다(주입 = 발권 요청일 뿐 착지가 아니다). 여기 술어는 `전체 − adopted − declined` 다.
+
+1. **선행 사슬**(카드가 표현 못 하는 유일한 것): `2026-09-17-link-lambdametafactory#p1`(결정) → `#p0`(어댑터) → `java.lang.invoke` 패키지(카드 없음 · 근거 = `rustjava-runtime/src/classes/java/lang/invoke` **부재**) → `2026-09-17-string-concat-recipe-arity#p1`.
+2. **순서 없음**: `2026-09-18-bootstrap-argument-index-and-tag#p0` · `2026-09-20-name-the-missing-bootstrap-class#p0`(둘 다 `queue/rustjava` 발권됨) · `2026-09-20-string-array-hiding-overflows-stack#p0` · `2026-09-12-zip-getinputstream-guard-lock#p0` · `2026-09-12-test-class-scratch-premise#p0`.
+3. **카드 밖**: PR **#81** — `CONFLICTING`(2026-09-23 워밍 후 재조회) · 충돌 해소 선행.
+
+---- 이하 ⓪(2026-09-23 전수 재측 판)·①~⑤ 는 사료다. ★**「다음」으로 읽지 마라** ----
+
+
+### ⓪-사료 — 2026-09-23 전수 재측 판(위 ⓪규칙으로 대체됨)
 
 ★★★**이 절이 자기 규율(「닫히는 즉시 닫아라」)을 «세 번» 어겼다** — ⑴③-0 `…claude-md-prune-disposition`(2026-08-27 해소)이
 최우선에 남아 레인이 조용해졌고 ⑵①의 「다음은 S5」가 8일 낡은 채 남아 2026-09-11 **중복 발권**을 만들었고
@@ -1554,7 +1568,6 @@ EUC-KR 은 「마지막 바이트 >= 0x81 이면 한 바이트 보류」였다 �
 ⇒ **완성된 쌍**의 후행 바이트도 보류돼 그 쌍의 선두 바이트가 홀로 남고, 매 read 마다 새로 만드는 디코더가 그것을 **자기 상태로 삼켜** 버렸다.
 실측 = `"12345678한"`(EUC-KR 10바이트) → ★**`"12345678\u{FFFD}"`**. 처방은 전방 주사(선두면 2, 아니면 1)이고 테스트 3형상으로 잠갔다.
 
----- 이하 ①~⑤ 는 사료다. ★**「다음」으로 읽지 마라** ----
 
 ### ①(최우선이 «아니게 됐다») upstream 동기화 — ★★**[2026-09-11 갱신] 캠페인 «종료». 동기 회차를 열지 마라.**
 
