@@ -1510,6 +1510,52 @@
 
 ## 다음
 
+### ⓪살아 있는 후보 — ★★**[2026-09-23 전수 재측] 이 블록«만» 읽어라. ①~⑤ 는 사료다.**
+
+★★★**이 절이 자기 규율(「닫히는 즉시 닫아라」)을 «세 번» 어겼다** — ⑴③-0 `…claude-md-prune-disposition`(2026-08-27 해소)이
+최우선에 남아 레인이 조용해졌고 ⑵①의 「다음은 S5」가 8일 낡은 채 남아 2026-09-11 **중복 발권**을 만들었고
+⑶그 자리를 고치며 ①의 꼬리를 「다음 실작업 = ③의 null-guard」로 바꿨는데 **그 null-guard 는 같은 날 이미 닫혀 있었다**
+⇒ ★**`LANE_IDLE rustjava` 1088분**(2026-09-23 13:41 · 큐 0 · running 0). ★**네 번째를 만들지 마라 — 닫으면 그 턴에 여기서 지워라.**
+
+★**닫힌 것을 «측정»으로 확인했다**(`git merge-base --is-ancestor <sha> origin/main` · 전건 ANCESTOR):
+
+| ①~⑤ 가 「다음」이라 부르던 것 | 닫은 커밋 | 판정 |
+|---|---|---|
+| ① 꼬리 「다음 실작업 = ③의 null-guard」 | `6da7d66f` | ★**닫힘** — 지목 자체가 낡았다 |
+| ② `wie-ktf-hardening` 잔존 2건(`arraycopy`·`String.<init>`) | `6da7d66f` | ★**전건 닫힘** — 유효 잔존 **0** |
+| ③-1 `rustjava-upstream-sync-s5…s8` | (S5~S8 전건 착지) | 닫힘 |
+| ③-2 `rustjava-null-guard-string-init-and-arraycopy` | `6da7d66f` | 닫힘 |
+| ③-3 / ④-1 ⒝ 의 「`makeConcat` 남음」 | `e94cfe91`(#60 리니지) | ★**닫힘** — `jvm-bytecode/src/string_concat.rs` 의 `FACTORY_NAME_NO_RECIPE` |
+| ④-1 ⒝ 의 「`LambdaMetafactory` 런타임 남음」 | `8c7b473f` | ★**닫힘** — `jvm-bytecode/src/lambda.rs` · `Opcode::InvokedynamicLambda` |
+| ④-2 의 「★남는 대역 = 1 · `LdcDynamicNoBSM`」 | `d9f45ebf` | ★**닫힘** — `validation.rs` 의 `bootstrap_method_indices_resolve` |
+| ④-3 `InputStreamReader` 디코더 경계 | 아래 참조 | ★**절반이 틀렸다** — 사료의 「완화책은 ①로 들어온다」는 **들어왔고**(필드 `endOfInput` 실재), 그러나 EUC-KR 축은 **깨진 채**였다 |
+
+★**열려 있음을 «근거와 함께» 적는다**(「PR 제목·개설일만 보고 썼다가 둘 다 틀린」 선례가 이 레인에 있다):
+
+1. ★★**`java.lang.invoke` 패키지 — 여전히 «0»**(④-1 ⒝ 의 «마지막» 칸).
+   근거 = `ls rustjava-runtime/src/classes/java/lang/` 에 `invoke` **부재**(디렉터리 0 · 파일 0).
+   ⇒ 링크는 **콜사이트를 opcode 로 내려써서** 돌고 있고(`string_concat.rs`·`lambda.rs`), `MethodHandle`/`MethodType`/`CallSite`
+   **객체**는 아직 만들 수 없다. 열린 카드가 그 축에 셋 붙어 있다 —
+   `2026-09-17-link-lambdametafactory#p0`(M · 어댑터를 박싱부터 넓혀라) · `#p1`(S · 람다 클래스를 리플렉션에 보일지 «결정») ·
+   `2026-09-17-string-concat-recipe-arity#p1`(S · **선행 = `java.lang.invoke` 실재**).
+   ★**순서는 `#p1`(결정) → `#p0`(어댑터) → 패키지** — 결정이 패키지의 크기를 정한다.
+2. `2026-09-18-bootstrap-argument-index-and-tag#p0`(S) — 직전 착지 `1ec83a14`(#73)의 승계. 「이미 손에 든 수를 버리는」
+   나머지 `validation.rs` 규칙을 **센다**. ★계수 회차라 위험 0 이고 다음 진단 회차의 크기를 정한다.
+3. `2026-09-12-zip-getinputstream-guard-lock#p0`(S) · `2026-09-12-test-class-scratch-premise#p0`(M) — 런타임/테스트 축.
+   이 둘은 ①~⑤ 어디에도 적혀 있지 않았다 ⇒ ★**「다음」의 정본은 이 절이 아니라 `docs/worklog/*.json` 의 열린 카드**임을 적어 둔다
+   (2026-09-23 실측 **열린 카드 30건** · 그중 upstream 캠페인·형제 repo(wie·qts) 것이 **11건**이라 이 레인이 칠 수 있는 것은 그보다 적다).
+4. ★**게이트③ 미착지 1건**: PR **#81**(`feat/rustjava-sorted-findings`) — ★`mergeable=CONFLICTING`·`mergeStateStatus=DIRTY`
+   (2026-09-23 워밍 후 재조회). 충돌 해소가 선행이다. ★**열린 PR 은 이 1건뿐**이다(⑤의 표는 낡았다).
+
+★**④-3 은 이 회차가 닫았다** — `InputStreamReader` 의 EUC-KR 경계. 사료는 「디코더를 read 마다 새로 만든다 = 경계 유실」이라고만
+적고 「①로 완화책이 들어오니 다시 재라」고 남겼는데, **재 보니 완화책은 두 축 중 «하나»만 옳았다**:
+UTF-8 은 역주사(연속 바이트 `0x80..=0xbf` 가 선두 바이트와 **서로소**라 성립)로 옳고 테스트로도 잠겨 있었는데,
+EUC-KR 은 「마지막 바이트 >= 0x81 이면 한 바이트 보류」였다 — ★**EUC-KR 의 후행 바이트는 선두 범위(`0x81..=0xfe`)와 «겹친다»**
+⇒ **완성된 쌍**의 후행 바이트도 보류돼 그 쌍의 선두 바이트가 홀로 남고, 매 read 마다 새로 만드는 디코더가 그것을 **자기 상태로 삼켜** 버렸다.
+실측 = `"12345678한"`(EUC-KR 10바이트) → ★**`"12345678\u{FFFD}"`**. 처방은 전방 주사(선두면 2, 아니면 1)이고 테스트 3형상으로 잠갔다.
+
+---- 이하 ①~⑤ 는 사료다. ★**「다음」으로 읽지 마라** ----
+
 ### ①(최우선이 «아니게 됐다») upstream 동기화 — ★★**[2026-09-11 갱신] 캠페인 «종료». 동기 회차를 열지 마라.**
 
 ★실측(2026-09-11): **S5(#21)·S6(#22)·S7(#23)·S8(#24) 전건 `--merge` 착지** · `merge-base origin/main
@@ -1518,7 +1564,9 @@ upstream/main` = **`bd42427`** · behind **1**(`2ce4717` · dependabot encoding_
 주 1회 `.github/workflows/upstream-behind.yml`(PR #31)이고, **기계가 재고 사람(총괄)이 발권한다**.
 ★★**구판 「다음은 S5」는 8일 낡은 채 이 절에 남아 2026-09-11 중복 발권**(`rustjava-upstream-sync-s5-java12-api` ·
 blocked)**을 만들었다** — ③ 절 「이미 끝난 일을 가리키면 레인이 조용해진다 · 닫히는 즉시 닫아라」의 두 번째 재현.
-⇒ ★**다음 실작업 = ③의 null-guard 티켓**(①의 뒤라는 선행 조건이 이제 충족됐다).
+~~⇒ ★**다음 실작업 = ③의 null-guard 티켓**(①의 뒤라는 선행 조건이 이제 충족됐다).~~
+★★**[2026-09-23 닫음] 그 지목은 «쓰인 날 이미 낡아 있었다»** — ③-2 는 같은 2026-09-11 에 `…-p0` 로 닫혔다(`6da7d66f`).
+★**이 한 줄이 세 번째 재발이고 `LANE_IDLE` 1088분의 근인이다.** 살아 있는 후보는 ⓪ 블록에 있다.
 
 ---- 이하 사료(S4 회차 실측 · 타이머 여백 근거 — 단정 불변이라 보존) ----
 
@@ -1558,7 +1606,11 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 해소 전략은 불변이다:
 **upstream 본문을 뼈대로 취하고 `#[tracing::instrument]` 한 줄만 PR #4 의 수동 span 으로 치환**한다.
 
-### ②`wie-ktf-hardening` 잔존분 — 2026-08-15 재판정으로 **4건 → 2건**
+### ②`wie-ktf-hardening` 잔존분 — ★★**[2026-09-23 닫음] 2건 → «0». 이 절 전체가 사료다.**
+★아래 표의 「유효 잔존」 두 행(`System.arraycopy` null 가드 · `String.<init>` null 가드)은 **둘 다 `6da7d66f` 로 닫혔고**
+그 사실이 표 안에 이미 적혀 있었는데 ★**절 제목만 「2건」으로 남아** 다음 사람이 잔존이 있다고 읽게 돼 있었다.
+⇒ ★**제목과 본문이 어긋나면 제목을 고쳐라** — 본문만 고치면 목차만 보는 다음 회차가 속는다.
+---- 이하 사료(2026-08-15 재판정 당시 기재) ----
 ★**선행 확인 종결**: upstream `agent/runtime-api-gaps`(`6309d47`)는 **미머지가 아니다** —
 **PR #190 로 2026-07-25 04:59Z 스쿼시 머지**(머지커밋 `c4665b0`, +33,109/−1,040)됐고
 그래서 브랜치가 upstream 에서 **삭제**됐다. 즉 「삼키는지」는 이제 **upstream/main 에 직접 묻는다**.
@@ -1599,7 +1651,7 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
 ⇒ ★**가드가 «짝이 안 맞는» 것이 핵심이다**: `([CII)`·`(II[C)` 만 막혀 있고 `[B` 계열은 전부 뚫려 있다.
 ※**전역 수리는 불가** — `Deref` 는 `Result` 를 못 돌려준다. upstream 방식(진입부 `is_null()` 가드)이 정답이다.
 
-### ③다음 회차 발권 후보(우선순위 순)
+### ③~~다음 회차 발권 후보(우선순위 순)~~ → ★★**[2026-09-23] 1·2·3 «전건 해소». 발권 후보 «0» — 사료다.**
 
 ★★**0번 항목(`rustjava-pr8-claude-md-prune-disposition`)은 «해소됨» — 2026-08-27 S3 회차가 닫았다.**
 구판은 「`reports/rustjava-claude-md-prune.review.md` 가 **없다** ⇒ 게이트②가 아예 돌지 않고 좌초」를
@@ -1672,7 +1724,10 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    `LambdaMetafactory.metafactory` 의 인자는 **MethodType·MethodHandle·MethodType** 이라 해석을 강제하면
    ★**람다가 든 모든 클래스가 «파싱»에서 죽어 `ClassFormatError: Invalid class file` 로 되돌아간다**
    (= 직전 두 회차가 만든 「파손 ↔ 미지원」 구분을 그대로 잃는다). ⇒ **`test-data/indy/Lambda.class` 가 그 축을 «두 층»에서 문다.**
-   ★**미착수(= ⒝)**: ★**[2026-09-16 «한 칸» 닫힘 · `rustjava-link-stringconcatfactory-makeconcatwithconstants`] `makeConcatWithConstants` 는 링크됐다**(정의 시점 내려쓰기 · `java.lang.invoke` 0줄) — 남은 것은 `makeConcat` · `LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.
+   ~~★**미착수(= ⒝)**: `makeConcatWithConstants` 는 링크됐다 — 남은 것은 `makeConcat` · `LambdaMetafactory` 런타임 · `java.lang.invoke` 패키지 신설.~~
+   ★★**[2026-09-23 재측] 셋 중 «둘이 닫혔다»** — `makeConcat` = `string_concat.rs` 의 `FACTORY_NAME_NO_RECIPE`(`e94cfe91` 리니지) ·
+   `LambdaMetafactory` = `jvm-bytecode/src/lambda.rs` + `Opcode::InvokedynamicLambda`(`8c7b473f`).
+   ★**남은 것은 `java.lang.invoke` 패키지 «하나»다**(실측: `rustjava-runtime/src/classes/java/lang/` 에 `invoke` 부재) ⇒ ⓪-1 로 옮겼다.
    ★★**착수 전 실측 의무 — «그대로 유효»하다**: `verifier.rs` 의 `Opcode::Invokedynamic(_)` 분기를 **언제 뺄지**가 그 회차의 게이트다.
    그것을 빼면 `interpreter.rs:631` 의 `todo!()` 가 **도달 가능해진다** — ★**2026-09-16 에 «두 번» 측정됐다**
    (태그 회차 M4 · 이 회차 M4: 분기 제거 시 `panicked at jvm-bytecode/src/interpreter.rs:631` **호스트 abort** ↔ 현 트리는 게스트 예외).
@@ -1695,12 +1750,23 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
    (major 50 에서 `ldc of a method handle`/`method type` ↔ 참조 JVM 은 `Class file version does not support constant tag 15/16`).
    ⇒ 표 = **15·16·18 ≥ 51 · 17 ≥ 55**(JVMS 4.4). ★**대가 «0»**: OpenJDK 26 jmods **27,902 클래스 중 위반 0**
    (★단 그 corpus 는 전부 major 69·70 이라 ≥51 행을 «시험하지 못한다» — 숨기지 않는다) · 이 repo `test-data` 위반은 **이 회차가 만든 픽스처 1건뿐**.
+   ★★**[2026-09-23 닫음] 아래 「남는 대역 = «1»」은 «0» 이다** — `d9f45ebf`(`rustjava-bound-bootstrap-method-attr-index`)의
+   `validation.rs::bootstrap_method_indices_resolve` 가 **「속성 부재 = 0항목 표」**로 그 칸을 함께 물었다(그 회차 worklog 의 표 ⒞행이 `rejected`).
+   ★**그 회차가 닫았는데 이 절이 안 지워졌다** — ⓪ 블록의 「세 번 어겼다」와 **같은 계급**이다.
+   ---- 이하 사료 ----
    ★★**남는 대역 = «1»**: **`LdcDynamicNoBSM`**(`bootstrap_method_attr_index` 가 가리키는 `BootstrapMethods` 가 **없다**) —
    참조 JVM 은 `Missing BootstrapMethods attribute` 인데 우리는 **여전히 「미지원」**이다.
    ★그 경계 검사는 **속성 파싱이 정말로 필요**하므로 ④-1(PR #45 리니지) 몫이다 — ★**픽스처와 테스트로 «현재 답»을 잠가 뒀으니
    그 회차가 닫으면 그 단언이 «시끄럽게» 진다.**
    ★**남긴 것 둘 더**: ⑵★**M5 층 어긋남**: ★**[2026-09-16 닫힘 · `rustjava-cp-tag-switch-passthrough-mutation-detectable`] 이제 `test_class_format` 이 «잡는다»**(픽스처를 «유일한 결함»으로 다시 지었다 — 종전엔 참조되는 Methodref 슬롯을 덮어 «다른 이유»로 통과했다) ⑶서드파티 생성기 corpus **미측정**(이 머신에 jar 0개).
-3. ★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).
+3. ~~★InputStreamReader 디코더 — 아래 사료 절 셋째 항목 그대로 **살아 있다**(별건).~~
+   ★★**[2026-09-23 닫음] 「그대로 살아 있다」는 절반만 참이었다 — 재 보니 두 축 중 «하나»만 깨져 있었다.**
+   사료가 요구한 「① 이후 상태를 다시 재라」를 실제로 했다: 완화책은 **들어왔다**(필드 `endOfInput` 실재 · UTF-8 역주사 실재 ·
+   그 축은 `test_input_stream_reader_preserves_split_multibyte_and_buffered_eof` 로 **이미 잠겨 있었다**).
+   ★**깨져 있던 것은 EUC-KR 축**이고 ★**테스트가 0건이라 아무도 몰랐다**. 근인 = 「마지막 바이트 >= 0x81 이면 보류」인데
+   EUC-KR 후행 바이트는 선두 범위와 **겹쳐서** 완성된 쌍도 보류돼 그 선두가 홀로 남고, read 마다 새로 만드는 디코더가 그것을 삼켰다.
+   ⇒ 전방 주사로 고치고 3형상을 잠갔다(이 회차). ★**「디코더를 read 마다 새로 만든다」는 구조 자체는 그대로다** —
+   `encoding_rs::Decoder` 를 자바 필드에 담을 수 없어 «보류 휴리스틱»이 설계다. ★**그래서 다섯째 charset 을 더하면 이 함정이 되살아난다**(⓪ 아래 빚).
 
 ---- 이하 사료(2026-08-16 기재 · 크레이트 경로·태그 서술은 낡았다) ----
 - ★`jvm_rust/src/interpreter.rs` `Opcode::Invokedynamic(_) => todo!()` 는
@@ -1729,6 +1795,11 @@ green 전건 rc=0 · `cargo test --all` **261 passed / 0 failed / 1 ignored**(S3
   홀드백). ⇒ **①의 머지로 함께 들어온다.** 별건 발권 전에 ① 이후 상태를 다시 재라.
 
 ### ⑤운영 메모 — ★2026-08-27 S3 게이트③ 실측으로 교체(구판 「열린 PR = #13 하나」는 **낡았다**)
+
+★★**[2026-09-23 갱신] 아래 표는 «낡았다» — #16 은 머지됐고 지금 열린 PR 은 «#81 하나»다**
+(`gh pr list -R Jun025/RustJava --state open` → `feat/rustjava-sorted-findings` · ★워밍 후 재조회 `mergeable=CONFLICTING`·`DIRTY`).
+★**「열린 PR = 1건」이라는 수만 우연히 맞아서** 이 표가 27일간 안 고쳐졌다 — ★**수가 같다고 내용이 같은 것이 아니다.**
+---- 이하 사료(2026-08-27 실측) ----
 
 ★**열린 PR = 1건**(`gh pr list -R Jun025/RustJava --state open`):
 

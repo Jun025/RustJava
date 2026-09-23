@@ -237,6 +237,62 @@ async fn test_input_stream_reader_does_not_return_zero_for_split_multibyte_input
     Ok(())
 }
 
+/// The sibling UTF-8 test above pins the other multibyte charset. EUC-KR needs its own because the
+/// two hold their tail back by different predicates, and only UTF-8's is disjoint: a UTF-8
+/// continuation byte (0x80..=0xbf) can never be a lead byte, so scanning back from the end finds
+/// the last sequence's lead unambiguously. EUC-KR trail bytes *overlap* the lead range
+/// (0x81..=0xfe), so "the last byte looks like a lead" is true of a complete pair too — holding it
+/// back then strands the pair's own lead byte, which the per-read decoder swallows into state it
+/// is about to drop.
+///
+/// `read()` builds a fresh `CharsetStreamDecoder` every call, so anything the decoder keeps
+/// internally is lost. Whether a character survives the 10-byte `readBuf` edge is therefore decided
+/// entirely by how many bytes we hand it, which is what this test measures.
+#[tokio::test]
+async fn test_input_stream_reader_keeps_euc_kr_pairs_across_the_read_buffer_edge() -> Result<()> {
+    // Exactly BUF_SIZE bytes: the pair is whole inside readBuf, and its trail byte is last.
+    assert_euc_kr_round_trip(&[0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0xc7, 0xd1], "12345678한").await?;
+    // One byte past BUF_SIZE: the pair is genuinely split, lead inside and trail in the next fill.
+    assert_euc_kr_round_trip(&[0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0xc7, 0xd1], "123456789한").await?;
+    // Two pairs straddling the edge, so a single-byte holdback cannot accidentally be right.
+    assert_euc_kr_round_trip(&[0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0xb0, 0xa1, 0xb3, 0xaa], "1234567가나").await?;
+
+    Ok(())
+}
+
+async fn assert_euc_kr_round_trip(bytes: &[u8], expected: &str) -> Result<()> {
+    let jvm = test_jvm().await?;
+    set_file_encoding(&jvm, "EUC-KR").await?;
+
+    let mut buffer = jvm.instantiate_array("B", bytes.len()).await?;
+    jvm.store_array(&mut buffer, 0, bytes.iter().map(|byte| *byte as i8)).await?;
+    let input = jvm.new_class("java/io/ByteArrayInputStream", "([B)V", (buffer,)).await?;
+    let reader = jvm.new_class("java/io/InputStreamReader", "(Ljava/io/InputStream;)V", (input,)).await?;
+
+    let chars = jvm.instantiate_array("C", 32).await?;
+    let mut total = 0usize;
+    loop {
+        let read: i32 = jvm
+            .invoke_virtual(
+                &reader,
+                &reader.class_definition().name(),
+                "read",
+                "([CII)I",
+                (chars.clone(), total as i32, 32 - total as i32),
+            )
+            .await?;
+        if read == -1 {
+            break;
+        }
+        total += read as usize;
+    }
+
+    let decoded: Vec<JavaChar> = jvm.load_array(&chars, 0, total).await?;
+    assert_eq!(alloc::string::String::from_utf16(&decoded).unwrap(), expected);
+
+    Ok(())
+}
+
 #[tokio::test]
 async fn test_input_stream_reader_rejects_unknown_encoding() -> Result<()> {
     let jvm = test_jvm().await?;
