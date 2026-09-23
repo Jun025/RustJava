@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-23",
+  "taskId": "rustjava-2026-09-23-stale-next-pointer-and-euc-kr-boundary-adopt-p1",
+  "summary": "STATE.md「## 다음」의 정본 결정 — ⒝ 얇은 층(카드 ref + 선행관계 + 카드 밖 항목만). 산문 지목 금지 · 닫힘 = adopted/declined 조회 1회.",
+  "decision": "b-thin-layer",
+  "options": {
+    "a-keep-hand-maintained": "재발 3회/27일 · 규칙「닫히는 즉시」가 08-27 부터 있었는데 2회 더 깨짐 · LANE_IDLE 1088분 · 중복 발권 1. 잃는 것 0.",
+    "b-thin-layer": "절이 44줄 → 본문 3항목(ref 9 · 사슬 1 · PR 1). 닫힘 판정이 줄당 조회 1회. 잃는 것: 산문 근거(카드·사료로 이동). 낡을 수는 여전히 있다 — 다만 낡음이 '조회 1회로 보인다'.",
+    "c-cards-only": "tower 술어로 열린 카드 0(32건 전건 injected) ⇒ 정본이 '할 일 없음'을 말한다. 잃는 것: 선행 사슬 1(노드 4), 카드 밖 항목 1(PR #81), 주입됐으나 이름 일치 티켓이 없는 카드 가시성."
+  },
+  "adoptedProposals": ["2026-09-23-stale-next-pointer-and-euc-kr-boundary#p1"],
+  "proposals": []
+}
