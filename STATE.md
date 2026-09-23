@@ -7,6 +7,7 @@
  (둘 다 이것보다 오래됐고 MERGEABLE/CONFLICTING 처분이 이미 걸려 있다). 겹침은 전부 **append 형 합집합**이라 해소는 기계적이다)
 
 ## 완료
+- [wie-2026-09-22-lgt-object-reference-gate-adopt-p0] GC 도달성 순회 `Result` 전파 — `get_field`·`get_static_field`·`load` unwrap 3곳 → `?`(호스트 오류 그대로) · 불변식 unwrap 2곳 → `Unraisable` · 오류 시 중단(해제 0). 새 변종 0 · 공개 서명 변경 0. 양방향: 새 시험 ok ↔ unwrap 복원 시 panic FAILED. 채택 `2026-09-22-lgt-object-reference-gate#p0` · `2026-09-24-unraisable-error-variant#p0`. wie 효력은 crates.io 릴리스 뒤. 상세 `docs/worklog/2026-09-24-gc-walk-propagates-host-errors.md`.
 - [rustjava-2026-09-20-name-the-missing-bootstrap-class-adopt-p0] ★**공개 API 변경(breaking)**: `JavaError::Unraisable(String)` 신설 — Java 예외로 만들 수 없는 실패. `Jvm::new` 패닉 2곳 → `Err(Unraisable)`(빠진 클래스 이름 포함) · `Jvm::exception` 재귀 바닥(같은 스레드에서 «같은 예외»를 다시 만들거나 깊이 8 → `Unraisable`, 첫 실패 명명) · `[Ljava/lang/String;` 숨김 재현이 stack overflow → loader 질문 2회. ★외부 소비자: `let JavaError::JavaException(..) = ..` irrefutable 구조분해가 컴파일 에러가 된다(이 repo 3곳 수정 · wie 는 crates.io 0.1.1 소비라 판올림 때 발생). 채택 `2026-09-20-name-the-missing-bootstrap-class#p0` · `2026-09-20-string-array-hiding-overflows-stack#p0`. 상세 `docs/worklog/2026-09-24-unraisable-error-variant.md`.
   보정(-fix): `stream_handler.rs` `publish` 의 `if let Err(JavaException)` 2곳 → `match` + `Unraisable` 전파(삼킴 제거) · 회귀 `stream_handler_propagates_unraisable_output_failures`.
 - [rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0] ★**검증 규칙이 멈춘 위치를 말한다 — 11규칙, 변종 1개.** 채택 제안 `2026-09-18-bootstrap-argument-index-and-tag#p0`.

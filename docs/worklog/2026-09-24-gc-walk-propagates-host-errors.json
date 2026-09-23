@@ -1,0 +1,14 @@
+{
+  "schema": "rustjava-worklog-v1",
+  "date": "2026-09-24",
+  "taskId": "wie-2026-09-22-lgt-object-reference-gate-adopt-p0",
+  "summary": "GC reachability walk returns Result: host get_field/get_static_field/load errors reach collect_garbage's caller instead of panicking; two internal-invariant unwraps become Unraisable. No new JavaError variant, no public signature change.",
+  "adoptedProposals": [
+    "2026-09-22-lgt-object-reference-gate#p0",
+    "2026-09-24-unraisable-error-variant#p0"
+  ],
+  "proposals": [],
+  "verification": [
+    "cargo test -p jvm --test test_gc_host_error ok; reverting get_field ? to unwrap -> panicked at garbage_collector.rs:103:55 FAILED"
+  ]
+}
