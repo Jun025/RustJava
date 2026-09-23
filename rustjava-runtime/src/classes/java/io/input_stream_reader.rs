@@ -180,8 +180,21 @@ impl InputStreamReader {
                 if decode_length - lead_index < expected_length {
                     decode_length = lead_index;
                 }
-            } else if !end_of_input && charset == "EUC-KR" && read_buf_data.last().is_some_and(|value| *value >= 0x81) {
-                decode_length -= 1;
+            } else if !end_of_input && charset == "EUC-KR" {
+                // Unlike UTF-8, EUC-KR trail bytes overlap the lead range (0x81..=0xfe), so the last
+                // byte alone cannot say whether the final pair is complete — a whole pair ends in a
+                // byte that looks exactly like a lead. Withholding it there strands the pair's own
+                // lead byte, which the decoder then swallows into state this read is about to drop.
+                // readBuf always begins on a character boundary, so walk it forward instead: a byte
+                // >= 0x81 opens a pair, anything else stands alone. Only a lead byte that overruns
+                // the buffer is held back.
+                let mut index = 0;
+                while index < decode_length {
+                    index += if read_buf_data[index] >= 0x81 { 2 } else { 1 };
+                }
+                if index > decode_length {
+                    decode_length -= 1;
+                }
             }
 
             let mut decoded = vec![0; BUF_SIZE * 3];
