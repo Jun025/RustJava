@@ -59,6 +59,49 @@ impl Charset {
         }
     }
 
+    // How many trailing bytes of `bytes` to withhold from a non-final decode because they open a character the buffer
+    // does not yet complete. No wildcard arm on purpose: a new charset must decide this, or its characters split at
+    // read boundaries vanish silently.
+    pub fn bytes_to_hold_back(&self, bytes: &[u8]) -> usize {
+        match self {
+            Self::Utf8 => {
+                if bytes.is_empty() {
+                    return 0;
+                }
+                let mut lead_index = bytes.len() - 1;
+                while lead_index > 0 && bytes[lead_index] & 0xc0 == 0x80 {
+                    lead_index -= 1;
+                }
+                let expected_length = match bytes[lead_index] {
+                    0xc0..=0xdf => 2,
+                    0xe0..=0xef => 3,
+                    0xf0..=0xf7 => 4,
+                    0x00..=0xbf | 0xf8..=0xff => 1,
+                };
+                if bytes.len() - lead_index < expected_length {
+                    bytes.len() - lead_index
+                } else {
+                    0
+                }
+            }
+            Self::EucKr => {
+                // Unlike UTF-8, EUC-KR trail bytes overlap the lead range (0x81..=0xfe), so the last
+                // byte alone cannot say whether the final pair is complete — a whole pair ends in a
+                // byte that looks exactly like a lead. Withholding it there strands the pair's own
+                // lead byte, which the decoder then swallows into state this read is about to drop.
+                // The buffer always begins on a character boundary, so walk it forward instead: a byte
+                // >= 0x81 opens a pair, anything else stands alone. Only a lead byte that overruns
+                // the buffer is held back.
+                let mut index = 0;
+                while index < bytes.len() {
+                    index += if bytes[index] >= 0x81 { 2 } else { 1 };
+                }
+                if index > bytes.len() { 1 } else { 0 }
+            }
+            Self::Iso8859_1 | Self::UsAscii => 0,
+        }
+    }
+
     pub fn new_stream_decoder(&self) -> CharsetStreamDecoder {
         match self {
             Self::Utf8 => CharsetStreamDecoder::EncodingRs(encoding_rs::UTF_8.new_decoder_without_bom_handling()),

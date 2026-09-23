@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-23",
+  "taskId": "rustjava-2026-09-18-bootstrap-argument-index-and-tag-adopt-p0",
+  "summary": "Counted validate_class's rules (14, not 15; 13 returned a fixed sentence). 11 of the 13 walk a table and knew where they stopped; all 11 now say it, through one new variant whose index type is the table (5 kinds), not the rule (11).",
+  "changes": [
+    "classfile/src/error.rs: ClassFileError::InvalidFormatAt { cause, location } + Location { ConstantPoolEntry, Interface, Field, Method, ClassAttribute }(u16) with Display",
+    "classfile/src/validation.rs: 11 rules return the first offending position instead of bool; predicates unchanged",
+    "jvm-bytecode/src/error.rs: InvalidClassFileAt carried through + located_message; src/runtime.rs, test-utils: one ClassFormatError arm each"
+  ],
+  "verification": "cargo test --all green; mutants M1-M3 red; pool indices cross-checked with an independent byte walker",
+  "adoptedProposals": ["2026-09-18-bootstrap-argument-index-and-tag#p0"],
+  "proposals": [
+    {
+      "title": "Give the three parse-level refusals in class.rs the same treatment only if one of them turns out to hold a position",
+      "plainSummary": "Three more rejection messages live outside validation (truncated file, extra bytes, version before 45.0); none of them was counted here.",
+      "userBenefit": "If one of them does know where it stopped, a user reading 'truncated or unparsable' could be told at which byte instead of opening a hex editor.",
+      "why": "This round counted validate_class only, as the ticket scoped it. 'truncated or unparsable' comes from nom's error, which does carry the remaining input, so an offset may be recoverable; the other two have nothing to point at.",
+      "tradeoff": "nom's offset is into the parser's view, not a table index, so it would need a sixth Location kind (a byte offset) with a different meaning from the other five. It may well come back as 'not worth it' — which is a fine answer.",
+      "effort": "S",
+      "target": "classfile/src/class.rs, classfile/src/error.rs"
+    }
+  ]
+}
