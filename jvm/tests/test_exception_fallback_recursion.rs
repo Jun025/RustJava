@@ -63,8 +63,9 @@ async fn a_class_set_missing_a_bootstrap_class_is_an_error_naming_it() {
 // that calls `fillInStackTrace` again. Before `Jvm::exception` refused to build an exception it was
 // already building on the same thread, this cap (the sweep's 20) overflowed the default 2 MiB test
 // stack -- `stack overflow, aborting`, rc 134 -- and the run said nothing about the first failure. Now
-// the repeat returns `Unraisable` naming the exception the thread started with, and the loader is
-// asked twice: once for the first failure, once by the construction that repeated it.
+// the repeat returns `Unraisable` naming the exception the thread started with. The invariant is
+// that this happens before the cap: how many questions the guard needs first is its business
+// (today 2 -- the first failure and the repeat), and pinning that number would pin the guard's depth.
 #[tokio::test]
 async fn a_failure_while_raising_is_reported_instead_of_recursing() {
     let (message, asked) = unraisable_hiding("[Ljava/lang/String;", 20).await;
@@ -72,5 +73,5 @@ async fn a_failure_while_raising_is_reported_instead_of_recursing() {
         message.contains("into raising java/lang/NoClassDefFoundError ([Ljava/lang/String;), which is the first failure"),
         "{message}"
     );
-    assert_eq!(asked, 2);
+    assert!(asked < 20, "asked {asked} times: the guard did not stop it before the cap");
 }
