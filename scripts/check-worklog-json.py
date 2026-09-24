@@ -13,7 +13,9 @@ pytest (and `cargo test` would need a JSON dependency to read docs), so it is a 
 """
 
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,6 +26,23 @@ AGENTS = ROOT / "AGENTS.md"
 # keys scanRepoSimple reads out of a proposals[] element — all strings
 PROPOSAL_KEYS = ("title", "plainSummary", "userBenefit", "why", "tradeoff", "effort", "target")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+KINDS = ("product", "meta")
+MAX_PROPOSALS = 2  # AGENTS.md "Proposal threshold"
+
+# The cap binds only new or changed files: a past worklog identical to the base passes (no retroactive edits).
+# CI sets WORKLOG_BASE=HEAD^1 (the PR merge commit's base side); locally the default is the fork point from origin/main.
+BASE = os.environ.get("WORKLOG_BASE") or subprocess.run(
+    ["git", "merge-base", "HEAD", "origin/main"], cwd=ROOT, capture_output=True, text=True
+).stdout.strip()
+
+
+def at_base(p):
+    if not BASE:
+        return None
+    r = subprocess.run(["git", "show", f"{BASE}:{p.relative_to(ROOT).as_posix()}"], cwd=ROOT, capture_output=True)
+    return r.stdout if r.returncode == 0 else None
+
 
 fail = []
 
@@ -58,6 +77,9 @@ for p in sorted(WORKLOG.glob("*.json")):
         for k in PROPOSAL_KEYS:
             v = prop.get(k)
             check(isinstance(v, str) and v.strip(), f"{p.name}#p{i}: '{k}' missing — that field renders empty on the card")
+        check("kind" not in prop or prop["kind"] in KINDS, f"{p.name}#p{i}: kind {prop.get('kind')!r} — must be one of {KINDS} or absent")
+    if len(proposals) > MAX_PROPOSALS and at_base(p) != p.read_bytes():
+        fail.append(f"{p.name}: {len(proposals)} proposals in a new/changed worklog — the cap is {MAX_PROPOSALS} (AGENTS.md \"Proposal threshold\")")
 
     for key in ("adoptedProposals", "declinedProposals"):
         refs = obj.get(key, [])
@@ -74,5 +96,7 @@ for k in ("adoptedProposals", "declinedProposals", "proposals[]"):
 
 for m in fail:
     print(f"WORKLOG-JSON: {m}", file=sys.stderr)
-print(f"checked {len(list(WORKLOG.glob('*.json')))} worklog .json file(s), {len(fail)} problem(s)")
+if not BASE:
+    print("WORKLOG-JSON: no git base resolved — every file counts as changed for the proposal cap", file=sys.stderr)
+print(f"checked {len(list(WORKLOG.glob('*.json')))} worklog .json file(s) against base {BASE[:12] or '-'}, {len(fail)} problem(s)")
 sys.exit(1 if fail else 0)
