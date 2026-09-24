@@ -1,4 +1,5 @@
 # REPORT
+> ★**동결 — 2026-09-25 이후 기록은 `docs/worklog/YYYY-MM-DD-<slug>.md`(회차마다 새 파일) · 다음 = `docs/next.md` · 진행중 = `gh pr list -R Jun025/RustJava`.** 이 파일을 고치면 `scripts/check-ledgers-frozen.py` 가 red 를 낸다(규약 `AGENTS.md` §Round Worklog).
 ## [2026-09-24] «파일 끝에 남는 바이트» 거부가 클래스가 끝난 위치를 말한다 (rustjava-2026-09-23-validation-rules-name-their-position-adopt-p0)
 - 무엇을: parse-level 거부 3종을 재어, 정확한 위치를 쥔 «extra bytes» 하나만 `Location::ByteOffset` 으로 오프셋을 싣는다. «truncated or unparsable» 은 nom 오프셋이 손상 지점을 절반 가까이 빗나가 두었고, «version < 45.0» 은 가리킬 자리가 없다.
 - 왜: 채택 제안 `2026-09-23-validation-rules-name-their-position#p0`. 제안의 예상(«truncated» 가 후보, 나머지는 없음)은 측정으로 뒤집혔다.

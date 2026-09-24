@@ -30,6 +30,7 @@
   cargo clippy --workspace --exclude test-utils --target wasm32-unknown-unknown -- -D warnings
   cargo test --all
   python3 scripts/check-worklog-json.py
+  python3 scripts/check-ledgers-frozen.py
   python3 scripts/check-dod-ci-parity.py
   python3 scripts/check-named-exception-classes-are-loadable.py
   python3 scripts/check-merge-dropped-symbols.py
@@ -53,10 +54,11 @@
   `test-utils` 로 개명(S8)했을 때 **로컬에서는 어떤 명령으로도 드러나지 않고 CI 에서만** 빨개졌다.
   ⇒ ★**CI 가 검사를 늘리거나 «매트릭스 차원»을 바꾸면 이 블록도 «같이» 고쳐라**(아래 재개 조건이 둘 다 센다).
   ※OS 축(3종)은 로컬에서 재현할 수 없다 — ★**그 차원만은 CI 가 유일한 그물이고, 그것은 «알고 두는» 값이다.**
-- 착수·완료마다 STATE.md 의 "진행중/완료/다음" 을 갱신하고, 완료 시 REPORT.md 상단에
-  `[YYYY-MM-DD]` 요약 3줄(무엇을·왜·사용자 영향) + 후속 추천을 append 한다.
-- ★**후속 추천을 적었으면 `docs/worklog/YYYY-MM-DD-<slug>.{md,json}` 한 쌍도 남긴다** —
-  `.json` 이 없으면 그 추천은 cockpit 「후속 작업 추천」 패널에 **구조적으로 도달하지 못한다**
-  (규약·되돌릴 수 = `AGENTS.md` §Round Worklog).
+- ★**회차 기록은 회차마다 새 파일 `docs/worklog/YYYY-MM-DD-<slug>.md` 에 쓴다.** 첫 줄에
+  `## [YYYY-MM-DD] 제목 (<ticket-id>)`, 그 아래 무엇을·왜·사용자 영향 3줄을 적는다. 후속 추천을 적었으면
+  같은 basename 의 `.json` 도 쓴다. `.json` 이 없으면 그 추천은 cockpit 「후속 작업 추천」 패널에 **닿지 못한다**.
+  ★**`REPORT.md`·`STATE.md` 는 2026-09-25 에 동결됐다 — 건드리지 마라**(`scripts/check-ledgers-frozen.py` 가 red 를 낸다).
+  진행중 = `gh pr list -R Jun025/RustJava` · 완료 = `docs/worklog/` · 다음 = `docs/next.md`
+  (규약 = `AGENTS.md` §Round Worklog).
 - ★작업 티켓의 **완주 지점 = PR 오픈**이다. 머지는 게이트② 검수자가 approve 와 같은 턴에 집행한다(`<id>-merge` 는 예외 경로)
   (`main` 직push 0 — `AGENTS.md` §Git Workflow).
