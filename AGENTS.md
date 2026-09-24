@@ -36,6 +36,30 @@ basename** in `docs/worklog/`: `YYYY-MM-DD-<slug>.md` (the human axis) and
 `YYYY-MM-DD-<slug>.json` (the machine axis). Without the `.json`, the proposal is
 **structurally unreachable** by the cockpit "후속 작업 추천" panel — its scanner reads `.json` only.
 
+**Since 2026-09-25 the `.md` is written by every round, and it is the round record.** `REPORT.md`
+and `STATE.md` are frozen (ticket `rustjava-report-state-md-per-round-files-port-from-wie`, ported
+from wie `a5091df6`). Every PR used to add to the top of those two shared files, so each landing
+made every open sibling conflict: **42 union merges out of 61 PRs** from 2026-09-10 to 2026-09-25.
+A file named after its own round has no shared line to fight over. So:
+
+- **Every round** creates `docs/worklog/YYYY-MM-DD-<slug>.md`. Its first line is
+  `## [YYYY-MM-DD] title (<ticket-id>)`, followed by the 무엇을·왜·사용자 영향 lines that used to go
+  into `REPORT.md`. Add the `.json` sibling when the round leaves proposals or disposes of them,
+  as below.
+- **진행중** is `gh pr list -R Jun025/RustJava`. **완료** is this directory:
+  `grep -H '^## \[' docs/worklog/*.md | sort -r`. **다음** is `docs/next.md`, and a round edits it
+  only when a prerequisite chain or an item outside the cards changes. Adopting or declining a
+  card is recorded in the round's own `.json`, which is not a shared file.
+- `scripts/check-ledgers-frozen.py` pins both frozen files by hash. It runs in the `worklog_json`
+  CI job and in the local DoD, and any edit to either file turns it red. If a merge conflict
+  offers you one of those files, take `main`'s side and move your entry into your own `.md`.
+- Names are `date-slug`, not wie's serial `NNNN--`. The slug is the round's own name, so two open
+  PRs never pick the same filename. That also means this repo does not need wie's
+  serial-collision checker.
+
+Text below that says "into `REPORT.md`" means the round's `.md` from 2026-09-25 on. It is kept
+as written because it records decisions that were made at the time.
+
 **Do not invent a schema** — these key names are shared with otterpebble/dodu/qts. The consumer
 (`/api/proposals`, `scanRepoSimple`) reads exactly these:
 

@@ -61,6 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-worklog-json.py
+      - run: python3 scripts/check-ledgers-frozen.py
 
   # a conflict resolution that drops one side's work leaves no other trace: no marker, mergeable
   # CLEAN, suite green. fetch-depth 0 because the check needs the merge commits and their parents,

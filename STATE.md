@@ -1,4 +1,5 @@
 # STATE
+> ★**동결 — 2026-09-25 이후 기록은 `docs/worklog/YYYY-MM-DD-<slug>.md`(회차마다 새 파일) · 다음 = `docs/next.md` · 진행중 = `gh pr list -R Jun025/RustJava`.** 이 파일을 고치면 `scripts/check-ledgers-frozen.py` 가 red 를 낸다(규약 `AGENTS.md` §Round Worklog).
 
 ## 진행중
 (없음 — 2026-09-17 실측: 착수 시 열린 PR **4건**(#56·#57·#58·#59). ★**내 경로와 겹치는 것은 둘**이다 —
