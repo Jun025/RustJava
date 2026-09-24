@@ -1,4 +1,8 @@
 # REPORT
+## [2026-09-24] «파일 끝에 남는 바이트» 거부가 클래스가 끝난 위치를 말한다 (rustjava-2026-09-23-validation-rules-name-their-position-adopt-p0)
+- 무엇을: parse-level 거부 3종을 재어, 정확한 위치를 쥔 «extra bytes» 하나만 `Location::ByteOffset` 으로 오프셋을 싣는다. «truncated or unparsable» 은 nom 오프셋이 손상 지점을 절반 가까이 빗나가 두었고, «version < 45.0» 은 가리킬 자리가 없다.
+- 왜: 채택 제안 `2026-09-23-validation-rules-name-their-position#p0`. 제안의 예상(«truncated» 가 후보, 나머지는 없음)은 측정으로 뒤집혔다.
+- 사용자 영향: 덧붙은 바이트가 있는 파일의 `ClassFormatError` 가 `(at byte offset N)` 을 붙여 어디서 잘라야 할지 말한다. `ClassFileError` 가 24 → 32 바이트로 커졌다. 후속 추천 0건 — 상세 `docs/worklog/2026-09-24-extra-bytes-name-their-offset.{md,json}`.
 ## [2026-09-24] GC 가 호스트 오류에 패닉하지 않고 `Err` 를 돌려준다 (wie-2026-09-22-lgt-object-reference-gate-adopt-p0)
 - 무엇을: `Jvm::collect_garbage` 의 도달성 순회가 `get_field`·`get_static_field`·배열 `load` 오류를 `.unwrap()` 대신 호출자에게 돌려준다. 내부 불변식 두 곳은 `JavaError::Unraisable` 로 대상을 이름으로 말한다. 오류가 나면 아무것도 해제하지 않는다.
 - 왜: wie 제안 `2026-09-22-lgt-object-reference-gate#p0` 의 나머지 절반이다(변종은 #94 에서 끝났다). 변종만 있으면 호스트가 올린 오류가 GC 경로에서 다시 패닉이 된다.

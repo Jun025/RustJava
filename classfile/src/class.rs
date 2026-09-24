@@ -10,8 +10,8 @@ use nom::{
 use jvm_types::ClassAccessFlags;
 
 use crate::{
-    ClassFileError, attribute::AttributeInfo, constant_pool::ConstantPoolItem, field::FieldInfo, interface::parse_interface, method::MethodInfo,
-    validation::validate_class,
+    ClassFileError, Location, attribute::AttributeInfo, constant_pool::ConstantPoolItem, field::FieldInfo, interface::parse_interface,
+    method::MethodInfo, validation::validate_class,
 };
 
 fn parse_this_class<'a>(data: &'a [u8], constant_pool: &BTreeMap<u16, ConstantPoolItem>) -> IResult<&'a [u8], Arc<String>> {
@@ -102,7 +102,14 @@ impl ClassInfo {
     pub fn parse(file: &[u8]) -> Result<Self, ClassFileError> {
         let (remaining, result) = Self::parse_info(file).map_err(|_| ClassFileError::InvalidFormat("truncated or unparsable class file"))?;
         if !remaining.is_empty() {
-            return Err(ClassFileError::InvalidFormat("extra bytes after the end of the class file"));
+            let cause = "extra bytes after the end of the class file";
+            // A file past 4 GiB cannot name its offset in a `u32`; say the sentence without it rather than a wrong number.
+            return Err(
+                u32::try_from(file.len() - remaining.len()).map_or(ClassFileError::InvalidFormat(cause), |offset| ClassFileError::InvalidFormatAt {
+                    cause,
+                    location: Location::ByteOffset(offset),
+                }),
+            );
         }
         if result.major_version < 45 {
             return Err(ClassFileError::InvalidFormat("class file version predates 45.0"));
