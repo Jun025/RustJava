@@ -163,6 +163,7 @@ done | /usr/bin/grep -c .
 - Test JVM and interpreter semantics, including class initialization, bytecode execution, and monitor behavior, with compiled Java fixtures under `test-data/src` and expected output under `test-data`, executed by `tests/test_class.rs`.
 - Do not place JVM core behavior tests in the `rustjava-runtime` standard library test tree.
 - **Adding or recompiling a fixture means editing `test-data/class-file-versions.txt` in the same commit.** Every committed `.class` has its version frozen there, and a fixture that is not listed fails the pin — deliberately, since a pin that only covers what it already knows about stops covering anything added later. Run `python3 test-data/src/record-class-file-versions.py` and commit the row next to the fixture; a moved version means look at why before re-recording.
+- **Regenerating a hand-assembled fixture** (`test-data/src/{cp,indy,ldc}/make_*_fixtures.py`) — also run `python3 test-data/src/audit-fixture-single-defect.py` (no JDK, under a second; rc=0 = each fixture is broken in exactly its named way). It is manual like `test-data/src/verify-javac-fixtures.sh`: CI does not run it.
 
 ## Compatibility Sources
 - Implement Java compatibility from public specifications, Javadocs, and observable behavior tests. Do not consult or reproduce OpenJDK or other Java runtime implementation source code; keep the implementation independent to avoid licensing and provenance concerns.
