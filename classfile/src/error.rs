@@ -59,6 +59,13 @@ pub enum Location {
     Field(u16),
     Method(u16),
     ClassAttribute(u16),
+    /// A byte offset into the file itself — not a table index, unlike the five above. Only the
+    /// "extra bytes" refusal uses it: the offset where the class ends and the extra bytes begin,
+    /// which is exact. "truncated or unparsable" was measured and deliberately left without one:
+    /// nom's position is where the parser gave up, which for a damaged byte fell more than 8 bytes
+    /// away from the damage in roughly half of single-byte mutations — a number that points at the
+    /// wrong place half the time is worse than no number.
+    ByteOffset(u32),
 }
 
 impl core::fmt::Display for Location {
@@ -69,6 +76,7 @@ impl core::fmt::Display for Location {
             Self::Field(index) => write!(f, "field #{index}"),
             Self::Method(index) => write!(f, "method #{index}"),
             Self::ClassAttribute(index) => write!(f, "class attribute #{index}"),
+            Self::ByteOffset(offset) => write!(f, "at byte offset {offset}"),
         }
     }
 }

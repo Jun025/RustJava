@@ -161,6 +161,23 @@ fn test_malformed_class_files_return_structured_errors() {
         Some(ClassFileError::InvalidFormat("truncated or unparsable class file"))
     );
 
+    // The position is where the class ends, i.e. the original length — not the file's end, and
+    // not zero, so a report of either would fail here.
+    let mut extra_bytes = hello.to_vec();
+    extra_bytes.extend_from_slice(&[0, 0, 0]);
+    let refusal = ClassInfo::parse(&extra_bytes).err();
+    assert_eq!(
+        refusal,
+        Some(ClassFileError::InvalidFormatAt {
+            cause: "extra bytes after the end of the class file",
+            location: Location::ByteOffset(hello.len() as u32),
+        })
+    );
+    assert_eq!(
+        Location::ByteOffset(hello.len() as u32).to_string(),
+        format!("at byte offset {}", hello.len())
+    );
+
     let mut unsupported_version = hello.to_vec();
     unsupported_version[6..8].copy_from_slice(&71u16.to_be_bytes());
     assert_eq!(ClassInfo::parse(&unsupported_version).err(), Some(ClassFileError::UnsupportedVersion(71)));
@@ -461,12 +478,16 @@ fn test_a_bootstrap_argument_naming_nothing_reports_no_kind() {
     );
 }
 
-/// The cost of the variant, measured rather than asserted in prose: it stays `Copy` and the enum
-/// does not grow, because two `u16`s and a `&'static str` fit in the space `InvalidFormat` already
-/// needed for its string.
+/// The cost of the variant, measured rather than asserted in prose: it stays `Copy`, and the size is
+/// pinned so any growth is a decision rather than a side effect.
+///
+/// ★ It grew once, on purpose: 24 → 32 bytes (64-bit) when `Location::ByteOffset(u32)` arrived — a
+/// `u32` is the first payload that does not fit beside the `&'static str` the way two `u16`s did.
+/// Accepted because the error path is cold and `Result<ClassInfo, _>` is dominated by `ClassInfo`;
+/// splitting the offset into `[u16; 2]` kept 24 but put an awkward type in the public API.
 #[test]
 fn test_the_structured_variant_does_not_grow_the_error_type() {
-    assert_eq!(size_of::<ClassFileError>(), size_of::<&'static str>() + size_of::<usize>());
+    assert_eq!(size_of::<ClassFileError>(), size_of::<&'static str>() + 2 * size_of::<usize>());
     fn assert_copy<T: Copy>() {}
     assert_copy::<ClassFileError>();
 }

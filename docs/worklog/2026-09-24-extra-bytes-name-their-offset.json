@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-24",
+  "taskId": "rustjava-2026-09-23-validation-rules-name-their-position-adopt-p0",
+  "summary": "Of class.rs's three parse-level refusals, only 'extra bytes' holds an exact position (where the class ended); it now carries Location::ByteOffset. 'truncated or unparsable' was measured and left without one — its nom offset missed the damaged byte by more than 8 bytes in about half of single-byte mutations.",
+  "changes": [
+    "classfile/src/error.rs: Location::ByteOffset(u32), Display 'at byte offset N'",
+    "classfile/src/class.rs: extra-bytes refusal -> InvalidFormatAt { ByteOffset }",
+    "classfile/tests/test.rs: extra-bytes assertion; size lock 24 -> 32 bytes with reason"
+  ],
+  "verification": "cargo test green; mutants (offset=file.len, offset=0, old class.rs) red",
+  "adoptedProposals": ["2026-09-23-validation-rules-name-their-position#p0"],
+  "proposals": []
+}
