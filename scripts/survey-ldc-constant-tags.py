@@ -14,45 +14,14 @@ legally take. That last number is the scanner's own error bar — an instruction
 alignment lands on nonsense, so a non-zero share there is a reason to distrust the rest. It is
 *detectable* misdecodes only: a misdecode landing on a plausible tag stays invisible.
 
-## Targeted shapes, not just corpora (2026-09-17)
-
-The first survey measured what kotlinc and scalac had already produced — their own stdlibs — and
-said outright that it had not asked either compiler to compile the features most likely to emit
-these constants. That gap is closed: `ldc-tag-survey-targets/` holds one file per language
-exercising lambdas, unbound and bound method references, SAM conversion to both a native and a
-Java interface, an enum subject, string concatenation, a lazy value, and (Scala) eta-expansion,
-an inline def and a structural type.
-
-    kotlinc -jvm-target 21 -Xlambdas=indy -Xsam-conversions=indy \
-            -Xstring-concat=indy-with-constants -d <out> scripts/ldc-tag-survey-targets/Targets.kt
-    scalac  -release 21 -d <out> scripts/ldc-tag-survey-targets/Targets.scala
-    python3 scripts/survey-ldc-constant-tags.py <out>
-
-Measured with kotlinc-jvm 2.4.20 and Scala 3.9.0 (both on JRE 26):
-
-    Kotlin  7 classes · 23 ldc sites · tags 15/16/17 as an ldc operand: 0
-                                       same tags in the pool: MethodHandle 7, MethodType 6
-    Scala   7 classes · 18 ldc sites · tags 15/16/17 as an ldc operand: 0
-                                       same tags in the pool: MethodHandle 11, MethodType 6
-
-The pool counts are what make that 0 worth reading: they are non-zero, so the invokedynamic paths
-really were exercised and the constants really were built — they just never reach an `ldc`
-operand. Tag 17 (Dynamic) is absent from the pool in both, so in these shapes neither compiler emits
-condy at all — the stronger statement of the two, and bounded exactly like every other number here:
-one program per compiler (see "Not covered", below).
-
-The flags are deliberately the ones that route *more* through invokedynamic. A run without them
-measures a compiler configured away from the shapes in question, which is the mistake the corpus
-axis could not avoid: a stdlib is compiled for compatibility, not to exercise the backend.
-
-Positive control, so the 0 is not "the scanner cannot see it":
+Positive control, so a 0 is not "the scanner cannot see it":
 
     python3 scripts/survey-ldc-constant-tags.py test-data/ldc
     -> tags 15/16/17 as an ldc operand: {MethodHandle 1, MethodType 2, Dynamic 7}
 
-Not covered, said plainly: this is one program per compiler, so it bounds the *features listed
-above* and not the languages. And it needs kotlinc and scalac installed — CI has neither, so like
-`test-data/src/verify-javac-fixtures.sh` this is a check a person runs, not one that runs itself.
+Targeted Kotlin/Scala shapes were measured once (tags 15/16/17 as an ldc operand: 0) and their
+sources dropped; commands and numbers are in docs/worklog/2026-09-17-ldc-targeted-shapes-kotlin-scala.md.
+CI runs none of this — like `test-data/src/verify-javac-fixtures.sh`, it is a check a person runs.
 """
 
 import sys

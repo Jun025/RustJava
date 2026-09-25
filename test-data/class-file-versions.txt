@@ -5,6 +5,16 @@
 # 70 x3 in the root alone. Unifying them would mean recompiling, and recompiling changes bytes,
 # which can change what a fixture exercises. So the rule here is only "it must not move on its own".
 #
+# Decided 2026-09-18 not to unify: the version is coverage, not history. Recompiled at --release 21,
+# the major-52 cohort loses the two pre-Java-9/11 lowerings a JVM must still run — `StringBuilder`
+# concatenation (FormatterIntegration, NullSpecGuards) and `access$` nestmate bridges
+# (ThreadInterruption, MonitorSemantics; NativeMethod's invokespecial->invokevirtual is the same
+# axis). The 64 generator fixtures in cp/indy/ldc/attr carry zero of either, so this cohort is the
+# only coverage. Of the other 20 top-level 52 fixtures, 16 rebuild to an identical opcode sequence,
+# so unifying buys nothing. Reopen if the runtime drops major <= 52, if those paths gain coverage
+# elsewhere, or if a third version axis turns up. The rule for *new* fixtures is left open.
+# Re-measure, don't re-argue: docs/worklog/2026-09-18-root-fixture-target-decision.md.
+#
 # What that catches: regenerating a fixture with a different JDK. `javac Switch.java` with no
 # --release stamps the running JDK's version, and a two-byte change inside a committed binary is
 # not something anyone notices in review. The majors 66, 68 and 70 above are that accident already
