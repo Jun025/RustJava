@@ -93,15 +93,8 @@ impl Jvm {
             "java/lang/Class",
         ];
         for class_name in bootstrap_classes.iter() {
-            // Fails like the closure walk below, and for the same reason -- nothing can be *raised*
-            // yet, this is what loads the classes an exception is made of -- so the error is
-            // `Unraisable` rather than a Java exception. It has to say which name it was, which the
-            // `unwrap` this once was did not: a host with a gap in its class set read
-            // `called Option::unwrap() on a None value` and had to bisect this list to find out
-            // which of six. Measured by last round's sweep: 5 of the 12 named refusals were this
-            // line, and two of those names (`java/lang/Object`, `java/io/Serializable`) are also in
-            // the error path's closure, so the same gap got a good message or a useless one
-            // depending only on which loop reached it first.
+            // Nothing can be *raised* yet -- these are the classes an exception is made of -- so a gap
+            // is `Unraisable`, and it names the class so the host does not have to bisect this list.
             let Some(class_definition) = jvm.inner.bootstrap_class_loader.load_class(&jvm, class_name).await? else {
                 return Err(JavaError::Unraisable(format!(
                     "the class set has no {class_name}, which is one of the {} classes loaded before \
@@ -130,35 +123,14 @@ impl Jvm {
 
         // Everything the error path needs before anything at all can be raised.
         //
-        // `Jvm::exception` builds a message with `java/lang/String` and then an instance of
-        // `java/lang/NoClassDefFoundError`, so a class set missing either cannot report even its own
-        // gap -- reporting the absent String needs a String, and reporting the absent reporter needs
-        // the reporter. Two earlier rounds each closed one of those names and each found the next by
-        // reading the code and guessing. Then the whole question was measured at once, by hiding every
-        // name construction asks the loader for, one at a time (`jvm/tests/test_error_path_class_sweep.rs`,
-        // 37 non-array names): five *more* recurse with no floor -- `java/lang/Throwable`,
-        // `java/lang/Error`, `java/lang/LinkageError`, `java/lang/CharSequence` and
-        // `java/lang/Comparable` -- and they are exactly the supertype and interface closure of those
-        // two. Of course they are: resolving a class resolves its supertypes, and a gap found *there*
-        // is reported with the very classes still being resolved. The closure is 9 names and the
-        // account of it is complete: 2 were already checked, 5 recursed, and the remaining 2
-        // (`java/lang/Object`, `java/io/Serializable`) are in `bootstrap_classes` above, so they fail
-        // before this runs -- naming themselves there, as of the round that closed that gap.
-        //
-        // So the closure is what is checked, not a list someone has to remember to extend. Asked of
-        // the loader directly and never through `resolve_class`, because the reporting path cannot
-        // report *this* failure: building the report is the thing that is missing. A bare
-        // `resolve_class` here would hand the question to `Jvm::exception`, which is the cycle itself
-        // -- measured, that is still `stack overflow, aborting`, only during construction instead of
-        // later.
-        //
-        // Start-up cost, counted rather than timed (the previous round measured wall clock here and
-        // discarded it as below this host's noise): the walk asks the loader 9 times where the two
-        // asserts it replaces asked twice, so construction goes from 44 loader questions to 51.
-        //
-        // Here rather than in `bootstrap_classes` above, and before the properties loop below: that
-        // loop is the first thing in construction that needs a String, and resolution runs class
-        // initialisation, which needs the thread attached above.
+        // `Jvm::exception` builds a `java/lang/String` message and a `java/lang/NoClassDefFoundError`
+        // instance, and resolving those resolves their supertype and interface closure. A gap anywhere
+        // in that closure cannot be reported -- the report needs the missing class -- so it would
+        // recurse until the stack overflows. The closure is walked here instead of a fixed list, and
+        // asked of the loader directly: `resolve_class` would hand the failure to `Jvm::exception`,
+        // which is the cycle itself. It runs after the thread is attached (initialisation needs it) and
+        // before the properties loop below, the first thing that needs a String.
+        // `jvm/tests/test_error_path_class_sweep.rs` hides each name construction asks for.
         let mut pending = Vec::from(["java/lang/String".to_owned(), "java/lang/NoClassDefFoundError".to_owned()]);
         let mut asked = HashSet::new();
         while let Some(class_name) = pending.pop() {
