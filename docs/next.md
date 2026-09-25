@@ -19,7 +19,7 @@ for f in sorted(glob.glob('docs/worklog/*.json')):
 print(*[r for r in refs if r not in done],sep='\n')"
 ```
 
-1. **선행 사슬**: `2026-09-17-link-lambdametafactory#p1`(결정) → `#p0`(어댑터) → `java.lang.invoke` 패키지(카드 없음 · 근거 = `rustjava-runtime/src/classes/java/lang/invoke` **부재**) → `2026-09-17-string-concat-recipe-arity#p1`.
+1. **선행 사슬**: `2026-09-17-link-lambdametafactory#p0`(어댑터 · ★지금 착수 가능 — `#p1` 은 2026-09-26 「현 상태 유지」로 닫혔고 등록 방식이 안 바뀌므로 선행 조건 없음 · `docs/lambda-class-reflection-visibility.md`) → `java.lang.invoke` 패키지(카드 없음 · 근거 = `rustjava-runtime/src/classes/java/lang/invoke` **부재**) → `2026-09-17-string-concat-recipe-arity#p1`.
 2. **카드 밖**: 없음. PR #81 은 2026-09-26 에 닫혔다 — #83(`750d30d4`)과 같은 변경이었다(`docs/worklog/2026-09-26-pr81-closed-duplicate-of-pr83.md`).
 
 지난 판(⓪-사료·①~⑤)은 동결된 `STATE.md` `## 다음` 아래에 그대로 있다.
