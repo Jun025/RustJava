@@ -60,7 +60,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2 # HEAD^1 = base side of the PR merge commit (or previous main on push)
       - run: python3 scripts/check-worklog-json.py
+        env:
+          WORKLOG_BASE: HEAD^1
       - run: python3 scripts/check-ledgers-frozen.py
 
   # a conflict resolution that drops one side's work leaves no other trace: no marker, mergeable

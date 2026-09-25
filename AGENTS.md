@@ -73,6 +73,16 @@ as written because it records decisions that were made at the time.
 Any other key (`schema`, `taskId`, `summary`, `changes`, `verification`, `issues`, …) is free —
 the consumer does not read them, so they are for humans and the next round.
 
+**Proposal threshold (2026-09-25).** 09-14~24 this repo left 63 proposals, and each adoption bred
+0.98 new ones — 62% of them meta, longest chain 11 generations. So:
+- Ask otterpebble's three questions first (`.claude/rules/autonomy.md` §추천도 3문): observed this
+  round · runnable now without waiting on anything · not a duplicate. Any "no" ⇒ one line in the reply, not a card.
+- **Zero proposals is the normal value.** At most **2 per worklog** — the lock fails a new or changed `.json` with 3+.
+- A proposal in the **3rd or later generation of a chain** (adopting a card that itself came from an adopted card) is not filed if it is meta.
+- Optional `proposals[i].kind`: `"product"` = a user- or product-visible result changes · `"meta"` = checker,
+  guard, census, self-test, ratchet, ledger/doc rule, CI wiring. Absent = unclassified; do not backfill old
+  worklogs. Tower builds its card badge and default filter from it. The lock rejects any other value.
+
 **No retroactive conversion.** The convention applies to new rounds only; the lock asks only
 "if a `.json` exists, is it well-formed and does it have its `.md` sibling" — it never demands a
 `.json` for an existing `.md`. Lock: `scripts/check-worklog-json.py`, run by the `worklog_json`
