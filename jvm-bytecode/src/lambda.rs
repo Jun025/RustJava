@@ -17,15 +17,25 @@
 //! That is the whole of the shortcut: the object is real, the dispatch is real, and the thing that
 //! does not exist is the handle chain that would normally deliver them.
 //!
-//! ## What is not linked, and why that is a refusal rather than a gap
+//! ## What is linked, and why everything else is a refusal rather than a gap
 //!
 //! The implementation's signature has to line up with the interface method's, position by
-//! position, as a **pass-through**: identical primitives, or a reference either way. Where the real
-//! factory would insert an adapter — boxing an `int` into an `Object`, unboxing, widening — the
+//! position. Most positions are a **pass-through**: identical primitives, or a reference either
+//! way. The one adapter inserted is the `int` ↔ `Integer` pair, the conversion the generic
+//! functional interfaces force (`Supplier<Integer>` reaching a method that returns `int`):
+//! `Integer.valueOf` where an `int` meets a reference, `intValue` after a check that the value is
+//! an `Integer` where a reference meets an `int`. [`Adapter`] lists it and [`parameter_adapter`] /
+//! [`return_adapter`] say where it applies.
+//!
+//! Every other adapter the real factory would insert (`long`/`double` boxing, unboxing followed by
+//! widening such as `Short` into an `int` parameter, boxing into `Number`) is not inserted. The
 //! call site is left as `Opcode::Invokedynamic`, and the verifier refuses the class as an
 //! unsupported feature. A refusal is a worse experience than an adapter and a much better one than
-//! a wrong answer, and the boundary is checked where it is decidable: at lowering time, from the
-//! descriptors alone, so a class either loads or does not. It never fails halfway through a call.
+//! a wrong answer, which is why pairs are added one at a time. The boundary is checked where it is
+//! decidable: at lowering time, from the descriptors alone, so a class either loads or does not.
+//! It never fails halfway through a call on account of a shape. (It can throw inside a call, as
+//! the real factory does: `NullPointerException` unboxing `null`, `ClassCastException` unboxing
+//! something that is not an `Integer`.)
 //!
 //! `altMetafactory` — the entry point for serializable and multi-interface lambdas — is not this
 //! method and is not linked.
@@ -59,12 +69,13 @@ const FACTORY_DESCRIPTOR: &str = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/
 
 /// A bootstrap entry that is the factory, with its static arguments resolved.
 ///
-/// `instantiated` — the third static argument — is read but not used for dispatch: the interface
+/// `instantiated_descriptor` — the third static argument — is not used for dispatch: the interface
 /// method this runtime defines carries the *erased* signature, which is the one callers invoke
-/// through the interface. It is resolved anyway because its absence means the entry is not the
-/// shape `metafactory` claims to be, and a bootstrap that is not that shape must not be linked.
+/// through the interface. It is read where an adapter decides what a value is: an erased `Object`
+/// parameter is unboxed only when this says it is an `Integer`.
 struct LinkedFactory {
     sam_descriptor: Arc<String>,
+    instantiated_descriptor: Arc<String>,
     implementation: MethodHandleRef,
 }
 
@@ -119,7 +130,7 @@ pub(crate) fn lower(class: &mut ClassInfo) {
                     continue;
                 };
                 let captures = &captures[..];
-                if !adapts(captures, &linked.sam_descriptor, &linked.implementation) {
+                if plan(captures, &linked.sam_descriptor, &linked.instantiated_descriptor, &linked.implementation).is_none() {
                     continue;
                 }
 
@@ -129,6 +140,7 @@ pub(crate) fn lower(class: &mut ClassInfo) {
                     descriptor: descriptor.clone(),
                     method_name: name.clone(),
                     method_descriptor: linked.sam_descriptor.clone(),
+                    instantiated_method_descriptor: linked.instantiated_descriptor.clone(),
                     implementation: linked.implementation.clone(),
                 });
                 index += 1;
@@ -165,13 +177,14 @@ fn resolve_bootstrap_methods(class: &ClassInfo) -> BTreeMap<u16, LinkedFactory> 
                 return None;
             };
             let sam_descriptor = method_type_descriptor(&class.constant_pool, sam)?;
-            method_type_descriptor(&class.constant_pool, instantiated)?;
+            let instantiated_descriptor = method_type_descriptor(&class.constant_pool, instantiated)?;
             let implementation = MethodHandleRef::resolve(&class.constant_pool, implementation)?;
 
             Some((
                 index as u16,
                 LinkedFactory {
                     sam_descriptor,
+                    instantiated_descriptor,
                     implementation,
                 },
             ))
@@ -179,34 +192,103 @@ fn resolve_bootstrap_methods(class: &ClassInfo) -> BTreeMap<u16, LinkedFactory> 
         .collect()
 }
 
-/// Whether the implementation can be called by passing the captured values and the interface
-/// method's arguments straight through, with no conversion anywhere.
-///
-/// This is the boundary named at the top of the file. It is deliberately an exact shape test
-/// rather than an assignability test: `Jvm` values carry their own types, so a reference flows
-/// into any reference parameter, but an `int` reaching an `Object` parameter needs a box that
-/// nothing here would create.
-fn adapts(captures: &[JavaType], sam_descriptor: &str, implementation: &MethodHandleRef) -> bool {
-    let Some(sam_type) = JavaType::try_parse(sam_descriptor) else {
-        return false;
-    };
-    let JavaType::Method(sam_parameters, sam_return) = &sam_type else {
-        return false;
-    };
-    let Some((parameters, returns)) = implementation_signature(implementation) else {
-        return false;
-    };
+/// What happens to one value on its way between the interface method and the implementation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Adapter {
+    /// Nothing: identical primitives, or a reference either way (`Jvm` values carry their own
+    /// types, so a reference flows into any reference parameter).
+    Pass,
+    /// An `int` meeting a reference: `Integer.valueOf`.
+    BoxInt,
+    /// A reference meeting an `int`: a check that it is an `Integer`, then `intValue`.
+    UnboxInt,
+}
 
-    if captures.len() + sam_parameters.len() != parameters.len() {
-        return false;
+const INTEGER: &str = "java/lang/Integer";
+
+/// The one adapter plan for a call site: one entry per interface method parameter, and one for
+/// the return (`None` when the interface method is `void` and the result is discarded).
+///
+/// Captured values are not adapted: they are passed straight through or the call site is refused.
+/// javac captures a value with the implementation's own type, so no call site it emits needs more.
+#[derive(Debug, PartialEq)]
+struct Plan {
+    parameters: Vec<Adapter>,
+    returns: Option<Adapter>,
+}
+
+/// The plan, or `None` where some position needs an adapter this runtime does not insert.
+///
+/// This is the boundary named at the top of the file. Lowering asks it whether to link at all, and
+/// the synthesised method asks it again for what to do, so the two can never disagree.
+fn plan(captures: &[JavaType], sam_descriptor: &str, instantiated_descriptor: &str, implementation: &MethodHandleRef) -> Option<Plan> {
+    let JavaType::Method(sam_parameters, sam_return) = JavaType::try_parse(sam_descriptor)? else {
+        return None;
+    };
+    let JavaType::Method(instantiated_parameters, instantiated_return) = JavaType::try_parse(instantiated_descriptor)? else {
+        return None;
+    };
+    let (parameters, returns) = implementation_signature(implementation)?;
+
+    if captures.len() + sam_parameters.len() != parameters.len() || instantiated_parameters.len() != sam_parameters.len() {
+        return None;
     }
-    if !captures.iter().chain(sam_parameters).zip(&parameters).all(|(from, to)| passes(from, to)) {
-        return false;
+    let (captured, passed) = parameters.split_at(captures.len());
+    if !captures.iter().zip(captured).all(|(from, to)| passes(from, to)) {
+        return None;
     }
+    let parameters = sam_parameters
+        .iter()
+        .zip(&instantiated_parameters)
+        .zip(passed)
+        .map(|((sam, instantiated), implementation)| parameter_adapter(sam, instantiated, implementation))
+        .collect::<Option<Vec<_>>>()?;
 
     // A `void` interface method discards whatever the implementation returned, which is what the
     // real factory does too — `Runnable r = list::clear` is an ordinary method reference.
-    **sam_return == JavaType::Void || passes(&returns, sam_return)
+    let returns = if *sam_return == JavaType::Void {
+        None
+    } else {
+        Some(return_adapter(&returns, &sam_return, &instantiated_return)?)
+    };
+
+    Some(Plan { parameters, returns })
+}
+
+/// A caller's argument, typed `sam` (erased) and `instantiated` (generic), reaching an
+/// implementation parameter typed `implementation`.
+fn parameter_adapter(sam: &JavaType, instantiated: &JavaType, implementation: &JavaType) -> Option<Adapter> {
+    if passes(sam, implementation) {
+        return Some(Adapter::Pass);
+    }
+    match (sam, instantiated, implementation) {
+        (JavaType::Int, JavaType::Int, to) if holds_boxed_int(to) => Some(Adapter::BoxInt),
+        // The instantiated type is what makes this an `Integer` rather than a `Short` or a
+        // `Character`: the erased `Object` says nothing, and unboxing a `Short` as an `Integer`
+        // would throw where the real factory widens.
+        (from, JavaType::Class(boxed), JavaType::Int) if holds_boxed_int(from) && boxed == INTEGER => Some(Adapter::UnboxInt),
+        _ => None,
+    }
+}
+
+/// The implementation's result, typed `implementation`, returned through an interface method typed
+/// `sam` (erased) and `instantiated` (generic).
+fn return_adapter(implementation: &JavaType, sam: &JavaType, instantiated: &JavaType) -> Option<Adapter> {
+    if passes(implementation, sam) {
+        return Some(Adapter::Pass);
+    }
+    match (implementation, sam, instantiated) {
+        (JavaType::Int, to, generic) if holds_boxed_int(to) && holds_boxed_int(generic) => Some(Adapter::BoxInt),
+        (JavaType::Class(boxed), JavaType::Int, JavaType::Int) if boxed == INTEGER => Some(Adapter::UnboxInt),
+        _ => None,
+    }
+}
+
+/// A reference type an `Integer` is known to fit without asking the class hierarchy: `Integer`
+/// itself and `Object`. `Number`, `Comparable` and `Serializable` would be right too, and are
+/// left out until something measures them.
+fn holds_boxed_int(r#type: &JavaType) -> bool {
+    matches!(r#type, JavaType::Class(name) if name == INTEGER || name == "java/lang/Object")
 }
 
 /// The signature the implementation is *called* with, which is not the descriptor written in the
@@ -246,7 +328,20 @@ fn passes(from: &JavaType, to: &JavaType) -> bool {
 /// else.
 pub(crate) async fn instantiate(jvm: &Jvm, call_site: &LambdaCallSite, captures: Vec<JavaValue>) -> Result<Box<dyn ClassInstance>> {
     if !jvm.has_class(&call_site.class_name) {
-        jvm.register_class(Box::new(synthesise(call_site)), None).await?;
+        let captured = JavaType::parse(&call_site.descriptor).as_method().0.to_vec();
+        let Some(plan) = plan(
+            &captured,
+            &call_site.method_descriptor,
+            &call_site.instantiated_method_descriptor,
+            &call_site.implementation,
+        ) else {
+            // Lowering linked this call site only because the same function said yes, so a `None`
+            // here is an opcode written by something that did not run that check.
+            return Err(jvm
+                .exception("java/lang/InternalError", "lambda call site needs an adapter that is not inserted")
+                .await);
+        };
+        jvm.register_class(Box::new(synthesise(call_site, plan)), None).await?;
     }
 
     let mut instance = jvm.instantiate_class(&call_site.class_name).await?;
@@ -259,7 +354,7 @@ pub(crate) async fn instantiate(jvm: &Jvm, call_site: &LambdaCallSite, captures:
 
 /// The class the call site evaluates an instance of: the interface, one field per captured value,
 /// and one method — the interface's, implemented by [`LambdaBody`].
-fn synthesise(call_site: &LambdaCallSite) -> ClassDefinitionImpl {
+fn synthesise(call_site: &LambdaCallSite, plan: Plan) -> ClassDefinitionImpl {
     let fields = capture_descriptors(call_site)
         .into_iter()
         .enumerate()
@@ -273,7 +368,7 @@ fn synthesise(call_site: &LambdaCallSite) -> ClassDefinitionImpl {
             .enumerate()
             .map(|(index, x)| (capture_name(index), x.descriptor()))
             .collect(),
-        returns_void: matches!(JavaType::parse(&call_site.method_descriptor).as_method().1, JavaType::Void),
+        plan,
     };
     let method = MethodImpl::new(
         &call_site.method_name,
@@ -326,7 +421,7 @@ fn descriptor_of(r#type: &JavaType) -> String {
 struct LambdaBody {
     implementation: MethodHandleRef,
     captures: Vec<(String, String)>,
-    returns_void: bool,
+    plan: Plan,
 }
 
 #[async_trait::async_trait]
@@ -343,7 +438,9 @@ impl JvmCallback for LambdaBody {
         for (name, descriptor) in &self.captures {
             arguments.push(jvm.get_field(&this, name, descriptor).await?);
         }
-        arguments.extend(args.into_vec().into_iter().skip(1));
+        for (value, adapter) in args.into_vec().into_iter().skip(1).zip(&self.plan.parameters) {
+            arguments.push(adapt(jvm, *adapter, value).await?);
+        }
 
         let member = &self.implementation.member;
         let result: JavaValue = match self.implementation.kind {
@@ -375,6 +472,43 @@ impl JvmCallback for LambdaBody {
             _ => return Err(jvm.exception("java/lang/InternalError", "lambda implementation is not a method").await),
         };
 
-        Ok(if self.returns_void { JavaValue::Void } else { result })
+        match self.plan.returns {
+            None => Ok(JavaValue::Void),
+            Some(adapter) => adapt(jvm, adapter, result).await,
+        }
+    }
+}
+
+/// Apply one [`Adapter`] to a value. The exceptions are the ones the real factory's adapter throws:
+/// it casts to `Integer` before unboxing, so a wrong type is a `ClassCastException` and `null` is a
+/// `NullPointerException`.
+async fn adapt(jvm: &Jvm, adapter: Adapter, value: JavaValue) -> Result<JavaValue> {
+    match (adapter, value) {
+        (Adapter::Pass, value) => Ok(value),
+        (Adapter::BoxInt, JavaValue::Int(value)) => {
+            let boxed: Box<dyn ClassInstance> = jvm.invoke_static(INTEGER, "valueOf", "(I)Ljava/lang/Integer;", (value,)).await?;
+            Ok(JavaValue::Object(Some(boxed)))
+        }
+        (Adapter::UnboxInt, JavaValue::Object(None)) => Err(jvm
+            .exception("java/lang/NullPointerException", "Cannot unbox null to int in a lambda adapter")
+            .await),
+        (Adapter::UnboxInt, JavaValue::Object(Some(object))) => {
+            if !jvm.is_instance(&*object, INTEGER) {
+                let class_name = object.class_definition().name().replace('/', ".");
+                return Err(jvm
+                    .exception(
+                        "java/lang/ClassCastException",
+                        &format!("class {class_name} cannot be cast to class java.lang.Integer"),
+                    )
+                    .await);
+            }
+            let value: i32 = jvm.invoke_virtual(&object, INTEGER, "intValue", "()I", ()).await?;
+            Ok(JavaValue::Int(value))
+        }
+        // The plan was made from the same descriptors the values were typed by; a mismatch here
+        // is this runtime's mistake, not the guest's.
+        (adapter, value) => Err(jvm
+            .exception("java/lang/InternalError", &format!("lambda adapter {adapter:?} given {value:?}"))
+            .await),
     }
 }

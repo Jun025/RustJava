@@ -1,14 +1,10 @@
-// The boundary: a call site this runtime refuses to link, and why that is a decision rather than
-// an oversight.
+// The first adapter this runtime inserts, in its simplest place. The interface method returns
+// `Object` and the implementation returns `int`, so `LambdaMetafactory` boxes on the way out —
+// measured: OpenJDK 26.0.1 runs this and prints 3.
 //
-// `LambdaMetafactory` is allowed to insert adapters. Here the interface method returns `Object`
-// and the implementation returns `int`, so the real factory boxes on the way out — measured:
-// OpenJDK 26.0.1 runs this and prints 3. This runtime has no boxing to insert at that point, so
-// it does not link the call site at all and the class is refused as an unsupported feature.
-//
-// A refusal is worse than an adapter and much better than a wrong answer, and this fixture is what
-// keeps that choice honest: delete the signature check in `jvm-bytecode/src/lambda.rs` and this
-// class stops being refused.
+// This fixture used to be the boundary: the call site was refused because nothing here could box.
+// `jvm-bytecode/src/lambda.rs` now inserts `Integer.valueOf` for exactly this pair, and the pairs
+// that are still refused have their own fixtures (LambdaBoxingLong, LambdaUnboxingShort).
 //
 // Compiled with: javac --release 21 -d test-data/indy test-data/src/indy/LambdaBoxing.java
 public class LambdaBoxing {

@@ -1,0 +1,7 @@
+{
+  "date": "2026-09-27",
+  "taskId": "rustjava-2026-09-17-link-lambdametafactory-boxing-adapter-adopt-p0",
+  "summary": "LambdaMetafactory linker inserts the int <-> Integer adapter; every other conversion pair stays refused.",
+  "proposals": [],
+  "adoptedProposals": ["2026-09-17-link-lambdametafactory#p0"]
+}
