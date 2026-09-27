@@ -565,27 +565,69 @@ async fn test_every_reference_kind_a_lambda_implementation_can_have_runs() {
     assert_eq!(output, "42\n", "40 captured through `this`, plus the argument");
 }
 
-// The other half of the sentence above: what is *not* linked. The interface method returns
-// `Object` and the implementation returns `int`, so a real `LambdaMetafactory` boxes — OpenJDK
-// 26.0.1 runs this fixture and prints 3. There is no boxing to insert here, so the call site is
-// left alone and the class is refused.
+// The one adapter this runtime inserts: `int` <-> `Integer`. `LambdaBoxing` is its simplest place —
+// the interface method returns `Object`, the implementation returns `int` — and was the refusal
+// fixture until the adapter existed. `LambdaBoxingKinds` is every other position the pair reaches,
+// plus the three exceptions the real adapter throws. The expected text is OpenJDK 26.0.2.1's, taken
+// by running the same fixtures there.
 //
-// This is what makes the choice visible. Remove the signature check in `jvm-bytecode/src/lambda.rs`
-// and the class links instead: the refusal is a decision, and deleting it is a change this notices.
+// Delete the adapter in `jvm-bytecode/src/lambda.rs` and both classes go back to being refused.
 #[tokio::test]
-async fn test_a_call_site_needing_an_adapter_is_refused_rather_than_guessed_at() {
-    let path = Path::new("test-data/indy/LambdaBoxing.class");
+async fn test_the_int_integer_adapter_is_inserted_where_the_real_factory_inserts_it() {
+    let indy = Path::new("./test-data/indy/");
 
-    let err = run_class(path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+    let output = run_class(Path::new("test-data/indy/LambdaBoxing.class"), &[indy], &[])
+        .await
+        .expect("an int returned through an Object interface method should be boxed");
+    assert_eq!(output, "3\n");
 
-    assert!(
-        err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
-        "expected the unsupported-feature diagnosis, got: {err}"
+    let output = run_class(Path::new("test-data/indy/LambdaBoxingKinds.class"), &[indy], &[])
+        .await
+        .expect("every int <-> Integer position should link and run");
+    assert_eq!(
+        output.lines().collect::<Vec<_>>(),
+        vec![
+            "4",         // boxed on the way out through Src<Integer>, unboxed again by the caller
+            "42",        // Fn<Integer, Integer> over inc(int): unboxed in, boxed out
+            "7",         // IntGen over a method returning Integer: unboxed on the way out
+            "obj:5",     // IntSink over show(Object): boxed on the way in
+            "integer:6", // IntSink over showInteger(Integer): boxed on the way in
+            "npe in",    // null unboxed on the way in
+            "cce",       // a String through the raw type: not an Integer, so not unboxed
+            "npe out",   // null unboxed on the way out
+        ]
     );
-    assert!(
-        !err.contains("ClassFormatError"),
-        "a class OpenJDK runs to completion is not malformed, got: {err}"
-    );
+}
+
+// The other half: pairs the adapter does not cover are still refused, not guessed at. Each fixture
+// is a class OpenJDK 26.0.2.1 runs to completion (5000000000 and 42), so each refusal is this
+// runtime's decision, and each catches a different way of widening the adapter by mistake:
+//
+// - `LambdaBoxingLong` — `long` into `Object`. Generalising to "any primitive meets a reference"
+//   would link it.
+// - `LambdaUnboxingShort` — the erased parameter is `Object`, the instantiated one is `Short`, the
+//   implementation takes `int`. An adapter that read only the erased type would unbox it as an
+//   `Integer` and throw ClassCastException where the real factory answers 42: a wrong answer
+//   instead of a refusal.
+#[tokio::test]
+async fn test_a_call_site_needing_an_adapter_that_is_not_inserted_is_refused_rather_than_guessed_at() {
+    for name in ["LambdaBoxingLong", "LambdaUnboxingShort"] {
+        let path = format!("test-data/indy/{name}.class");
+
+        let err = run_class(Path::new(&path), &[Path::new("./test-data/indy/")], &[])
+            .await
+            .unwrap_err()
+            .to_string();
+
+        assert!(
+            err.contains("java.lang.UnsupportedOperationException") && err.contains("invokedynamic"),
+            "{name}: expected the unsupported-feature diagnosis, got: {err}"
+        );
+        assert!(
+            !err.contains("ClassFormatError"),
+            "{name}: a class OpenJDK runs to completion is not malformed, got: {err}"
+        );
+    }
 }
 
 // The identity check is four comparisons and the tests above can observe none of them: every

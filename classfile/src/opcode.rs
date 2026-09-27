@@ -35,6 +35,10 @@ pub struct LambdaCallSite {
     /// `samMethodType`) — that is the one callers invoke through the interface.
     pub method_name: Arc<String>,
     pub method_descriptor: Arc<String>,
+    /// The same method with its generic type arguments filled in (the bootstrap's
+    /// `instantiatedMethodType`). Read only where an adapter converts a value: it is what says an
+    /// erased `Object` parameter is an `Integer` to unbox rather than, say, a `Short`.
+    pub instantiated_method_descriptor: Arc<String>,
     /// The method the interface method delegates to (the bootstrap's `implMethod`).
     pub implementation: MethodHandleRef,
 }

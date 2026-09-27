@@ -166,6 +166,13 @@
 65.0 indy/Lambda.class
 65.0 indy/LambdaBoxing$Gen.class
 65.0 indy/LambdaBoxing.class
+65.0 indy/LambdaBoxingKinds$Fn.class
+65.0 indy/LambdaBoxingKinds$IntGen.class
+65.0 indy/LambdaBoxingKinds$IntSink.class
+65.0 indy/LambdaBoxingKinds$Src.class
+65.0 indy/LambdaBoxingKinds.class
+65.0 indy/LambdaBoxingLong$Gen.class
+65.0 indy/LambdaBoxingLong.class
 52.0 indy/LambdaCapturingThis$Op.class
 52.0 indy/LambdaCapturingThis.class
 65.0 indy/LambdaKinds$Base.class
@@ -182,6 +189,8 @@
 65.0 indy/LambdaKinds$Sink.class
 65.0 indy/LambdaKinds$Weighted.class
 65.0 indy/LambdaKinds.class
+65.0 indy/LambdaUnboxingShort$Fn.class
+65.0 indy/LambdaUnboxingShort.class
 52.0 indy/MakeConcat.class
 52.0 indy/MakeConcatWithArgument.class
 52.0 indy/MakeConcatWrongDescriptor.class
