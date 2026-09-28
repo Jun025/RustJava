@@ -189,22 +189,37 @@ async fn test_each_axis_of_the_factory_identity_is_observable() {
 // and printed a quietly wrong "a" instead of refusing.
 #[tokio::test]
 async fn test_a_recipe_that_contradicts_its_call_site_is_a_bootstrap_method_error() {
-    for (name, disagreement) in [
-        ("RecipeWantsMoreArguments", "recipe wants two arguments, the call site provides one"),
-        ("RecipeWantsFewerArguments", "recipe wants one argument, the call site provides two"),
-        ("RecipeWantsAConstant", "recipe wants a constant the bootstrap did not carry"),
+    // The detail rides on the cause, as on OpenJDK 26. The numbers are this runtime's own counts: for
+    // RecipeWantsMoreArguments and RecipeWantsAConstant OpenJDK prints the counts its parser had reached
+    // when it stopped ("wants 1 ..., provides 1" / "wants 0 constants, but only 0"), which describe
+    // nothing about the file.
+    for (name, cause) in [
+        (
+            "RecipeWantsMoreArguments",
+            "java.lang.invoke.StringConcatException: Mismatched number of concat arguments: recipe wants 2 arguments, but signature provides 1",
+        ),
+        (
+            "RecipeWantsFewerArguments",
+            "java.lang.invoke.StringConcatException: Mismatched number of concat arguments: recipe wants 1 arguments, but signature provides 2",
+        ),
+        (
+            "RecipeWantsAConstant",
+            "java.lang.invoke.StringConcatException: Mismatched number of concat constants: recipe wants 1 constants, but only 0 are passed",
+        ),
     ] {
         let path = PathBuf::from(format!("test-data/indy/{name}.class"));
 
         let err = run_class(&path, &[Path::new("./test-data/indy/")], &[]).await.unwrap_err().to_string();
+        let headers: Vec<&str> = err.lines().filter(|x| !x.starts_with('\t')).collect();
 
-        assert!(
-            err.contains("java.lang.BootstrapMethodError"),
-            "{name} ({disagreement}): expected the linkage diagnosis, got: {err}"
-        );
-        assert!(
-            !err.contains("ClassFormatError") && !err.contains("UnsupportedOperationException"),
-            "{name}: the file parses and the bootstrap is one we link, got: {err}"
+        assert_eq!(
+            headers,
+            [
+                "Java Exception:",
+                "java.lang.BootstrapMethodError: bootstrap method initialization exception",
+                &format!("Caused by: {cause}"),
+            ],
+            "{name}"
         );
     }
 }
