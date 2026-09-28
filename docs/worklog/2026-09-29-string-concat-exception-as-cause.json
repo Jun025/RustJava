@@ -1,0 +1,7 @@
+{
+  "date": "2026-09-29",
+  "taskId": "rustjava-java-lang-invoke-package-and-linkage-error-cause",
+  "summary": "Mismatched string concat recipes raise BootstrapMethodError caused by java.lang.invoke.StringConcatException, as on OpenJDK 26.",
+  "proposals": [],
+  "adoptedProposals": ["2026-09-17-string-concat-recipe-arity#p1"]
+}

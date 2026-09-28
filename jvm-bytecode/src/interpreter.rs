@@ -1018,7 +1018,7 @@ impl Interpreter {
     /// Execute a `StringConcatFactory.makeConcatWithConstants` call site.
     ///
     /// A real JVM asks the factory for a `CallSite` holding a `MethodHandle` chain and invokes it.
-    /// There is no `java.lang.invoke` package here — no `MethodHandle`, no `CallSite` — so the
+    /// `java.lang.invoke` here holds only `StringConcatException` — no `MethodHandle`, no `CallSite` — so the
     /// recipe is walked directly instead. That is the whole reason this is *one* linked bootstrap
     /// rather than a linkage mechanism: the factory's contract is a string template, and a string
     /// template can be honoured without the machinery that would normally deliver it.
@@ -1047,17 +1047,41 @@ impl Interpreter {
     async fn concat_with_constants(jvm: &Jvm, call_site: &StringConcatCallSite, params: Vec<JavaValue>) -> Result<Box<dyn ClassInstance>> {
         let wanted_params = call_site.recipe.chars().filter(|&x| x == '\u{1}').count();
         let wanted_constants = call_site.recipe.chars().filter(|&x| x == '\u{2}').count();
-        if wanted_params != params.len() || wanted_constants != call_site.constants.len() {
-            return Err(jvm
-                .exception(
-                    "java/lang/BootstrapMethodError",
-                    &format!(
-                        "string concat recipe wants {wanted_params} arguments and {wanted_constants} constants, but the call site provides {} and the bootstrap {}",
-                        params.len(),
-                        call_site.constants.len()
-                    ),
-                )
-                .await);
+        // OpenJDK 26's wording, arguments checked first. Its numbers are the ones this counted; OpenJDK's
+        // own counts come from a parser that stops at the first surplus, so they can differ.
+        let detail = if wanted_params != params.len() {
+            format!(
+                "Mismatched number of concat arguments: recipe wants {wanted_params} arguments, but signature provides {}",
+                params.len()
+            )
+        } else if wanted_constants != call_site.constants.len() {
+            format!(
+                "Mismatched number of concat constants: recipe wants {wanted_constants} constants, but only {} are passed",
+                call_site.constants.len()
+            )
+        } else {
+            String::new()
+        };
+        if !detail.is_empty() {
+            let cause = match jvm.exception("java/lang/invoke/StringConcatException", &detail).await {
+                JavaError::JavaException(x) => x,
+                e => return Err(e),
+            };
+            let error = jvm
+                .exception("java/lang/BootstrapMethodError", "bootstrap method initialization exception")
+                .await;
+            if let JavaError::JavaException(instance) = &error {
+                let _: Box<dyn ClassInstance> = jvm
+                    .invoke_virtual(
+                        instance,
+                        "java/lang/Throwable",
+                        "initCause",
+                        "(Ljava/lang/Throwable;)Ljava/lang/Throwable;",
+                        (cause,),
+                    )
+                    .await?;
+            }
+            return Err(error);
         }
 
         let mut result = String::new();

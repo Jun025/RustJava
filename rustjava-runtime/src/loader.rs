@@ -54,6 +54,7 @@ pub fn get_runtime_class_proto(name: &str) -> Option<RuntimeClassProto> {
         crate::classes::java::lang::ArrayStoreException::as_proto(),
         crate::classes::java::lang::Boolean::as_proto(),
         crate::classes::java::lang::BootstrapMethodError::as_proto(),
+        crate::classes::java::lang::invoke::StringConcatException::as_proto(),
         crate::classes::java::lang::Class::as_proto(),
         crate::classes::java::lang::ClassCastException::as_proto(),
         crate::classes::java::lang::ClassCircularityError::as_proto(),
