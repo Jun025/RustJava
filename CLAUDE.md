@@ -53,6 +53,7 @@
   `test-utils` 로 개명(S8)했을 때 **로컬에서는 어떤 명령으로도 드러나지 않고 CI 에서만** 빨개졌다.
   ⇒ ★**CI 가 검사를 늘리거나 «매트릭스 차원»을 바꾸면 이 블록도 «같이» 고쳐라**(아래 재개 조건이 둘 다 센다).
   ※OS 축(3종)은 로컬에서 재현할 수 없다 — ★**그 차원만은 CI 가 유일한 그물이고, 그것은 «알고 두는» 값이다.**
+- 무거운 빌드·테스트(cargo build/test · vitest · next build · tsc -p · wrangler build)는 `~/orchestrator-live/bin/build-slot run -- <cmd>` 로 감싼다 — 머신당 슬롯을 넘으면 기다렸다 돈다(상한 30분 · rc 는 명령 그대로 · 라이브에 없으면 맨 명령).
 - ★**회차 기록은 회차마다 새 파일 `docs/worklog/YYYY-MM-DD-<slug>.md` 에 쓴다.** 첫 줄에
   `## [YYYY-MM-DD] 제목 (<ticket-id>)`, 그 아래 무엇을·왜·사용자 영향 3줄을 적는다. 후속 추천을 적었으면
   같은 basename 의 `.json` 도 쓴다. `.json` 이 없으면 그 추천은 cockpit 「후속 작업 추천」 패널에 **닿지 못한다**.
