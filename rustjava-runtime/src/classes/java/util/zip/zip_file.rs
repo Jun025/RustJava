@@ -44,6 +44,7 @@ impl ZipFile {
                     MethodAccessFlags::PUBLIC,
                 ),
                 JavaMethodProto::new("entries", "()Ljava/util/Enumeration;", Self::entries, MethodAccessFlags::PUBLIC),
+                JavaMethodProto::new("close", "()V", Self::close, MethodAccessFlags::PUBLIC),
             ],
             fields: vec![JavaFieldProto::new("zipData", "[B", FieldAccessFlags::PRIVATE)],
             access_flags: ClassAccessFlags::PUBLIC,
@@ -131,6 +132,15 @@ impl ZipFile {
             .await?;
 
         Ok(entries.into())
+    }
+
+    // No-op: <init> copies the whole archive into `zipData` and every read reparses that array,
+    // so there is no file handle to release. Reads after close() keep working rather than
+    // throwing IllegalStateException as the JDK does.
+    async fn close(_: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<()> {
+        tracing::debug!("java.util.zip.ZipFile::close({this:?})");
+
+        Ok(())
     }
 
     async fn get_input_stream(

@@ -15,6 +15,6 @@ class ZipGuards {
         } catch (NullPointerException e) {
             System.out.println("caught NPE");
         }
-        // ZipFile.close() is not registered in this runtime, so there is nothing to release.
+        // ZipFile.close() is locked separately by ZipClose.
     }
 }

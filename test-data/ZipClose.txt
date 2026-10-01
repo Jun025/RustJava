@@ -1,0 +1,3 @@
+close ok
+entry true
+try-with-resources ok

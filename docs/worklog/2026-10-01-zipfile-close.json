@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "title": "ZipFile.close() 등재",
+  "taskId": "rustjava-zipfile-close-not-registered",
+  "summary": "ZipFile.close()V 를 no-op 으로 등재하고 ZipClose 픽스처로 명시 close 와 try-with-resources 를 잠갔다. 착지한 카드 3건을 근거 커밋과 함께 닫았다.",
+  "proposals": [],
+  "adoptedProposals": [
+    "2026-09-12-zip-getinputstream-guard-lock#p0",
+    "2026-08-27-upstream-sync-s3#p1",
+    "2026-09-17-lambda-capture-order-and-host-abort#p0",
+    "2026-09-16-cp-tags-15-18-parse#p1"
+  ],
+  "declinedProposals": [],
+  "closedBy": {
+    "2026-08-27-upstream-sync-s3#p1": "f19acf77 (#67)",
+    "2026-09-17-lambda-capture-order-and-host-abort#p0": "f19acf77 (#67)",
+    "2026-09-16-cp-tags-15-18-parse#p1": "dc035936 (#44)"
+  }
+}
