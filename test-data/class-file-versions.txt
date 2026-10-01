@@ -137,6 +137,7 @@
 65.0 UnsupportedCharset.class
 52.0 VirtualDispatchSemantics.class
 65.0 WideLocals.class
+52.0 ZipClose.class
 65.0 ZipCorrupt.class
 52.0 ZipGuards.class
 52.0 attr/DuplicateInnerClasses.class
