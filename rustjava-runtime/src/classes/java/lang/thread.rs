@@ -265,69 +265,72 @@ impl Thread {
         impl SpawnCallback for ThreadStartProxy {
             async fn call(&self) -> Result<()> {
                 // manual span instead of #[tracing::instrument]: tracing-attributes breaks no_std
-                // builds (tokio-rs/tracing#3388), and this was the only use in the workspace
+                // builds (tokio-rs/tracing#3388), and this was the only use in the workspace.
+                // The span lives in this wrapper so `run` below keeps upstream's text byte for byte
+                // and upstream edits to it merge without conflict.
                 let span = tracing::info_span!("java thread", id = self.thread_id);
+                self.run().instrument(span).await
+            }
+        }
 
-                async {
-                    tracing::trace!("Thread start");
+        impl ThreadStartProxy {
+            async fn run(&self) -> Result<()> {
+                tracing::trace!("Thread start");
 
-                    self.jvm.attach_thread(self.this.instance.clone()).await?;
+                self.jvm.attach_thread(self.this.instance.clone()).await?;
 
-                    let result: Result<()> = self.jvm.invoke_virtual(&self.this, "java/lang/Thread", "run", "()V", []).await;
+                let result: Result<()> = self.jvm.invoke_virtual(&self.this, "java/lang/Thread", "run", "()V", []).await;
 
-                    if let Err(jvm::JavaError::JavaException(exception)) = &result {
-                        let trace = async {
-                            let string_writer = self.jvm.new_class("java/io/StringWriter", "()V", ()).await?;
-                            let print_writer = self
-                                .jvm
-                                .new_class("java/io/PrintWriter", "(Ljava/io/Writer;)V", (string_writer.clone(),))
-                                .await?;
-                            let _: () = self
-                                .jvm
-                                .invoke_virtual(
-                                    exception,
-                                    &exception.class_definition().name(),
-                                    "printStackTrace",
-                                    "(Ljava/io/PrintWriter;)V",
-                                    (print_writer,),
-                                )
-                                .await?;
-                            let trace = self
-                                .jvm
-                                .invoke_virtual(&string_writer, "java/io/StringWriter", "toString", "()Ljava/lang/String;", [])
-                                .await?;
-                            JavaLangString::to_rust_string(&self.jvm, &trace).await
-                        }
-                        .await;
-
-                        match trace {
-                            Ok(trace) => tracing::error!("Uncaught exception in thread {}:\n{}", self.thread_id, trace),
-                            Err(error) => tracing::error!(?error, "failed to format uncaught exception in thread {}", self.thread_id),
-                        }
+                if let Err(jvm::JavaError::JavaException(exception)) = &result {
+                    let trace = async {
+                        let string_writer = self.jvm.new_class("java/io/StringWriter", "()V", ()).await?;
+                        let print_writer = self
+                            .jvm
+                            .new_class("java/io/PrintWriter", "(Ljava/io/Writer;)V", (string_writer.clone(),))
+                            .await?;
+                        let _: () = self
+                            .jvm
+                            .invoke_virtual(
+                                exception,
+                                &exception.class_definition().name(),
+                                "printStackTrace",
+                                "(Ljava/io/PrintWriter;)V",
+                                (print_writer,),
+                            )
+                            .await?;
+                        let trace = self
+                            .jvm
+                            .invoke_virtual(&string_writer, "java/io/StringWriter", "toString", "()Ljava/lang/String;", [])
+                            .await?;
+                        JavaLangString::to_rust_string(&self.jvm, &trace).await
                     }
+                    .await;
 
-                    let mut this = (*self.this).clone();
-                    let cleanup = if let Err(error) = self.jvm.monitor_enter(&self.this).await {
-                        Err(error)
-                    } else {
-                        let alive_result = self.jvm.put_field(&mut this, "alive", "Z", false).await;
-                        let notify_result = if alive_result.is_ok() {
-                            self.jvm.object_notify(&self.this, usize::MAX).await
-                        } else {
-                            Ok(())
-                        };
-                        let exit_result = self.jvm.monitor_exit(&self.this).await;
-                        alive_result.and(notify_result).and(exit_result)
-                    };
-                    let detach_result = self.jvm.detach_thread();
-
-                    cleanup?;
-                    detach_result?;
-
-                    Ok(())
+                    match trace {
+                        Ok(trace) => tracing::error!("Uncaught exception in thread {}:\n{}", self.thread_id, trace),
+                        Err(error) => tracing::error!(?error, "failed to format uncaught exception in thread {}", self.thread_id),
+                    }
                 }
-                .instrument(span)
-                .await
+
+                let mut this = (*self.this).clone();
+                let cleanup = if let Err(error) = self.jvm.monitor_enter(&self.this).await {
+                    Err(error)
+                } else {
+                    let alive_result = self.jvm.put_field(&mut this, "alive", "Z", false).await;
+                    let notify_result = if alive_result.is_ok() {
+                        self.jvm.object_notify(&self.this, usize::MAX).await
+                    } else {
+                        Ok(())
+                    };
+                    let exit_result = self.jvm.monitor_exit(&self.this).await;
+                    alive_result.and(notify_result).and(exit_result)
+                };
+                let detach_result = self.jvm.detach_thread();
+
+                cleanup?;
+                detach_result?;
+
+                Ok(())
             }
         }
 

@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-04",
+  "taskId": "rustjava-open-proposal-cards-triage-and-take-one",
+  "proposals": [],
+  "adoptedProposals": [
+    "2026-08-27-upstream-sync-s4#p1"
+  ],
+  "declinedProposals": [
+    "2026-08-27-upstream-sync-s4#p0",
+    "2026-08-27-upstream-sync-squash-convergence#p0",
+    "2026-09-03-upstream-sync-s5-s7-remeasure#p1",
+    "2026-09-04-parity-sibling-repo-survey#p0",
+    "2026-09-04-parity-sibling-repo-survey#p1",
+    "2026-09-04-upstream-sync-s5#p1",
+    "2026-09-04-upstream-sync-s6#p0",
+    "2026-09-04-upstream-sync-s7#p0",
+    "2026-09-04-upstream-sync-s8#p1",
+    "2026-09-07-parity-per-repo-parser-axis-design#p1",
+    "2026-09-07-parity-per-repo-parser-axis-design#p2",
+    "2026-09-12-net-guard-subclass-fixture#p0",
+    "2026-09-12-test-class-scratch-premise#p0",
+    "2026-09-17-base-pull-and-stale-block-premise#p0",
+    "2026-09-17-fixture-single-defect-audit#p0",
+    "2026-09-17-fixture-version-table-backfill#p0",
+    "2026-09-18-root-fixture-target-decision#p1"
+  ]
+}
