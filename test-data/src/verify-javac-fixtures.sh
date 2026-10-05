@@ -29,8 +29,8 @@
 # The --release to rebuild with is read from the fixture itself: a class file's major version is
 # its target (major - 44), so nothing external has to be consulted or kept in sync.
 #
-# Exit: 0 all reproduced · 1 something differed or could not be rebuilt · 2 no javac (nothing was
-#       checked — not a pass)
+# Exit: 0 all reproduced and the ldc positives ran · 1 something differed, could not be rebuilt, or an
+#       ldc positive was refused · 2 no javac (nothing was checked — not a pass)
 
 set -eu
 
@@ -100,11 +100,30 @@ for class in "$DIR"/*.class; do
     fi
 done
 
+# The ldc positives are hand-assembled by test-data/src/ldc/make_ldc_fixtures.py, so there is no
+# source to rebuild them from. The realism question for them is instead "does a real JVM accept and
+# run these bytes" — its verifier is the oracle, run with the `java` beside the javac found above.
+# Only the positives: every other file in test-data/ldc is a negative control the JVM must reject
+# (measured 2026-10-05, OpenJDK 26.0.2.1: these four rc=0, the other nine rc=1). Accepting proves
+# the bytes are legal, not that any generator would emit that exact encoding.
+# Decided in docs/worklog/2026-09-17-ldc-asm-regeneration-declined.md (proposal #p0).
+JAVA="${JAVAC%javac}java"
+ldc_failed=0
+for base in LdcMethodHandle LdcMethodType LdcDynamic Ldc2WDynamic; do
+    # -Duser.language=en: a localized launcher garbles the cause into a "no main method" sentence.
+    if "$JAVA" -Duser.language=en -cp test-data/ldc "$base" >"$work/err" 2>&1; then
+        echo "  ✓ ldc/$base (ran under java)"
+    else
+        echo "  ✗ ldc/$base: the JVM refused it: $(grep -m1 'java\.lang\.' "$work/err" || head -1 "$work/err")" >&2
+        ldc_failed=$((ldc_failed + 1))
+    fi
+done
+
 if [ "$checked" -eq 0 ]; then
     echo "no javac-compiled fixtures found in $DIR; nothing was verified" >&2
     exit 2
 fi
 # "could not rebuild" is reported apart from "rebuilt and differs": one says the fixture drifted,
 # the other says this script could not ask the question. Conflating them overstates the finding.
-echo "$checked rebuilt: $((checked - differed)) reproduced, $differed differed; $unbuildable could not be rebuilt"
-[ "$differed" -eq 0 ] && [ "$unbuildable" -eq 0 ]
+echo "$checked rebuilt: $((checked - differed)) reproduced, $differed differed; $unbuildable could not be rebuilt; $ldc_failed ldc positive(s) refused"
+[ "$differed" -eq 0 ] && [ "$unbuildable" -eq 0 ] && [ "$ldc_failed" -eq 0 ]

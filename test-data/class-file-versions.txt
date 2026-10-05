@@ -12,7 +12,16 @@
 # axis). The 64 generator fixtures in cp/indy/ldc/attr carry zero of either, so this cohort is the
 # only coverage. Of the other 20 top-level 52 fixtures, 16 rebuild to an identical opcode sequence,
 # so unifying buys nothing. Reopen if the runtime drops major <= 52, if those paths gain coverage
-# elsewhere, or if a third version axis turns up. The rule for *new* fixtures is left open.
+# elsewhere, or if a third version axis turns up.
+#
+# New fixtures (decided 2026-10-05): build with `javac --release 21`, which stamps 65.0 — the most
+# common major in the root (62 of 115 rows) and in indy/'s javac fixtures (31 of 33; the other two
+# are LambdaCapturingThis at --release 8, for REF_invokeSpecial). Pick a
+# different --release only when the test is about a version-specific shape (like the major-52
+# lowerings above), and say why in a comment at the top of the fixture's .java: a reason written on
+# a row here would not survive, because record-class-file-versions.py keeps only `#` lines.
+# test-data/src/indy/LambdaCapturingThis.java is the model: the reason, then the javac line.
+# Hand-assembled fixtures (cp/indy/ldc/attr generators) set their major in the generator instead.
 # Re-measure, don't re-argue: docs/worklog/2026-09-18-root-fixture-target-decision.md.
 #
 # What that catches: regenerating a fixture with a different JDK. `javac Switch.java` with no

@@ -1,0 +1,9 @@
+{
+ "date": "2026-10-05",
+ "taskId": "rustjava-ldc-fixtures-real-jvm-check-and-new-fixture-target-rule",
+ "proposals": [],
+ "adoptedProposals": [
+  "2026-09-17-ldc-asm-regeneration-declined#p0",
+  "2026-09-18-root-fixture-target-decision#p0"
+ ]
+}
